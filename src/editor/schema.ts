@@ -78,7 +78,12 @@ export function cardKind(type: string | undefined): string {
     .replace(/-card$/, "");
 }
 
-export function schemaFor(type: string | undefined, t: Translator): FormSchema[] {
+/**
+ * `data` is the config being edited. A couple of fields only make sense for certain
+ * values of other fields, and a checkbox for something the card cannot do reads as a lie,
+ * so those entries are left out rather than shown inert.
+ */
+export function schemaFor(type: string | undefined, t: Translator, data?: Record<string, unknown>): FormSchema[] {
   const kind = cardKind(type);
   switch (kind) {
     case "light":
@@ -109,15 +114,18 @@ export function schemaFor(type: string | undefined, t: Translator): FormSchema[]
         advanced(t),
       ];
 
-    case "sensor":
+    case "sensor": {
+      // A caption reading leaves no graph, so its options go away with it.
+      const compact = data?.value_in_caption === true;
       return [
         ...head("sensor"),
-        grid([bool("graph"), bool("trend")]),
-        grid([number("hours_to_show", 1, 168), number("decimals", 0, 4)]),
+        grid(compact ? [bool("value_in_caption"), bool("trend")] : [bool("value_in_caption"), bool("graph"), bool("trend")]),
+        grid(compact ? [number("decimals", 0, 4)] : [number("hours_to_show", 1, 168), number("decimals", 0, 4)]),
         text("accent"),
         grid([entity("secondary_entity", ["sensor", "binary_sensor"]), text("secondary_label")]),
         advanced(t),
       ];
+    }
 
     case "binary-sensor":
       return [
@@ -156,7 +164,7 @@ export function schemaFor(type: string | undefined, t: Translator): FormSchema[]
         ...head(SLIDER_DOMAINS),
         grid([number("min", -1000, 10000, 0.1), number("max", -1000, 10000, 0.1)]),
         grid([number("step", 0.01, 1000, 0.01), text("unit")]),
-        grid([bool("ticks"), number("decimals", 0, 4)]),
+        grid([bool("ticks"), bool("show_range"), number("decimals", 0, 4)]),
         text("subtitle"),
         text("accent"),
         {
@@ -168,6 +176,23 @@ export function schemaFor(type: string | undefined, t: Translator): FormSchema[]
         },
         advanced(t),
       ];
+
+    case "weather": {
+      // A single row has nowhere to put the forecast, so those options go away with it.
+      const row = data?.layout === "row";
+      const layout = select("layout", [
+        { value: "full", label: t("ed_layout_full") },
+        { value: "row", label: t("ed_layout_row") },
+      ]);
+      if (row) return [...head("weather"), layout, advanced(t)];
+      return [
+        ...head("weather"),
+        layout,
+        grid([bool("show_hourly"), bool("show_daily"), bool("show_metrics")]),
+        grid([number("hourly_count", 2, 12), number("daily_count", 1, 10)]),
+        advanced(t),
+      ];
+    }
 
     default:
       return [entity("entity", [], true), grid([text("name"), icon("icon")]), advanced(t)];
@@ -190,6 +215,10 @@ export const DEFAULT_ON = new Set([
   "show_tilt",
   "show_volume",
   "show_device",
+  "show_range",
+  "show_hourly",
+  "show_daily",
+  "show_metrics",
 ]);
 
 /** Every field name in a schema, flattened out of its grids and expandables. */
@@ -213,10 +242,13 @@ export const HELPERS: Record<string, string> = {
   accent: "ed_help_color",
   source_color: "ed_help_color",
   ticks: "ed_help_ticks",
+  show_range: "ed_help_show_range",
+  value_in_caption: "ed_help_value_in_caption",
   attribute: "ed_help_attribute",
   service: "ed_help_service",
   service_key: "ed_help_service_key",
   subtitle: "ed_help_subtitle",
   style: "ed_help_style",
+  layout: "ed_help_layout",
   hvac_modes: "ed_help_hvac_modes",
 };

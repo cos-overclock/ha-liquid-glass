@@ -19,6 +19,8 @@ export interface SliderCardConfig extends BaseCardConfig {
   accent?: string;
   /** Tick marks on the track: true derives a count from the steps, a number sets it. */
   ticks?: boolean | number;
+  /** Show the min and max labels under the track (default true). Off saves a row. */
+  show_range?: boolean;
   decimals?: number;
   /** Read the value from this attribute instead of the domain's usual place. */
   attribute?: string;
@@ -52,6 +54,12 @@ const numeric = (v: unknown): number | undefined => (v !== null && v !== "" && N
 export class LiquidGlassSliderCard extends LiquidGlassBaseCard<SliderCardConfig> {
   /** Value shown mid-drag, before the service call lands. */
   @state() private preview: number | undefined;
+  /**
+   * Value we asked the entity for. Home Assistant takes a moment to report the new state,
+   * and dropping straight back to the old one makes the thumb jump back and return.
+   */
+  @state() private pending: number | undefined;
+  private pendingTimer: number | undefined;
 
   static override styles = [
     tokens,
@@ -89,7 +97,6 @@ export class LiquidGlassSliderCard extends LiquidGlassBaseCard<SliderCardConfig>
       }
       .track-wrap lg-slider {
         --lg-slider-height: var(--lg-track-h, 56px);
-        --lg-slider-radius: 18px;
         --lg-slider-fill: linear-gradient(90deg, var(--fill-from), var(--fill-to));
       }
       /* Decorative level marks, evenly spread rather than pinned to exact step positions. */
@@ -284,11 +291,35 @@ export class LiquidGlassSliderCard extends LiquidGlassBaseCard<SliderCardConfig>
     return levels >= 2 && levels <= 12 ? levels : 0;
   }
 
+  /** True once the entity reports something close enough to what we asked for. */
+  private settled(spec: Spec): boolean {
+    if (this.pending === undefined) return true;
+    if (spec.value === undefined) return false;
+    // Round trips lose a little precision, e.g. a light's percentage via brightness.
+    return Math.abs(spec.value - this.pending) <= Math.max(spec.step / 2, 1);
+  }
+
   private commit(spec: Spec, value: number): void {
     this.preview = undefined;
     if (!spec.call) return;
+    this.pending = value;
+    // Give up waiting if the entity never lands on the value, so it cannot stick.
+    window.clearTimeout(this.pendingTimer);
+    this.pendingTimer = window.setTimeout(() => (this.pending = undefined), 4000);
     const [domain, service, data] = spec.call(value);
     void this.hass?.callService(domain, service, { entity_id: this.config.entity, ...data });
+  }
+
+  override disconnectedCallback(): void {
+    super.disconnectedCallback();
+    window.clearTimeout(this.pendingTimer);
+  }
+
+  protected override updated(): void {
+    if (this.pending !== undefined && this.settled(this.spec())) {
+      window.clearTimeout(this.pendingTimer);
+      this.pending = undefined;
+    }
   }
 
   override render() {
@@ -296,7 +327,8 @@ export class LiquidGlassSliderCard extends LiquidGlassBaseCard<SliderCardConfig>
     if (!entity || isUnavailable(entity)) return this.renderUnavailable();
 
     const spec = this.spec();
-    const raw = this.preview ?? spec.value ?? spec.min;
+    // Dragging wins, then the value we are still waiting on, then what the entity reports.
+    const raw = this.preview ?? (this.settled(spec) ? spec.value : this.pending) ?? spec.min;
     const value = clamp(raw, spec.min, spec.max);
     const zero = spec.min === 0 && value <= 0;
     const decimals = this.config.decimals ?? (Number.isInteger(spec.step) ? 0 : 1);
@@ -326,7 +358,8 @@ export class LiquidGlassSliderCard extends LiquidGlassBaseCard<SliderCardConfig>
 
         <div class="track-wrap">
           <lg-slider
-            variant="bar"
+            variant="thumb"
+            .refraction=${this.refraction}
             .value=${value}
             .min=${spec.min}
             .max=${spec.max}
@@ -339,10 +372,12 @@ export class LiquidGlassSliderCard extends LiquidGlassBaseCard<SliderCardConfig>
           ${ticks ? html`<div class="marks">${Array.from({ length: ticks }, () => html`<span></span>`)}</div>` : nothing}
         </div>
 
-        <div class="ticks">
-          <span>${fmt(spec.min)}${spec.unit}</span>
-          <span>${fmt(spec.max)}${spec.unit}</span>
-        </div>
+        ${this.config.show_range === false
+          ? nothing
+          : html`<div class="ticks">
+              <span>${fmt(spec.min)}${spec.unit}</span>
+              <span>${fmt(spec.max)}${spec.unit}</span>
+            </div>`}
       </div>`;
   }
 }

@@ -38,8 +38,10 @@ export class LiquidGlassCardEditor extends LitElement {
     const data: FormData = { ...rest };
     data.refraction = refraction === true ? "on" : refraction === false ? "off" : "auto";
     data.theme = theme ?? "auto";
+    // "full" is the weather card's default layout; show it rather than an empty dropdown.
+    if (cardKind(config.type) === "weather") data.layout = (rest.layout as string | undefined) ?? "full";
 
-    for (const name of fieldNames(schemaFor(config.type, this.t))) {
+    for (const name of fieldNames(schemaFor(config.type, this.t, rest))) {
       if (DEFAULT_ON.has(name)) data[name] = rest[name] !== false;
     }
 
@@ -53,12 +55,19 @@ export class LiquidGlassCardEditor extends LitElement {
   /** Form values → config, dropping the keys that carry no meaning. */
   private fromForm(data: FormData): BaseCardConfig {
     const out: FormData = { ...data };
+
+    // A toggle sitting at the card's own default carries no information. This runs before
+    // refraction becomes a boolean, since there both true and false are real choices.
+    for (const [key, value] of Object.entries(out)) {
+      if (typeof value !== "boolean") continue;
+      if (value === DEFAULT_ON.has(key)) delete out[key];
+    }
+
     if (out.refraction === "on") out.refraction = true;
     else if (out.refraction === "off") out.refraction = false;
     else delete out.refraction;
     if (out.theme === "auto") delete out.theme;
-    // A ticked box is the card's own default, so it need not be written out.
-    for (const name of DEFAULT_ON) if (out[name] === true) delete out[name];
+    if (out.layout === "full") delete out.layout;
     // Same for the swatches: the editor seeds them so the list is visible, but an
     // untouched list is what the card shows anyway.
     const favorites = out.favorites;
@@ -94,7 +103,7 @@ export class LiquidGlassCardEditor extends LitElement {
     return html`<ha-form
       .hass=${this.hass}
       .data=${this.toForm(this.config)}
-      .schema=${schemaFor(this.config.type, this.t)}
+      .schema=${schemaFor(this.config.type, this.t, this.config as unknown as FormData)}
       .computeLabel=${this.computeLabel}
       .computeHelper=${this.computeHelper}
       @value-changed=${this.valueChanged}

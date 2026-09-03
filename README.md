@@ -14,6 +14,7 @@ Lit + TypeScript で書かれ、単一ファイル `dist/liquid-glass-cards.js` 
 | Cover | `custom:liquid-glass-cover-card` | `cover`（ブラインド / カーテン、位置ドラッグ、チルト） |
 | Media | `custom:liquid-glass-media-card` | `media_player`（再生操作、シーク、音量） |
 | Slider | `custom:liquid-glass-slider-card` | 任意の数値（`input_number` `number` `fan` `light` など） |
+| Weather | `custom:liquid-glass-weather-card` | `weather`（現在の天気、時間ごと・日ごとの予報） |
 
 すべてのカードはライト / ダークテーマ（`hass.themes.darkMode`）、日本語 / 英語（`hass.language`）に自動で追従します。
 
@@ -57,20 +58,22 @@ HA_WWW=//homeassistant/config/www npm run build
 Home Assistant はリソースを強くキャッシュします。ファイルを置き換えただけでは古いままになることがあります。
 
 1. ファイルをコピーし直す
-2. リソースの URL の `?v=` の数字を増やす（`?v=1` → `?v=2`）
+2. リソースの URL の `?v=` の値を**前回と違う値**に変える（`?v=1` → `?v=2`）
 3. ブラウザを再読み込みする
+
+`?v=` はキャッシュを捨てるための目印なので、値が前回と変わっていなければ意味がありません。バージョン番号を使う場合は、バージョンが上がっていないと同じ値になる点に注意してください。日時など必ず変わる値のほうが確実です。
 
 読み込まれているビルドはブラウザのコンソールで確認できます。起動時に次のような行が出ます。
 
 ```text
- LIQUID-GLASS-CARDS  v0.2.0 · built 2026-09-03 11:54
+ LIQUID-GLASS-CARDS  v0.4.0 · 10 cards · built 2026-09-03 15:45
 ```
 
-バージョンやビルド時刻が古い場合は、まだ古いファイルが読み込まれています。
+カード枚数とビルド時刻が、コピーしたファイルのものと一致していれば正しく読み込まれています。一致しない場合はまだ古いファイルです。
 
 ## 設定例
 
-8種類すべてビジュアルエディタに対応しています。ダッシュボードでカードを追加すると、エンティティや表示項目をフォームから設定できます。YAML を直接書く必要はありません。以下は同じ設定を YAML で表したものです。
+10種類すべてビジュアルエディタに対応しています。ダッシュボードでカードを追加すると、エンティティや表示項目をフォームから設定できます。YAML を直接書く必要はありません。以下は同じ設定を YAML で表したものです。
 
 すべてのカードに共通するオプション:
 
@@ -137,13 +140,24 @@ entity: sensor.living_room_temperature
 secondary_entity: sensor.living_room_humidity
 secondary_label: 湿度
 hours_to_show: 24
-graph: true          # false でコンパクト表示
-trend: true          # 1 時間前との差分バッジ
+graph: true              # false で大きな数値のみのコンパクト表示
+value_in_caption: false  # true で値を説明文に移し、1行のカードにする
+trend: true              # 1 時間前との差分バッジ
 accent: "#FF9F0A"
 decimals: 1
 ```
 
 履歴は `history/period` API から取得し 5 分ごとに更新します。
+
+`value_in_caption: true` にすると、大きな数値をやめて値を説明文の先頭に入れます。残るのは1行だけになるので、スイッチカードと並べたときに高さが揃います。グラフはこの形に収まらないため描画しません。
+
+```yaml
+type: custom:liquid-glass-sensor-card
+entity: sensor.area_person_count
+value_in_caption: true
+```
+
+説明文は「0 objects · 7分前に更新」のようになります。単位が記号（`°C` や `%`）のときは数値に続けて、単語のときは空白を挟んで並べます。
 
 ### Binary Sensor
 
@@ -201,6 +215,7 @@ show_device: true
 type: custom:liquid-glass-slider-card
 entity: fan.bedroom
 ticks: true          # 段階が 2〜12 のとき目盛りを引く。数値を渡すと本数を指定
+show_range: true     # false で最小値・最大値の行を省き、カードを1行分低くする
 accent: "#FF9F0A"    # アイコンとトラックの色
 subtitle: 風量        # 省略時は刻み幅や段階を表示
 min: 0
@@ -209,6 +224,8 @@ step: 20
 unit: "%"
 decimals: 0
 ```
+
+トラックには丸いガラスのつまみが乗ります。つまみをドラッグするか、トラックの任意の位置を押すと値が変わります。指を離した後は、Home Assistant が新しい状態を返すまで操作後の値を表示し続けるので、一瞬元の値に戻ることはありません。
 
 次のドメインは設定なしで読み書きできます。最小値、最大値、刻み幅、単位はエンティティの属性から取ります。
 
@@ -233,6 +250,37 @@ service_key: level        # 値を渡すキー。省略時は value
 ```
 
 値が最小値かつ最小値が 0 のときは、アイコンとトラックが待機状態の表示になります。
+
+### Weather
+
+現在の天気、時間ごとの予報、日ごとの予報、湿度・風速・降水を1枚にまとめます。
+
+```yaml
+type: custom:liquid-glass-weather-card
+entity: weather.tokyo
+layout: full         # full | row
+show_hourly: true    # 時間ごとの予報
+hourly_count: 6
+show_daily: true     # 日ごとの気温レンジ
+daily_count: 4
+show_metrics: true   # 湿度・風速・降水
+```
+
+予報は `weather.get_forecasts` サービスから取得し、15分ごとに更新します。2024.4 より前の Home Assistant では属性の `forecast` を読みます。
+
+日ごとの行のバーは、表示する全日の最低から最高までを共通の目盛りにして各日の範囲を置きます。週の中でその日がどのあたりかが一目で分かります。
+
+アイコンと色は天気の状態から決まります。`sun.sun` があれば夜かどうかを判定し、「晴れ時々くもり」は夜用のアイコンに切り替わります。
+
+`show_daily: false` と `show_metrics: false` を指定すると、現在の天気と時間ごとの予報だけのコンパクトな表示になります。最高・最低は残ります。
+
+`layout: row` にすると1行に収まります。アイコン、地名、天気と最高・最低、気温だけの表示になり、スイッチカードと同じ高さになります。ダッシュボードの下部に並べる用途向けです。予報の各セクションはこの形に収まらないため描画しません。
+
+```yaml
+type: custom:liquid-glass-weather-card
+entity: weather.tokyo
+layout: row
+```
 
 ## テーマによるカスタマイズ
 

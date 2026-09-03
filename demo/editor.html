@@ -67,6 +67,13 @@
     </div>
 
     <script type="module">
+      // A thrown error would otherwise stop the script before any result is printed.
+      const showCrash = (what, err) => {
+        document.getElementById("tests").textContent = `SCRIPT ERROR (${what})\n\n${err?.stack ?? err?.message ?? err}`;
+      };
+      window.addEventListener("error", (e) => showCrash("error", e.error ?? e));
+      window.addEventListener("unhandledrejection", (e) => showCrash("rejection", e.reason));
+
       // ---- ha-icon shim ----
       class HaIcon extends HTMLElement {
         static get observedAttributes() { return ["icon"]; }
@@ -219,11 +226,40 @@
         "cover.living_blind": { entity_id: "cover.living_blind", state: "open", last_changed: new Date().toISOString(), last_updated: new Date().toISOString(), attributes: { friendly_name: "リビング ブラインド", current_position: 65, current_tilt_position: 75, device_class: "blind", supported_features: 255 } },
         "fan.bedroom": { entity_id: "fan.bedroom", state: "on", last_changed: new Date().toISOString(), last_updated: new Date().toISOString(), attributes: { friendly_name: "寝室 サーキュレーター", percentage: 60, percentage_step: 20 } },
         "input_number.hot_water": { entity_id: "input_number.hot_water", state: "42", last_changed: new Date().toISOString(), last_updated: new Date().toISOString(), attributes: { friendly_name: "給湯温度", min: 30, max: 60, step: 1, unit_of_measurement: "°C" } },
+        "weather.tokyo": { entity_id: "weather.tokyo", state: "partlycloudy", last_changed: new Date().toISOString(), last_updated: new Date().toISOString(), attributes: { friendly_name: "東京", temperature: 24, temperature_unit: "°C", humidity: 52, wind_speed: 3.2, wind_speed_unit: "m/s" } },
+        "sun.sun": { entity_id: "sun.sun", state: "above_horizon", last_changed: new Date().toISOString(), last_updated: new Date().toISOString(), attributes: {} },
         "media_player.living": { entity_id: "media_player.living", state: "playing", last_changed: new Date().toISOString(), last_updated: new Date().toISOString(), attributes: { friendly_name: "リビング HomePod", media_title: "Midnight City", media_artist: "M83", media_duration: 243, media_position: 102, volume_level: 0.62, supported_features: 0x1fffff } },
       };
-      const hass = { states, language: "ja", locale: { language: "ja" }, themes: { darkMode: false }, async callService() {}, async callApi() { return [[]]; } };
+      // Forecast fixtures: highs 27/23/22/26 over lows 18/17/16/18, so the shared scale is 16–27.
+      const wxNow = Date.now();
+      const wxHourly = [24, 26, 25, 23, 21, 20].map((t, i) => ({
+        datetime: new Date(wxNow + i * 3600e3).toISOString(),
+        condition: ["partlycloudy", "sunny", "sunny", "partlycloudy", "rainy", "rainy"][i],
+        temperature: t,
+        precipitation_probability: 20,
+      }));
+      const wxDaily = [
+        { condition: "sunny", temperature: 27, templow: 18 },
+        { condition: "rainy", temperature: 23, templow: 17 },
+        { condition: "cloudy", temperature: 22, templow: 16 },
+        { condition: "partlycloudy", temperature: 26, templow: 18 },
+      ].map((d, i) => ({ ...d, datetime: new Date(wxNow + i * 86400e3).toISOString() }));
+      const wxForecast = (type) => (type === "hourly" ? wxHourly : wxDaily);
 
-      const TYPES = ["light", "climate", "switch", "sensor", "binary-sensor", "lock", "cover", "media", "slider"];
+      const hass = {
+        states,
+        language: "ja",
+        locale: { language: "ja" },
+        themes: { darkMode: false },
+        async callService(domain, service, data, target) {
+          if (domain === "weather" && service === "get_forecasts") {
+            return { response: { [target?.entity_id]: { forecast: wxForecast(data.type) } } };
+          }
+        },
+        async callApi() { return [[]]; },
+      };
+
+      const TYPES = ["light", "climate", "switch", "sensor", "binary-sensor", "lock", "cover", "media", "slider", "weather"];
       const kindSel = document.getElementById("kind");
       for (const k of TYPES) kindSel.append(new Option(k, k));
 
@@ -458,6 +494,107 @@
         card.remove();
       }
 
+      // ---- the thumb, and holding the released value until the entity catches up ----
+      {
+        const calls = [];
+        const fanStates = {
+          "fan.bedroom": { entity_id: "fan.bedroom", state: "on", last_changed: new Date().toISOString(), last_updated: new Date().toISOString(), attributes: { friendly_name: "寝室 サーキュレーター", percentage: 20, percentage_step: 20 } },
+        };
+        const card = document.createElement("liquid-glass-slider-card");
+        // A deliberately silent service: the entity does not move, as if HA were slow.
+        const slowHass = { ...hass, states: fanStates, async callService(d, s, data) { calls.push(`${d}.${s}`); }, async callApi() { return [[]]; } };
+        card.setConfig({ type: "custom:liquid-glass-slider-card", entity: "fan.bedroom" });
+        card.hass = slowHass;
+        card.style.cssText = "position:absolute;left:-9999px;width:380px";
+        document.body.append(card);
+        await card.updateComplete;
+
+        const root = card.shadowRoot;
+        const slider = root.querySelector("lg-slider");
+        const shown = () => root.querySelector(".value .num").textContent.trim();
+
+        check("slider thumb: uses the round thumb track", slider.variant === "thumb");
+        const knob = slider.shadowRoot.querySelector(".knob");
+        check("slider thumb: the knob is rendered", knob !== null);
+        check("slider thumb: the knob carries no glyph", knob.childElementCount === 0);
+        const trackH = Math.round(slider.shadowRoot.querySelector(".track").getBoundingClientRect().height);
+        const knobH = Math.round(knob.getBoundingClientRect().height);
+        check("slider thumb: knob is inset 4px in a 56px track", trackH === 56 && knobH === 48, `track ${trackH}px knob ${knobH}px`);
+
+        check("slider hold: starts at the entity value", shown() === "20", shown());
+        slider.dispatchEvent(new CustomEvent("lg-change", { detail: { value: 80 }, bubbles: true, composed: true }));
+        await card.updateComplete;
+        check("slider hold: keeps the released value while the entity lags", shown() === "80", shown());
+        check("slider hold: the service was called", calls.join() === "fan.set_percentage", calls.join());
+
+        // An unrelated hass update must not snap it back either.
+        card.hass = { ...slowHass, states: { ...fanStates } };
+        await card.updateComplete;
+        check("slider hold: survives an unrelated update", shown() === "80", shown());
+
+        // Once the entity reports the new value the hold is released.
+        fanStates["fan.bedroom"] = { ...fanStates["fan.bedroom"], attributes: { ...fanStates["fan.bedroom"].attributes, percentage: 80 } };
+        card.hass = { ...slowHass, states: { ...fanStates } };
+        await card.updateComplete;
+        check("slider hold: follows the entity once it agrees", shown() === "80", shown());
+
+        // And a change made elsewhere is picked up right after.
+        fanStates["fan.bedroom"] = { ...fanStates["fan.bedroom"], attributes: { ...fanStates["fan.bedroom"].attributes, percentage: 40 } };
+        card.hass = { ...slowHass, states: { ...fanStates } };
+        await card.updateComplete;
+        check("slider hold: releases for later external changes", shown() === "40", shown());
+
+        card.remove();
+      }
+
+      // ---- the fill has to end under the knob at every value, not just the middle ----
+      {
+        const card = document.createElement("liquid-glass-slider-card");
+        const pct = { entity_id: "input_number.pct", state: "50", last_changed: new Date().toISOString(), last_updated: new Date().toISOString(), attributes: { friendly_name: "テスト", min: 0, max: 100, step: 1 } };
+        card.setConfig({ type: "custom:liquid-glass-slider-card", entity: "input_number.pct" });
+        card.style.cssText = "position:absolute;left:-9999px;width:300px";
+        document.body.append(card);
+
+        const sliderRoot = () => card.shadowRoot.querySelector("lg-slider").shadowRoot;
+        const at = async (value) => {
+          card.hass = { ...hass, states: { "input_number.pct": { ...pct, state: String(value) } } };
+          await card.updateComplete;
+        };
+
+        for (const value of [1, 9, 50, 93, 100]) {
+          await at(value);
+          const fill = sliderRoot().querySelector(".fill").getBoundingClientRect();
+          const knob = sliderRoot().querySelector(".knob").getBoundingClientRect();
+          const gap = Math.abs(fill.right - (knob.left + knob.width / 2));
+          check(`slider fill: ends at the knob centre at ${value}%`, gap <= 1, `off by ${gap.toFixed(1)}px`);
+        }
+
+        await at(0);
+        check("slider fill: nothing to fill at the bottom of the range", sliderRoot().querySelector(".fill") === null);
+        card.remove();
+      }
+
+      // ---- the min/max row can be dropped to shorten the card ----
+      {
+        const mk = (cfg) => {
+          const el = document.createElement("liquid-glass-slider-card");
+          el.setConfig({ type: "custom:liquid-glass-slider-card", entity: "fan.bedroom", ...cfg });
+          el.hass = hass;
+          el.style.cssText = "position:absolute;left:-9999px;width:380px";
+          document.body.append(el);
+          return el;
+        };
+        const full = mk({});
+        const short = mk({ show_range: false });
+        await Promise.all([full.updateComplete, short.updateComplete]);
+        check("slider range: labels shown by default", full.shadowRoot.querySelector(".ticks") !== null);
+        check("slider range: show_range false drops them", short.shadowRoot.querySelector(".ticks") === null);
+        const h = (el) => Math.round(el.shadowRoot.querySelector(".card").getBoundingClientRect().height);
+        check("slider range: the card gets shorter", h(short) < h(full), `${h(short)}px vs ${h(full)}px`);
+        full.remove();
+        short.remove();
+      }
+
       // ---- the zero state drops the fill and greys the readout ----
       {
         const card = document.createElement("liquid-glass-slider-card");
@@ -488,6 +625,158 @@
         await card.updateComplete;
         check("slider unknown domain: a configured service enables it", card.shadowRoot.querySelector("lg-slider").disabled === false);
         card.remove();
+      }
+
+      // ---- the sensor reading can move into the caption and match a switch card ----
+      {
+        const mount = (cfg) => {
+          const el = document.createElement(cfg.type.replace("custom:", ""));
+          el.setConfig(cfg);
+          el.hass = hass;
+          el.style.cssText = "position:absolute;left:-9999px;width:380px";
+          document.body.append(el);
+          return el;
+        };
+
+        const big = mount({ type: "custom:liquid-glass-sensor-card", entity: "sensor.living_temp" });
+        const caption = mount({ type: "custom:liquid-glass-sensor-card", entity: "sensor.living_temp", value_in_caption: true });
+        const sw = mount({ type: "custom:liquid-glass-switch-card", entity: "switch.desk" });
+        await Promise.all([big.updateComplete, caption.updateComplete, sw.updateComplete]);
+
+        const capRoot = caption.shadowRoot;
+        check("sensor caption: the large value block is gone", capRoot.querySelector(".value-row") === null);
+        check("sensor caption: the graph goes with it", capRoot.querySelector(".spark") === null);
+        check("sensor caption: the card becomes a single row", capRoot.querySelector(".card").classList.contains("row"));
+        check("sensor caption: no nested header wrapper", capRoot.querySelector(".header") === null);
+
+        const text = capRoot.querySelector(".state").textContent.trim();
+        check("sensor caption: the reading leads the caption", text.startsWith("23.4°C"), text);
+        check("sensor caption: the update time is kept", text.includes("更新"), text);
+
+        const h = (el) => Math.round(el.shadowRoot.querySelector(".card").getBoundingClientRect().height);
+        check(`sensor caption: height matches the switch card`, h(caption) === h(sw), `sensor ${h(caption)}px vs switch ${h(sw)}px`);
+        check(`sensor caption: shorter than the default card`, h(caption) < h(big), `${h(caption)}px vs ${h(big)}px`);
+        check("sensor caption: getCardSize reports one row", caption.getCardSize() === 1, String(caption.getCardSize()));
+
+        // A leftover graph:true in the config must not resurrect the graph.
+        caption.setConfig({ type: "custom:liquid-glass-sensor-card", entity: "sensor.living_temp", value_in_caption: true, graph: true });
+        await caption.updateComplete;
+        check("sensor caption: a stale graph flag stays ignored", capRoot.querySelector(".spark") === null && capRoot.querySelector(".card").classList.contains("row"));
+
+        for (const el of [big, caption, sw]) el.remove();
+      }
+
+      // ---- the editor never offers a graph the card will not draw ----
+      {
+        const Card = customElements.get("liquid-glass-sensor-card");
+        const editor = await Card.getConfigElement();
+        editor.hass = hass;
+        editor.style.cssText = "position:absolute;left:-9999px";
+        document.body.append(editor);
+
+        const fieldsFor = async (cfg) => {
+          editor.setConfig({ type: "custom:liquid-glass-sensor-card", entity: "sensor.living_temp", ...cfg });
+          await editor.updateComplete;
+          return flatten(editor.shadowRoot.querySelector("ha-form")._schema);
+        };
+        let fields = await fieldsFor({});
+        check("sensor editor: graph offered by default", fields.has("graph") && fields.has("hours_to_show"));
+        fields = await fieldsFor({ value_in_caption: true });
+        check("sensor editor: graph withdrawn with the caption reading", !fields.has("graph") && !fields.has("hours_to_show"), [...fields].join(", "));
+        check("sensor editor: the rest of the options stay", fields.has("trend") && fields.has("decimals") && fields.has("accent"));
+
+        const form = () => editor.shadowRoot.querySelector("ha-form");
+        const apply = (patch) =>
+          new Promise((resolve) => {
+            editor.addEventListener("config-changed", (e) => resolve(e.detail.config), { once: true });
+            form().dispatchEvent(new CustomEvent("value-changed", { detail: { value: { ...form()._data, ...patch } }, bubbles: true, composed: true }));
+          });
+        editor.setConfig({ type: "custom:liquid-glass-sensor-card", entity: "sensor.living_temp" });
+        await editor.updateComplete;
+        let cfg = await apply({ value_in_caption: true });
+        check("sensor editor: ticking it writes only that key", cfg.value_in_caption === true && !("graph" in cfg), JSON.stringify(cfg));
+        editor.setConfig({ type: "custom:liquid-glass-sensor-card", ...cfg });
+        await editor.updateComplete;
+        cfg = await apply({ value_in_caption: false });
+        check("sensor editor: unticking it removes the key", !("value_in_caption" in cfg) && !("graph" in cfg), JSON.stringify(cfg));
+
+        editor.remove();
+      }
+
+      // ---- the weather card, from the forecast service through to the range bars ----
+      {
+        const mkWeather = async (cfg, state = "partlycloudy", sun = "above_horizon") => {
+          const el = document.createElement("liquid-glass-weather-card");
+          el.setConfig({ type: "custom:liquid-glass-weather-card", entity: "weather.tokyo", ...cfg });
+          el.hass = {
+            ...hass,
+            states: { ...states, "weather.tokyo": { ...states["weather.tokyo"], state }, "sun.sun": { ...states["sun.sun"], state: sun } },
+          };
+          el.style.cssText = "position:absolute;left:-9999px;width:380px";
+          document.body.append(el);
+          await el.updateComplete;
+          // The forecast arrives from a service call, so give the promise a turn to land.
+          await new Promise((r) => setTimeout(r, 0));
+          await el.updateComplete;
+          return el;
+        };
+
+        const full = await mkWeather({});
+        const r = full.shadowRoot;
+        check("weather: the city and condition are shown", r.querySelector(".city").textContent.trim() === "東京" && r.querySelector(".condition").textContent.trim() === "晴れ時々くもり", r.querySelector(".condition").textContent.trim());
+        check("weather: the current temperature is shown", r.querySelector(".temp").textContent.trim() === "24");
+        check("weather: today's high and low come from the forecast", r.querySelector(".hilo").textContent.replace(/\s+/g, " ").trim() === "最高 27° 最低 18°", r.querySelector(".hilo").textContent.replace(/\s+/g, " ").trim());
+        check("weather: six hourly cells", r.querySelectorAll(".hour").length === 6, String(r.querySelectorAll(".hour").length));
+        check("weather: the first hour is marked now", r.querySelector(".hour").classList.contains("now") && r.querySelector(".hour .time").textContent.trim() === "今");
+        check("weather: four daily rows", r.querySelectorAll(".day").length === 4, String(r.querySelectorAll(".day").length));
+        check("weather: the first two days are named", [...r.querySelectorAll(".day .label")].slice(0, 2).map((e) => e.textContent.trim()).join() === "今日,明日");
+        check("weather: three metric tiles", r.querySelectorAll(".metric").length === 3);
+        check("weather: metric values read from the entity", [...r.querySelectorAll(".metric .v")].map((e) => e.textContent.trim()).join(" ") === "52% 3.2 m/s 20%", [...r.querySelectorAll(".metric .v")].map((e) => e.textContent.trim()).join(" "));
+
+        // The bars share one scale: 16..27 across the four days.
+        const bars = [...r.querySelectorAll(".bar span")].map((e) => ({ left: parseFloat(e.style.left), width: parseFloat(e.style.width) }));
+        const expect = [[18, 27], [17, 23], [16, 22], [18, 26]].map(([lo, hi]) => ({ left: ((lo - 16) / 11) * 100, width: ((hi - lo) / 11) * 100 }));
+        const worst = Math.max(...bars.map((b, i) => Math.max(Math.abs(b.left - expect[i].left), Math.abs(b.width - expect[i].width))));
+        check("weather: every bar sits on the shared 16–27° scale", worst < 0.5, `worst ${worst.toFixed(2)}%`);
+        check("weather: the coldest day starts at the left edge", bars[2].left === 0, String(bars[2].left));
+
+        const compact = await mkWeather({ show_daily: false, show_metrics: false });
+        const cr = compact.shadowRoot;
+        check("weather compact: daily and metrics are gone", cr.querySelector(".daily") === null && cr.querySelector(".metrics") === null);
+        check("weather compact: the hourly strip stays", cr.querySelector(".hourly") !== null);
+        check("weather compact: the high and low survive", cr.querySelector(".hilo").textContent.includes("27"), cr.querySelector(".hilo").textContent.trim());
+
+        const night = await mkWeather({}, "partlycloudy", "below_horizon");
+        const dayIcon = full.shadowRoot.querySelector(".big-icon lg-icon").icon;
+        const nightIcon = night.shadowRoot.querySelector(".big-icon lg-icon").icon;
+        check("weather: partly cloudy takes its night form after dark", dayIcon === "mdi:weather-partly-cloudy" && nightIcon === "mdi:weather-night-partly-cloudy", `${dayIcon} / ${nightIcon}`);
+
+        const rain = await mkWeather({}, "rainy");
+        check("weather: the condition drives icon and colour", rain.shadowRoot.querySelector(".big-icon lg-icon").icon === "mdi:weather-rainy" && rain.shadowRoot.querySelector(".big-icon").style.getPropertyValue("--wx-color") === "#5AC8FA");
+        check("weather: the condition text follows the state", rain.shadowRoot.querySelector(".condition").textContent.trim() === "雨");
+
+        // Row layout: one line, no forecast sections, a switch card's height.
+        const row = await mkWeather({ layout: "row" });
+        const rr = row.shadowRoot;
+        const sw = document.createElement("liquid-glass-switch-card");
+        sw.setConfig({ type: "custom:liquid-glass-switch-card", entity: "switch.desk" });
+        sw.hass = hass;
+        sw.style.cssText = "position:absolute;left:-9999px;width:380px";
+        document.body.append(sw);
+        await sw.updateComplete;
+
+        check("weather row: the card is a single row", rr.querySelector(".card").classList.contains("row"));
+        check("weather row: forecast sections are gone", rr.querySelector(".hourly") === null && rr.querySelector(".daily") === null && rr.querySelector(".metrics") === null);
+        check("weather row: the temperature stays on the line", rr.querySelector(".temp").textContent.trim() === "24");
+        const rowState = rr.querySelector(".state").textContent.replace(/\s+/g, " ").trim();
+        check("weather row: conditions and today's range in the caption", rowState === "晴れ時々くもり · 最高 27° · 最低 18°", rowState);
+        check("weather row: getCardSize reports one row", row.getCardSize() === 1, String(row.getCardSize()));
+
+        const h = (el) => Math.round(el.shadowRoot.querySelector(".card").getBoundingClientRect().height);
+        check("weather row: height matches the switch card", h(row) === h(sw), `weather ${h(row)}px vs switch ${h(sw)}px`);
+        check("weather row: much shorter than the full card", h(row) < h(full) / 3, `${h(row)}px vs ${h(full)}px`);
+
+        for (const el of [full, compact, night, rain, row, sw]) el.remove();
       }
 
       const failed = results.filter((r) => !r.pass);

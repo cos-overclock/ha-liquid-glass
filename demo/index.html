@@ -133,6 +133,7 @@
         "switch.desk_off": { entity_id: "switch.desk_off", state: "off", last_changed: ago(125), last_updated: ago(2), attributes: { friendly_name: "デスク コンセント" } },
         "sensor.desk_power": { entity_id: "sensor.desk_power", state: "24", last_changed: ago(1), last_updated: ago(1), attributes: { unit_of_measurement: "W" } },
         "sensor.living_temp": { entity_id: "sensor.living_temp", state: "23.4", last_changed: ago(5), last_updated: ago(5), attributes: { friendly_name: "リビング 温度", unit_of_measurement: "°C", device_class: "temperature" } },
+        "sensor.people": { entity_id: "sensor.people", state: "0", last_changed: ago(7), last_updated: ago(7), attributes: { friendly_name: "Area Person count", unit_of_measurement: "objects", icon: "mdi:human" } },
         "sensor.living_humidity": { entity_id: "sensor.living_humidity", state: "52", last_changed: ago(5), last_updated: ago(5), attributes: { friendly_name: "湿度", unit_of_measurement: "%", device_class: "humidity" } },
         "binary_sensor.front_door": { entity_id: "binary_sensor.front_door", state: "on", last_changed: ago(3), last_updated: ago(3), attributes: { friendly_name: "玄関ドア センサー", device_class: "door" } },
         "binary_sensor.front_door_closed": { entity_id: "binary_sensor.front_door_closed", state: "off", last_changed: ago(120), last_updated: ago(3), attributes: { friendly_name: "玄関ドア センサー", device_class: "door" } },
@@ -150,6 +151,8 @@
         "media_player.idle": { entity_id: "media_player.idle", state: "idle", last_changed: ago(30), last_updated: ago(3), attributes: { friendly_name: "リビング HomePod", volume_level: 0.5, supported_features: 0x1fffff } },
         "fan.bedroom": { entity_id: "fan.bedroom", state: "on", last_changed: ago(30), last_updated: ago(3), attributes: { friendly_name: "寝室 サーキュレーター", percentage: 60, percentage_step: 20 } },
         "fan.bedroom_off": { entity_id: "fan.bedroom_off", state: "off", last_changed: ago(30), last_updated: ago(3), attributes: { friendly_name: "寝室 サーキュレーター", percentage: 0, percentage_step: 20 } },
+        "weather.tokyo": { entity_id: "weather.tokyo", state: "partlycloudy", last_changed: ago(20), last_updated: ago(20), attributes: { friendly_name: "東京", temperature: 24, temperature_unit: "°C", humidity: 52, wind_speed: 3.2, wind_speed_unit: "m/s" } },
+        "sun.sun": { entity_id: "sun.sun", state: "above_horizon", last_changed: ago(300), last_updated: ago(300), attributes: {} },
         "input_number.hot_water": { entity_id: "input_number.hot_water", state: "42", last_changed: ago(30), last_updated: ago(3), attributes: { friendly_name: "給湯温度", min: 30, max: 60, step: 1, unit_of_measurement: "°C" } },
       };
 
@@ -167,13 +170,37 @@
       const params = new URLSearchParams(location.search);
       const startDark = params.get("theme") === "dark";
       document.body.classList.toggle("dark", startDark);
+      // ---- mock forecasts for the weather card ----
+      const CONDS = ["partlycloudy", "sunny", "sunny", "partlycloudy", "rainy", "rainy"];
+      const forecast = (type) => {
+        const now = Date.now();
+        if (type === "hourly") {
+          return [24, 26, 25, 23, 21, 20].map((t, i) => ({
+            datetime: new Date(now + i * 3600e3).toISOString(),
+            condition: CONDS[i],
+            temperature: t,
+            precipitation_probability: i > 3 ? 60 : 20,
+          }));
+        }
+        return [
+          { condition: "sunny", temperature: 27, templow: 18 },
+          { condition: "rainy", temperature: 23, templow: 17 },
+          { condition: "cloudy", temperature: 22, templow: 16 },
+          { condition: "partlycloudy", temperature: 26, templow: 18 },
+        ].map((d, i) => ({ ...d, datetime: new Date(now + i * 86400e3).toISOString(), precipitation_probability: 20 }));
+      };
+
       const hass = {
         states,
         language: params.get("lang") ?? "ja",
         locale: { language: params.get("lang") ?? "ja" },
         themes: { darkMode: startDark },
-        async callService(domain, service, data) {
+        async callService(domain, service, data, target, notify, returnResponse) {
           document.getElementById("log").textContent = `${domain}.${service} ${JSON.stringify(data)}`;
+          if (domain === "weather" && service === "get_forecasts") {
+            const id = target?.entity_id;
+            return { response: { [id]: { forecast: forecast(data.type) } } };
+          }
           console.log("callService", domain, service, data);
           // Minimal optimistic state updates for the demo
           const id = data?.entity_id;
@@ -204,6 +231,7 @@
           states[id] = next;
           push();
         },
+        async callService_forecast(type) { return forecast(type); },
         async callApi(method, path) {
           if (path.startsWith("history/period")) return history();
           return null;
@@ -221,6 +249,9 @@
         ["liquid-glass-switch-card", { entity: "switch.desk_off" }],
         ["liquid-glass-sensor-card", { entity: "sensor.living_temp", secondary_entity: "sensor.living_humidity" }],
         ["liquid-glass-sensor-card", { entity: "sensor.living_temp", secondary_entity: "sensor.living_humidity", graph: false }],
+        ["liquid-glass-sensor-card", { entity: "sensor.living_temp", value_in_caption: true }],
+        ["liquid-glass-switch-card", { entity: "switch.desk_off" }],
+        ["liquid-glass-sensor-card", { entity: "sensor.people", value_in_caption: true, accent: "#FF9F0A" }],
         ["liquid-glass-binary-sensor-card", { entity: "binary_sensor.front_door" }],
         ["liquid-glass-binary-sensor-card", { entity: "binary_sensor.front_door_closed" }],
         ["liquid-glass-binary-sensor-card", { entity: "binary_sensor.living_motion" }],
@@ -239,6 +270,9 @@
         ["liquid-glass-slider-card", { entity: "fan.bedroom", ticks: true }],
         ["liquid-glass-slider-card", { entity: "input_number.hot_water", accent: "#FF9F0A", icon: "mdi:waves" }],
         ["liquid-glass-slider-card", { entity: "fan.bedroom_off" }],
+        ["liquid-glass-weather-card", { entity: "weather.tokyo" }],
+        ["liquid-glass-weather-card", { entity: "weather.tokyo", show_daily: false, show_metrics: false }],
+        ["liquid-glass-weather-card", { entity: "weather.tokyo", layout: "row" }],
       ];
 
       const main = document.getElementById("main");

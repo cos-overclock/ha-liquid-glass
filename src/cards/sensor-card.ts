@@ -10,7 +10,13 @@ import { relativeTime } from "../i18n";
 import { formatNumber, isUnavailable, lighten, pickEntity, withAlpha } from "../utils";
 
 export interface SensorCardConfig extends BaseCardConfig {
-  /** Show 24h sparkline (default true). */
+  /**
+   * Move the reading into the caption line instead of showing it as a large number.
+   * What is left is a single row, so the card stands exactly as tall as a switch card
+   * beside it. The graph has no room in that shape and is not drawn.
+   */
+  value_in_caption?: boolean;
+  /** Show 24h sparkline (default true, ignored when value_in_caption is set). */
   graph?: boolean;
   hours_to_show?: number;
   /** Accent hex color for well / line. */
@@ -165,7 +171,8 @@ export class LiquidGlassSensorCard extends LiquidGlassBaseCard<SensorCardConfig>
   }
 
   override getCardSize(): number {
-    return this.config?.graph === false ? 2 : 4;
+    if (!this.showGraph) return this.valueInCaption ? 1 : 2;
+    return 4;
   }
 
   private get accent(): string {
@@ -176,8 +183,13 @@ export class LiquidGlassSensorCard extends LiquidGlassBaseCard<SensorCardConfig>
     return this.config.hours_to_show ?? 24;
   }
 
+  private get valueInCaption(): boolean {
+    return this.config.value_in_caption === true;
+  }
+
+  /** A caption reading leaves a single row, which has nowhere to put a graph. */
   private get showGraph(): boolean {
-    return this.config.graph !== false;
+    return this.config.graph !== false && !this.valueInCaption;
   }
 
   override connectedCallback(): void {
@@ -278,9 +290,23 @@ export class LiquidGlassSensorCard extends LiquidGlassBaseCard<SensorCardConfig>
     return { line: d, area, last: [lastX, ys[ys.length - 1]] };
   }
 
-  private subtitle(): string {
+  /** The state formatted for display, without its unit. */
+  private formattedValue(): string {
+    const entity = this.entity!;
+    const value = Number(entity.state);
+    return Number.isFinite(value) ? formatNumber(this.hass, value, this.config.decimals) : entity.state;
+  }
+
+  /** Degrees and percentages sit tight against the number; word units take a space. */
+  private withUnit(value: string, unit: string): string {
+    if (!unit) return value;
+    return /^[°%]/.test(unit) ? `${value}${unit}` : `${value} ${unit}`;
+  }
+
+  private subtitle(lead?: string): string {
     const t = this.t;
-    const parts = [t("updated_ago", { t: relativeTime(this.entity?.last_updated, t) })];
+    const parts = lead ? [lead] : [];
+    parts.push(t("updated_ago", { t: relativeTime(this.entity?.last_updated, t) }));
     if (this.config.secondary_entity) {
       const s = this.hass?.states[this.config.secondary_entity];
       if (s && !isUnavailable(s)) {
@@ -309,39 +335,47 @@ export class LiquidGlassSensorCard extends LiquidGlassBaseCard<SensorCardConfig>
     const up = (trend ?? 0) >= 0;
     // Symbols read fine inside the badge; a word like "objects" would blow it out.
     const trendUnit = unit === "°C" || unit === "°F" ? "°" : unit.length <= 3 ? unit : "";
+    // Without the value block there is only the header left, so the card takes the
+    // single-row shape and matches a switch card standing beside it.
+    const asRow = this.valueInCaption;
+    const inCaption = asRow;
+    const caption = this.subtitle(inCaption ? this.withUnit(this.formattedValue(), unit) : undefined);
+
+    const head = html`
+      ${this.renderIconWell(icon, { from: lighten(accent), to: accent, glow: withAlpha(accent, 0.24) })}
+      ${this.renderTitle(this.entityName, caption)}
+      ${trend !== undefined
+        ? html`<div
+            class="badge trend"
+            style=${styleMap({
+              "--badge-color": up ? "var(--lg-trend-up)" : "var(--lg-trend-down)",
+              "--badge-bg": up ? "var(--lg-trend-up-bg)" : "var(--lg-trend-down-bg)",
+              "--badge-stroke": up ? "rgba(48,209,88,0.3)" : "rgba(43,179,208,0.3)",
+            })}
+          >
+            <lg-icon .icon=${up ? "mdi:trending-up" : "mdi:trending-down"}></lg-icon>
+            <span>${up ? "+" : "−"}${formatNumber(this.hass, Math.abs(trend), 1)}${trendUnit}</span>
+          </div>`
+        : nothing}`;
 
     return html`${this.renderDefs()}
-      <div class="glass card" style=${styleMap({ "--accent": accent })}>
-        <div class="header">
-          ${this.renderIconWell(icon, { from: lighten(accent), to: accent, glow: withAlpha(accent, 0.24) })}
-          ${this.renderTitle(this.entityName, this.subtitle())}
-          ${trend !== undefined
-            ? html`<div
-                class="badge trend"
-                style=${styleMap({
-                  "--badge-color": up ? "var(--lg-trend-up)" : "var(--lg-trend-down)",
-                  "--badge-bg": up ? "var(--lg-trend-up-bg)" : "var(--lg-trend-down-bg)",
-                  "--badge-stroke": up ? "rgba(48,209,88,0.3)" : "rgba(43,179,208,0.3)",
-                })}
-              >
-                <lg-icon .icon=${up ? "mdi:trending-up" : "mdi:trending-down"}></lg-icon>
-                <span>${up ? "+" : "−"}${formatNumber(this.hass, Math.abs(trend), 1)}${trendUnit}</span>
-              </div>`
-            : nothing}
-        </div>
+      <div class=${classMap({ glass: true, card: true, row: asRow })} style=${styleMap({ "--accent": accent })}>
+        ${asRow ? head : html`<div class="header">${head}</div>`}
 
-        <div class="value-row">
-          <div class="value">
-            <span class="number">${numeric ? formatNumber(this.hass, value, decimals) : entity.state}</span>
-            ${unit ? html`<span class="unit">${unit}</span>` : nothing}
-          </div>
-          ${this.showGraph && min !== undefined && max !== undefined
-            ? html`<div class="range">
-                <span class="caption">${this.hours === 24 ? t("hours_24") : `${this.hours} h`}</span>
-                <span class="rv">${formatNumber(this.hass, min, decimals ?? 1)} – ${formatNumber(this.hass, max, decimals ?? 1)} ${unit}</span>
-              </div>`
-            : nothing}
-        </div>
+        ${inCaption
+          ? nothing
+          : html`<div class="value-row">
+              <div class="value">
+                <span class="number">${numeric ? formatNumber(this.hass, value, decimals) : entity.state}</span>
+                ${unit ? html`<span class="unit">${unit}</span>` : nothing}
+              </div>
+              ${this.showGraph && min !== undefined && max !== undefined
+                ? html`<div class="range">
+                    <span class="caption">${this.hours === 24 ? t("hours_24") : `${this.hours} h`}</span>
+                    <span class="rv">${formatNumber(this.hass, min, decimals ?? 1)} – ${formatNumber(this.hass, max, decimals ?? 1)} ${unit}</span>
+                  </div>`
+                : nothing}
+            </div>`}
 
         ${this.showGraph
           ? html`<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">

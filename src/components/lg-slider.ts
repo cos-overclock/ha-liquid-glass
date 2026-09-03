@@ -54,9 +54,14 @@ export class LgSlider extends LitElement {
       height: var(--lg-slider-height, 64px);
       border-radius: var(--lg-slider-radius, 20px);
     }
+    /*
+     * The thumb variant is driven entirely by the track height: the knob is inset 4px on
+     * every side, so its diameter is height - 8 and its travel is width - height. Setting
+     * --lg-slider-height is enough to resize the whole control.
+     */
     .track.thumb {
-      height: 40px;
-      border-radius: 20px;
+      height: var(--lg-slider-height, 40px);
+      border-radius: 999px;
       box-shadow:
         0 2px 4px rgba(0, 0, 0, 0.14),
         inset 0 0 0 1px var(--lg-glass-stroke);
@@ -107,8 +112,8 @@ export class LgSlider extends LitElement {
     .knob {
       position: absolute;
       top: 4px;
-      width: 32px;
-      height: 32px;
+      width: calc(var(--lg-slider-height, 40px) - 8px);
+      height: calc(var(--lg-slider-height, 40px) - 8px);
       border-radius: 50%;
       background: rgba(255, 255, 255, 0.22);
       -webkit-backdrop-filter: blur(3px) saturate(1.35);
@@ -140,7 +145,8 @@ export class LgSlider extends LitElement {
     const track = this.shadowRoot?.querySelector(".track") as HTMLElement | null;
     if (!track) return this.value;
     const rect = track.getBoundingClientRect();
-    const pad = this.variant === "thumb" ? 20 : 0;
+    // The knob centre can only reach half a track-height in from either end.
+    const pad = this.variant === "thumb" ? rect.height / 2 : 0;
     const usable = Math.max(1, rect.width - pad * 2);
     const ratio = clamp((e.clientX - rect.left - pad) / usable, 0, 1);
     let v = this.min + ratio * (this.max - this.min);
@@ -194,12 +200,20 @@ export class LgSlider extends LitElement {
     const ratio = this.ratio;
     const isThumb = this.variant === "thumb";
     const showFill = this.showFill && !(this.hideFillWhenZero && ratio <= 0);
+    // Track height in CSS, so the knob geometry follows --lg-slider-height.
+    const h = "var(--lg-slider-height, 40px)";
+    const travel = `(100% - ${h})`;
     let fillStyle: Record<string, string> = { width: `${ratio * 100}%` };
     if (isThumb && this.fillFrom !== undefined) {
       const from = clamp(this.fillFrom, 0, 1);
       const a = Math.min(from, ratio);
       const b = Math.max(from, ratio);
-      fillStyle = { left: `calc(20px + (100% - 40px) * ${a})`, width: `calc((100% - 40px) * ${b - a})` };
+      fillStyle = { left: `calc(${h} / 2 + ${travel} * ${a})`, width: `calc(${travel} * ${b - a})` };
+    } else if (isThumb) {
+      // The knob only travels between the two half-height insets, so a fill measured as a
+      // plain percentage of the track drifts away from it and only agrees at the midpoint.
+      // Ending the fill at the knob's centre keeps the two together at every value.
+      fillStyle = { width: `calc(${h} / 2 + ${travel} * ${ratio})` };
     }
     return html`
       ${isThumb && this.refraction ? knobDefs : nothing}
@@ -218,10 +232,12 @@ export class LgSlider extends LitElement {
         @keydown=${this.onKeyDown}
       >
         ${showFill ? html`<div class="fill" style=${styleMap(fillStyle)}></div>` : nothing}
-        ${isThumb && this.fillFrom !== undefined ? html`<div class="center-mark" style=${styleMap({ left: `calc(20px + (100% - 40px) * ${clamp(this.fillFrom, 0, 1)})` })}></div>` : nothing}
+        ${isThumb && this.fillFrom !== undefined
+          ? html`<div class="center-mark" style=${styleMap({ left: `calc(${h} / 2 + ${travel} * ${clamp(this.fillFrom, 0, 1)})` })}></div>`
+          : nothing}
         <div class="overlay"><slot name="start"></slot><slot name="end"></slot></div>
         ${isThumb
-          ? html`<div class="knob ${this.refraction ? "refraction" : ""}" style=${styleMap({ left: `calc(4px + (100% - 40px) * ${ratio})` })}></div>`
+          ? html`<div class="knob ${this.refraction ? "refraction" : ""}" style=${styleMap({ left: `calc(4px + ${travel} * ${ratio})` })}></div>`
           : nothing}
       </div>
     `;

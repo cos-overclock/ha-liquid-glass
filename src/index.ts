@@ -8,6 +8,7 @@ import "./cards/lock-card";
 import "./cards/cover-card";
 import "./cards/media-card";
 import "./cards/slider-card";
+import "./cards/weather-card";
 
 export { LiquidGlassLightCard } from "./cards/light-card";
 export { LiquidGlassClimateCard } from "./cards/climate-card";
@@ -18,6 +19,7 @@ export { LiquidGlassLockCard } from "./cards/lock-card";
 export { LiquidGlassCoverCard } from "./cards/cover-card";
 export { LiquidGlassMediaCard } from "./cards/media-card";
 export { LiquidGlassSliderCard } from "./cards/slider-card";
+export { LiquidGlassWeatherCard } from "./cards/weather-card";
 
 /** Replaced at build time by scripts/build.mjs. */
 declare const __LG_VERSION__: string;
@@ -37,6 +39,7 @@ const cards = [
   { type: "liquid-glass-cover-card", name: "Liquid Glass Cover", description: "Blinds and curtains with position and tilt" },
   { type: "liquid-glass-media-card", name: "Liquid Glass Media", description: "Now playing with transport and volume" },
   { type: "liquid-glass-slider-card", name: "Liquid Glass Slider", description: "Any numeric value as a draggable track" },
+  { type: "liquid-glass-weather-card", name: "Liquid Glass Weather", description: "Current conditions with hourly and daily forecast" },
 ];
 
 window.customCards = window.customCards ?? [];
@@ -46,8 +49,9 @@ for (const card of cards) {
   }
 }
 
+// The card count makes a stale copy obvious: a build that predates a new card says so here.
 console.info(
-  `%c LIQUID-GLASS-CARDS %c v${VERSION} · built ${BUILD} `,
+  `%c LIQUID-GLASS-CARDS %c v${VERSION} · ${cards.length} cards · built ${BUILD} `,
   "color: #1c1c1e; background: linear-gradient(90deg,#ffd36b,#ff8a1f); font-weight: 700; border-radius: 6px 0 0 6px;",
   "color: #fff; background: #1c1c1e; font-weight: 500; border-radius: 0 6px 6px 0;",
 );

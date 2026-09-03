@@ -21,7 +21,18 @@ export interface HomeAssistant {
   language: string;
   locale?: { language?: string; number_format?: string; time_format?: string };
   themes?: { darkMode?: boolean };
-  callService(domain: string, service: string, data?: Record<string, unknown>): Promise<unknown>;
+  /**
+   * `target` and `returnResponse` are needed for services that answer back, such as
+   * `weather.get_forecasts`. The reply arrives as `{ response: { [entity_id]: ... } }`.
+   */
+  callService(
+    domain: string,
+    service: string,
+    data?: Record<string, unknown>,
+    target?: Record<string, unknown>,
+    notifyOnError?: boolean,
+    returnResponse?: boolean,
+  ): Promise<{ response?: unknown } | undefined>;
   callApi<T>(method: string, path: string, params?: Record<string, unknown>): Promise<T>;
   formatEntityState?(entity: HassEntity): string;
 }
