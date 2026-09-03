@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Liquid Glass Cards — harness</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Sans+JP:wght@400;500;600&display=swap" rel="stylesheet" />
+    <style>
+      body {
+        margin: 0;
+        padding: 24px;
+        background: #f2f4f7;
+        font-family: "Inter", "Noto Sans JP", system-ui, sans-serif;
+        font-size: 14px;
+        color: #1c1c1e;
+      }
+      h1 { font-size: 16px; margin: 0 0 4px; }
+      p.lead { margin: 0 0 20px; color: #5c6b82; }
+      .row { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 20px; }
+      .panel {
+        flex: 1;
+        min-width: 0;
+        background: #fff;
+        border: 1px solid #dfe3e8;
+        border-radius: 12px;
+        padding: 16px;
+      }
+      .panel h2 { font-size: 13px; margin: 0 0 12px; color: #5c6b82; font-weight: 600; }
+      pre { margin: 0; font-size: 12px; line-height: 1.5; white-space: pre-wrap; word-break: break-all; }
+      select#kind { font: inherit; padding: 6px 10px; border-radius: 8px; border: 1px solid #dfe3e8; }
+      /* ha-form shim */
+      .ff { display: flex; flex-direction: column; gap: 12px; }
+      .ff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      .ff-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+      .ff-field > label { font-size: 12px; font-weight: 600; color: #33404f; }
+      .ff-field > .helper { font-size: 11px; color: #7b8794; }
+      .ff-field input[type="text"], .ff-field input[type="number"], .ff-field select, .ff-field textarea {
+        font: inherit; font-size: 13px; padding: 6px 8px; border: 1px solid #dfe3e8; border-radius: 6px; min-width: 0; background: #fff;
+      }
+      .ff-field textarea { min-height: 76px; font-family: ui-monospace, monospace; font-size: 12px; }
+      .ff-bool { flex-direction: row; align-items: center; gap: 8px; }
+      details { border: 1px solid #dfe3e8; border-radius: 8px; padding: 8px 12px; }
+      summary { cursor: pointer; font-weight: 600; font-size: 13px; color: #33404f; }
+      details .ff { margin-top: 12px; }
+    </style>
+  </head>
+  <body>
+    <h1>Harness</h1>
+    <p class="lead">
+      Home Assistant の <code>ha-form</code> を最小限に再現した確認用ページです。実際の見た目は HA 側のコンポーネントに従います。
+      ここで確認できるのはスキーマの構造、ラベル、そして編集結果として書き出される設定です。
+      Self test はエディタの入出力と、カードのタップ操作の両方を自動で検証します。
+    </p>
+
+    <div class="row">
+      <div class="panel" style="flex: 0 0 auto">
+        <h2>Card</h2>
+        <select id="kind"></select>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="panel" style="flex: 0 0 340px"><h2>Self test</h2><pre id="tests"></pre></div>
+      <div class="panel"><h2>Editor</h2><div id="host"></div></div>
+      <div class="panel"><h2>Card config (config-changed)</h2><pre id="out"></pre></div>
+      <div class="panel"><h2>Preview</h2><div id="preview"></div></div>
+    </div>
+
+    <script type="module">
+      // ---- ha-icon shim ----
+      class HaIcon extends HTMLElement {
+        static get observedAttributes() { return ["icon"]; }
+        set icon(v) { this._icon = v; this.draw(); }
+        attributeChangedCallback(_, __, v) { this.icon = v; }
+        connectedCallback() { this.draw(); }
+        async draw() {
+          if (!this.isConnected || !this._icon) return;
+          const name = this._icon.replace(/^mdi:/, "");
+          this.style.cssText = "display:inline-flex;width:var(--mdc-icon-size,24px);height:var(--mdc-icon-size,24px);";
+          const txt = await fetch(`https://cdn.jsdelivr.net/npm/@mdi/svg@7.4.47/svg/${name}.svg`).then(r => r.ok ? r.text() : "").catch(() => "");
+          const m = /<path[^>]*d="([^"]+)"/.exec(txt);
+          this.innerHTML = `<svg viewBox="0 0 24 24" width="100%" height="100%">${m ? `<path fill="currentColor" d="${m[1]}"/>` : ""}</svg>`;
+        }
+      }
+      customElements.define("ha-icon", HaIcon);
+
+      // ---- minimal ha-form shim: renders the schema and emits value-changed with the full data ----
+      class HaFormShim extends HTMLElement {
+        set hass(v) { this._hass = v; this.render(); }
+        set data(v) { this._data = v ?? {}; this.render(); }
+        set schema(v) { this._schema = v ?? []; this.render(); }
+        set computeLabel(v) { this._label = v; this.render(); }
+        set computeHelper(v) { this._helper = v; this.render(); }
+
+        emit(name, value) {
+          const next = { ...this._data, [name]: value };
+          this.dispatchEvent(new CustomEvent("value-changed", { detail: { value: next }, bubbles: true, composed: true }));
+        }
+
+        field(item) {
+          const wrap = document.createElement("div");
+          wrap.className = "ff-field";
+          const label = document.createElement("label");
+          label.textContent = (this._label?.(item) ?? item.name) + (item.required ? " *" : "");
+          const sel = item.selector ?? {};
+          const value = this._data[item.name];
+          let input;
+
+          if (sel.boolean) {
+            wrap.classList.add("ff-bool");
+            input = document.createElement("input");
+            input.type = "checkbox";
+            input.checked = value === true;
+            input.onchange = () => this.emit(item.name, input.checked);
+            wrap.append(input, label);
+            return wrap;
+          }
+          if (sel.select) {
+            input = document.createElement("select");
+            input.multiple = Boolean(sel.select.multiple);
+            if (!input.multiple) input.append(new Option("", ""));
+            for (const o of sel.select.options) {
+              const opt = new Option(o.label, o.value);
+              opt.selected = input.multiple ? (value ?? []).includes(o.value) : value === o.value;
+              input.append(opt);
+            }
+            input.onchange = () =>
+              this.emit(item.name, input.multiple ? [...input.selectedOptions].map(o => o.value) : input.value);
+          } else if (sel.entity) {
+            const domains = [].concat(sel.entity.domain ?? []);
+            input = document.createElement("select");
+            input.append(new Option("", ""));
+            for (const id of Object.keys(this._hass?.states ?? {})) {
+              if (domains.length && !domains.includes(id.split(".")[0])) continue;
+              const opt = new Option(id, id);
+              opt.selected = value === id;
+              input.append(opt);
+            }
+            input.onchange = () => this.emit(item.name, input.value);
+          } else if (sel.number) {
+            input = document.createElement("input");
+            input.type = "number";
+            Object.assign(input, { min: sel.number.min, max: sel.number.max, step: sel.number.step });
+            input.value = value ?? "";
+            input.onchange = () => this.emit(item.name, input.value === "" ? undefined : Number(input.value));
+          } else if (sel.object) {
+            input = document.createElement("textarea");
+            input.value = value === undefined ? "" : JSON.stringify(value, null, 2);
+            input.onchange = () => {
+              try { this.emit(item.name, input.value.trim() ? JSON.parse(input.value) : undefined); }
+              catch { input.style.borderColor = "#d33"; }
+            };
+          } else if (sel.text?.multiple) {
+            input = document.createElement("textarea");
+            input.value = (value ?? []).join("\n");
+            input.onchange = () => this.emit(item.name, input.value.split("\n").map(s => s.trim()).filter(Boolean));
+          } else {
+            input = document.createElement("input");
+            input.type = "text";
+            input.value = value ?? "";
+            input.onchange = () => this.emit(item.name, input.value);
+          }
+
+          wrap.append(label, input);
+          const helper = this._helper?.(item);
+          if (helper) {
+            const h = document.createElement("div");
+            h.className = "helper";
+            h.textContent = helper;
+            wrap.append(h);
+          }
+          return wrap;
+        }
+
+        renderList(schema, into) {
+          for (const item of schema) {
+            if (item.type === "grid") {
+              const g = document.createElement("div");
+              g.className = "ff-grid";
+              this.renderList(item.schema, g);
+              into.append(g);
+            } else if (item.type === "expandable") {
+              const d = document.createElement("details");
+              const s = document.createElement("summary");
+              s.textContent = item.title;
+              const body = document.createElement("div");
+              body.className = "ff";
+              this.renderList(item.schema, body);
+              d.append(s, body);
+              into.append(d);
+            } else {
+              into.append(this.field(item));
+            }
+          }
+        }
+
+        render() {
+          if (!this._schema || !this._data) return;
+          this.innerHTML = "";
+          const root = document.createElement("div");
+          root.className = "ff";
+          this.renderList(this._schema, root);
+          this.append(root);
+        }
+      }
+      customElements.define("ha-form", HaFormShim);
+
+      const mod = await import("../dist/liquid-glass-cards.js");
+
+      const states = {
+        "light.living_room": { entity_id: "light.living_room", state: "on", last_changed: new Date().toISOString(), last_updated: new Date().toISOString(), attributes: { friendly_name: "リビング", brightness: 184, color_temp_kelvin: 3200, min_color_temp_kelvin: 2000, max_color_temp_kelvin: 6500, supported_color_modes: ["color_temp"], color_mode: "color_temp" } },
+        "light.porch": { entity_id: "light.porch", state: "off", last_changed: new Date().toISOString(), last_updated: new Date().toISOString(), attributes: { friendly_name: "玄関ライト", supported_color_modes: ["onoff"] } },
+        "climate.living_room": { entity_id: "climate.living_room", state: "heat", last_changed: new Date().toISOString(), last_updated: new Date().toISOString(), attributes: { friendly_name: "リビング エアコン", temperature: 22, current_temperature: 21.5, hvac_modes: ["auto", "cool", "heat", "off"], min_temp: 10, max_temp: 30, fan_mode: "自動", fan_modes: ["自動", "弱"] } },
+        "switch.desk": { entity_id: "switch.desk", state: "on", last_changed: new Date().toISOString(), last_updated: new Date().toISOString(), attributes: { friendly_name: "デスク コンセント" } },
+        "sensor.living_temp": { entity_id: "sensor.living_temp", state: "23.4", last_changed: new Date().toISOString(), last_updated: new Date().toISOString(), attributes: { friendly_name: "リビング 温度", unit_of_measurement: "°C", device_class: "temperature" } },
+        "sensor.living_humidity": { entity_id: "sensor.living_humidity", state: "52", last_changed: new Date().toISOString(), last_updated: new Date().toISOString(), attributes: { friendly_name: "湿度", unit_of_measurement: "%" } },
+        "binary_sensor.front_door": { entity_id: "binary_sensor.front_door", state: "on", last_changed: new Date().toISOString(), last_updated: new Date().toISOString(), attributes: { friendly_name: "玄関ドア センサー", device_class: "door" } },
+        "lock.front_door": { entity_id: "lock.front_door", state: "locked", last_changed: new Date().toISOString(), last_updated: new Date().toISOString(), attributes: { friendly_name: "玄関ドア" } },
+        "cover.living_blind": { entity_id: "cover.living_blind", state: "open", last_changed: new Date().toISOString(), last_updated: new Date().toISOString(), attributes: { friendly_name: "リビング ブラインド", current_position: 65, current_tilt_position: 75, device_class: "blind", supported_features: 255 } },
+        "fan.bedroom": { entity_id: "fan.bedroom", state: "on", last_changed: new Date().toISOString(), last_updated: new Date().toISOString(), attributes: { friendly_name: "寝室 サーキュレーター", percentage: 60, percentage_step: 20 } },
+        "input_number.hot_water": { entity_id: "input_number.hot_water", state: "42", last_changed: new Date().toISOString(), last_updated: new Date().toISOString(), attributes: { friendly_name: "給湯温度", min: 30, max: 60, step: 1, unit_of_measurement: "°C" } },
+        "media_player.living": { entity_id: "media_player.living", state: "playing", last_changed: new Date().toISOString(), last_updated: new Date().toISOString(), attributes: { friendly_name: "リビング HomePod", media_title: "Midnight City", media_artist: "M83", media_duration: 243, media_position: 102, volume_level: 0.62, supported_features: 0x1fffff } },
+      };
+      const hass = { states, language: "ja", locale: { language: "ja" }, themes: { darkMode: false }, async callService() {}, async callApi() { return [[]]; } };
+
+      const TYPES = ["light", "climate", "switch", "sensor", "binary-sensor", "lock", "cover", "media", "slider"];
+      const kindSel = document.getElementById("kind");
+      for (const k of TYPES) kindSel.append(new Option(k, k));
+
+      const host = document.getElementById("host");
+      const out = document.getElementById("out");
+      const preview = document.getElementById("preview");
+
+      async function mount(kind) {
+        const tag = `liquid-glass-${kind}-card`;
+        const Card = customElements.get(tag);
+        const stub = Card.getStubConfig(hass, Object.keys(states), Object.keys(states));
+        let config = { type: `custom:${tag}`, ...stub };
+
+        const editor = await Card.getConfigElement();
+        editor.hass = hass;
+        editor.setConfig(config);
+        host.innerHTML = "";
+        host.append(editor);
+
+        const card = document.createElement(tag);
+        card.setConfig(config);
+        card.hass = hass;
+        preview.innerHTML = "";
+        preview.append(card);
+        out.textContent = JSON.stringify(config, null, 2);
+
+        editor.addEventListener("config-changed", (e) => {
+          config = { type: config.type, ...e.detail.config };
+          out.textContent = JSON.stringify(config, null, 2);
+          editor.setConfig(config);
+          const fresh = document.createElement(tag);
+          fresh.setConfig(config);
+          fresh.hass = hass;
+          preview.innerHTML = "";
+          preview.append(fresh);
+        });
+      }
+
+      kindSel.onchange = () => mount(kindSel.value);
+      const requested = new URLSearchParams(location.search).get("kind");
+      kindSel.value = TYPES.includes(requested) ? requested : TYPES[0];
+      await mount(kindSel.value);
+
+      // ---- self test: drives each editor through the same events Home Assistant sends ----
+      const results = [];
+      const check = (name, pass, detail = "") => results.push({ pass, name, detail });
+      const flatten = (schema, into = new Set()) => {
+        for (const item of schema) {
+          if (item.schema) flatten(item.schema, into);
+          else if (item.name) into.add(item.name);
+        }
+        return into;
+      };
+
+      for (const kind of TYPES) {
+        const tag = `liquid-glass-${kind}-card`;
+        const Card = customElements.get(tag);
+        const stub = Card.getStubConfig(hass, Object.keys(states), Object.keys(states));
+        check(`${kind}: stub picks a live entity`, Boolean(states[stub.entity]), stub.entity);
+
+        const editor = await Card.getConfigElement();
+        editor.hass = hass;
+        editor.setConfig({ type: `custom:${tag}`, ...stub });
+        editor.style.cssText = "position:absolute;left:-9999px";
+        document.body.append(editor);
+        await editor.updateComplete;
+
+        const form = editor.shadowRoot.querySelector("ha-form");
+        check(`${kind}: form renders`, Boolean(form));
+        if (!form) continue;
+
+        const fields = flatten(form._schema);
+        check(`${kind}: entity + advanced options present`, ["entity", "name", "icon", "theme", "refraction"].every(f => fields.has(f)), [...fields].join(", "));
+
+        const apply = (patch) =>
+          new Promise((resolve) => {
+            editor.addEventListener("config-changed", (e) => resolve(e.detail.config), { once: true });
+            form.dispatchEvent(new CustomEvent("value-changed", { detail: { value: { ...form._data, ...patch } }, bubbles: true, composed: true }));
+          });
+
+        let cfg = await apply({ name: "テスト" });
+        check(`${kind}: name is written`, cfg.name === "テスト", JSON.stringify(cfg));
+        check(`${kind}: defaults stay out of the config`, !("theme" in cfg) && !("refraction" in cfg) && !("favorites" in cfg), Object.keys(cfg).join(", "));
+
+        editor.setConfig({ type: `custom:${tag}`, ...cfg });
+        await editor.updateComplete;
+        cfg = await apply({ name: "" });
+        check(`${kind}: cleared name is removed`, !("name" in cfg));
+
+        const toggle = [...fields].find((f) => ["show_brightness", "show_fan_mode", "graph", "show_tilt", "show_volume"].includes(f));
+        if (toggle) {
+          cfg = await apply({ [toggle]: false });
+          check(`${kind}: unticking ${toggle} writes false`, cfg[toggle] === false, JSON.stringify(cfg));
+          editor.setConfig({ type: `custom:${tag}`, ...cfg });
+          await editor.updateComplete;
+          cfg = await apply({ [toggle]: true });
+          check(`${kind}: reticking ${toggle} drops the key`, !(toggle in cfg));
+        }
+
+        cfg = await apply({ refraction: "off" });
+        check(`${kind}: refraction off`, cfg.refraction === false);
+        editor.setConfig({ type: `custom:${tag}`, ...cfg });
+        await editor.updateComplete;
+        check(`${kind}: refraction round-trips`, editor.shadowRoot.querySelector("ha-form")._data.refraction === "off");
+        cfg = await apply({ refraction: "auto" });
+        check(`${kind}: refraction auto drops the key`, !("refraction" in cfg));
+
+        editor.remove();
+      }
+
+      // ---- interaction: the switch card is one big toggle ----
+      {
+        const calls = [];
+        const swStates = {
+          "switch.desk": { entity_id: "switch.desk", state: "on", last_changed: new Date().toISOString(), last_updated: new Date().toISOString(), attributes: { friendly_name: "デスク コンセント" } },
+        };
+        const card = document.createElement("liquid-glass-switch-card");
+        const swHass = {
+          states: swStates,
+          language: "ja",
+          locale: { language: "ja" },
+          themes: { darkMode: false },
+          async callService(domain, service, data) {
+            calls.push(`${domain}.${service}`);
+            const prev = swStates[data.entity_id];
+            if (service === "toggle") swStates[data.entity_id] = { ...prev, state: prev.state === "on" ? "off" : "on" };
+            card.hass = { ...swHass, states: { ...swStates } };
+          },
+          async callApi() { return [[]]; },
+        };
+
+        card.setConfig({ type: "custom:liquid-glass-switch-card", entity: "switch.desk" });
+        card.hass = swHass;
+        card.style.cssText = "position:absolute;left:-9999px;width:380px";
+        document.body.append(card);
+        await card.updateComplete;
+
+        const root = card.shadowRoot;
+        const cardEl = root.querySelector(".card");
+        const click = (el) => el.dispatchEvent(new MouseEvent("click", { bubbles: true, composed: true }));
+        const point = (type, x = 10, y = 10) => cardEl.dispatchEvent(new PointerEvent(type, { bubbles: true, composed: true, button: 0, clientX: x, clientY: y }));
+
+        check("switch: the trailing icon is gone", root.querySelector(".power") === null);
+        check("switch: the icon well is not a separate button", root.querySelector(".icon-well").getAttribute("role") === null);
+
+        calls.length = 0;
+        click(root.querySelector(".title"));
+        check("switch: tapping the name toggles once", calls.join() === "switch.toggle", calls.join() || "(no call)");
+        check("switch: the state follows the tap", swStates["switch.desk"].state === "off", swStates["switch.desk"].state);
+
+        calls.length = 0;
+        click(root.querySelector(".icon-well"));
+        check("switch: tapping the icon toggles once", calls.join() === "switch.toggle", calls.join() || "(no call)");
+
+        calls.length = 0;
+        click(cardEl);
+        check("switch: tapping the background toggles once", calls.join() === "switch.toggle", calls.join() || "(no call)");
+
+        let opened = null;
+        card.addEventListener("hass-more-info", (e) => (opened = e.detail.entityId));
+        calls.length = 0;
+        point("pointerdown");
+        await new Promise((r) => setTimeout(r, 620));
+        point("pointerup");
+        click(cardEl);
+        check("switch: holding opens more-info", opened === "switch.desk", String(opened));
+        check("switch: holding does not toggle", calls.length === 0, calls.join() || "(no call)");
+
+        calls.length = 0;
+        point("pointerdown");
+        point("pointerup");
+        click(cardEl);
+        check("switch: the tap after a hold toggles again", calls.join() === "switch.toggle", calls.join() || "(no call)");
+
+        calls.length = 0;
+        opened = null;
+        point("pointerdown", 10, 10);
+        point("pointermove", 10, 90);
+        await new Promise((r) => setTimeout(r, 620));
+        check("switch: dragging cancels the hold", opened === null, String(opened));
+
+        calls.length = 0;
+        cardEl.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, composed: true }));
+        check("switch: Enter toggles", calls.join() === "switch.toggle", calls.join() || "(no call)");
+
+        card.remove();
+      }
+
+      // ---- interaction: the slider card reads and writes each domain correctly ----
+      for (const [entityId, expected] of [
+        ["fan.bedroom", { service: "fan.set_percentage", key: "percentage", value: 60, unit: "%", min: 0, max: 100 }],
+        ["input_number.hot_water", { service: "input_number.set_value", key: "value", value: 42, unit: "°C", min: 30, max: 60 }],
+      ]) {
+        const calls = [];
+        const card = document.createElement("liquid-glass-slider-card");
+        const sHass = {
+          ...hass,
+          async callService(domain, service, data) {
+            calls.push({ call: `${domain}.${service}`, data });
+          },
+        };
+        card.setConfig({ type: "custom:liquid-glass-slider-card", entity: entityId, ticks: true });
+        card.hass = sHass;
+        card.style.cssText = "position:absolute;left:-9999px;width:380px";
+        document.body.append(card);
+        await card.updateComplete;
+
+        const root = card.shadowRoot;
+        const slider = root.querySelector("lg-slider");
+        const shown = root.querySelector(".value .num").textContent.trim();
+        const unit = root.querySelector(".value .unit")?.textContent.trim();
+        const range = [...root.querySelectorAll(".ticks span")].map((s) => s.textContent.trim());
+
+        check(`slider ${entityId}: reads the current value`, shown === String(expected.value), shown);
+        check(`slider ${entityId}: shows the unit`, unit === expected.unit, String(unit));
+        check(
+          `slider ${entityId}: range labels match the entity`,
+          range.join(" ") === `${expected.min}${expected.unit} ${expected.max}${expected.unit}`,
+          range.join(" "),
+        );
+        check(`slider ${entityId}: slider bounds match`, slider.min === expected.min && slider.max === expected.max, `${slider.min}-${slider.max}`);
+
+        const target = expected.min + (expected.max - expected.min) * 0.8;
+        slider.dispatchEvent(new CustomEvent("lg-change", { detail: { value: target }, bubbles: true, composed: true }));
+        check(`slider ${entityId}: releasing calls ${expected.service}`, calls[0]?.call === expected.service, calls[0]?.call ?? "(no call)");
+        check(
+          `slider ${entityId}: sends the value as ${expected.key}`,
+          calls[0]?.data?.[expected.key] === Math.round(target) && calls[0]?.data?.entity_id === entityId,
+          JSON.stringify(calls[0]?.data),
+        );
+
+        card.remove();
+      }
+
+      // ---- the zero state drops the fill and greys the readout ----
+      {
+        const card = document.createElement("liquid-glass-slider-card");
+        card.setConfig({ type: "custom:liquid-glass-slider-card", entity: "fan.bedroom" });
+        card.hass = { ...hass, states: { ...states, "fan.bedroom": { ...states["fan.bedroom"], state: "off", attributes: { ...states["fan.bedroom"].attributes, percentage: 0 } } } };
+        card.style.cssText = "position:absolute;left:-9999px;width:380px";
+        document.body.append(card);
+        await card.updateComplete;
+        const root = card.shadowRoot;
+        check("slider zero: value is greyed", root.querySelector(".value").classList.contains("zero"));
+        check("slider zero: icon well is neutral", root.querySelector(".icon-well").classList.contains("idle"));
+        check("slider zero: track fill is hidden", root.querySelector("lg-slider").showFill === false);
+        check("slider zero: subtitle says it is off", root.querySelector(".state").textContent.trim() === "停止中", root.querySelector(".state").textContent.trim());
+        card.remove();
+      }
+
+      // ---- a domain with no known setter stays read-only until a service is configured ----
+      {
+        const card = document.createElement("liquid-glass-slider-card");
+        card.setConfig({ type: "custom:liquid-glass-slider-card", entity: "sensor.living_temp" });
+        card.hass = hass;
+        card.style.cssText = "position:absolute;left:-9999px;width:380px";
+        document.body.append(card);
+        await card.updateComplete;
+        check("slider unknown domain: read-only", card.shadowRoot.querySelector("lg-slider").disabled === true);
+
+        card.setConfig({ type: "custom:liquid-glass-slider-card", entity: "sensor.living_temp", service: "script.set_it", service_key: "level" });
+        await card.updateComplete;
+        check("slider unknown domain: a configured service enables it", card.shadowRoot.querySelector("lg-slider").disabled === false);
+        card.remove();
+      }
+
+      const failed = results.filter((r) => !r.pass);
+      document.getElementById("tests").textContent =
+        `${results.length - failed.length} / ${results.length} passed\n\n` +
+        (failed.length ? failed.map((r) => `FAIL ${r.name}\n     ${r.detail}`).join("\n") : "all green") +
+        "\n\n" + results.map((r) => `${r.pass ? "ok  " : "FAIL"} ${r.name}`).join("\n");
+    </script>
+  </body>
+</html>

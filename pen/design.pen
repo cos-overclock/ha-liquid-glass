@@ -114,7 +114,7 @@
           "u_tintAlpha": "$glass-tint-alpha"
         }
       },
-      "cornerRadius": 32,
+      "cornerRadius": 40,
       "stroke": "$glass-stroke",
       "strokeWidth": 1,
       "strokeAlignment": "inner",
@@ -186,12 +186,12 @@
                 {
                   "type": "shadow",
                   "shadowType": "outer",
-                  "color": "#FFA53066",
+                  "color": "#FFA5303D",
                   "offset": {
                     "x": 0,
-                    "y": 6
+                    "y": 4
                   },
-                  "blur": 18
+                  "blur": 12
                 },
                 {
                   "type": "shadow",
@@ -1310,7 +1310,7 @@
           "u_tintAlpha": "$glass-tint-alpha"
         }
       },
-      "cornerRadius": 32,
+      "cornerRadius": 40,
       "stroke": "$glass-stroke",
       "strokeWidth": 1,
       "strokeAlignment": "inner",
@@ -1382,12 +1382,12 @@
                 {
                   "type": "shadow",
                   "shadowType": "outer",
-                  "color": "#B15CFF73",
+                  "color": "#B15CFF3D",
                   "offset": {
                     "x": 0,
-                    "y": 6
+                    "y": 4
                   },
-                  "blur": 18
+                  "blur": 12
                 },
                 {
                   "type": "shadow",
@@ -2942,7 +2942,7 @@
           "u_tintAlpha": "$glass-tint-alpha"
         }
       },
-      "cornerRadius": 32,
+      "cornerRadius": 40,
       "stroke": "$glass-stroke",
       "strokeWidth": 1,
       "strokeAlignment": "inner",
@@ -3014,12 +3014,12 @@
                 {
                   "type": "shadow",
                   "shadowType": "outer",
-                  "color": "#FF6A3D66",
+                  "color": "#FF6A3D3D",
                   "offset": {
                     "x": 0,
-                    "y": 6
+                    "y": 4
                   },
-                  "blur": 18
+                  "blur": 12
                 },
                 {
                   "type": "shadow",
@@ -3575,7 +3575,7 @@
               "name": "Detail 風量",
               "width": "fill_container",
               "fill": "$track-bg",
-              "cornerRadius": 18,
+              "cornerRadius": 20,
               "stroke": "$glass-stroke",
               "strokeWidth": 1,
               "strokeAlignment": "inner",
@@ -3645,7 +3645,7 @@
               "name": "Detail プリセット",
               "width": "fill_container",
               "fill": "$track-bg",
-              "cornerRadius": 18,
+              "cornerRadius": 20,
               "stroke": "$glass-stroke",
               "strokeWidth": 1,
               "strokeAlignment": "inner",
@@ -4020,12 +4020,12 @@
                 {
                   "type": "shadow",
                   "shadowType": "outer",
-                  "color": "#0A84FF66",
+                  "color": "#0A84FF3D",
                   "offset": {
                     "x": 0,
-                    "y": 6
+                    "y": 4
                   },
-                  "blur": 18
+                  "blur": 12
                 },
                 {
                   "type": "shadow",
@@ -4263,12 +4263,12 @@
                 {
                   "type": "shadow",
                   "shadowType": "outer",
-                  "color": "#0A84FF66",
+                  "color": "#0A84FF3D",
                   "offset": {
                     "x": 0,
-                    "y": 6
+                    "y": 4
                   },
-                  "blur": 18
+                  "blur": 12
                 },
                 {
                   "type": "shadow",
@@ -4874,12 +4874,12 @@
                 {
                   "type": "shadow",
                   "shadowType": "outer",
-                  "color": "#30D15866",
+                  "color": "#30D1583D",
                   "offset": {
                     "x": 0,
-                    "y": 6
+                    "y": 4
                   },
-                  "blur": 18
+                  "blur": 12
                 },
                 {
                   "type": "shadow",
@@ -5127,12 +5127,12 @@
                 {
                   "type": "shadow",
                   "shadowType": "outer",
-                  "color": "#30D15866",
+                  "color": "#30D1583D",
                   "offset": {
                     "x": 0,
-                    "y": 6
+                    "y": 4
                   },
-                  "blur": 18
+                  "blur": 12
                 },
                 {
                   "type": "shadow",
@@ -5281,7 +5281,7 @@
           "u_tintAlpha": "$glass-tint-active-alpha"
         }
       },
-      "cornerRadius": 28,
+      "cornerRadius": 40,
       "stroke": "$glass-stroke-active",
       "strokeWidth": 1,
       "strokeAlignment": "inner",
@@ -5348,12 +5348,12 @@
             {
               "type": "shadow",
               "shadowType": "outer",
-              "color": "#0A84FF66",
+              "color": "#0A84FF3D",
               "offset": {
                 "x": 0,
-                "y": 6
+                "y": 4
               },
-              "blur": 18
+              "blur": 12
             },
             {
               "type": "shadow",
@@ -5410,7 +5410,8 @@
               "width": "fill_container",
               "content": "オン · 消費電力 24 W",
               "fontFamily": "$font-jp",
-              "fontSize": 13
+              "fontSize": 13,
+              "fontWeight": "normal"
             }
           ]
         }
@@ -5878,7 +5879,7 @@
           "u_tintAlpha": "$glass-tint-alpha"
         }
       },
-      "cornerRadius": 32,
+      "cornerRadius": 40,
       "stroke": "$glass-stroke",
       "strokeWidth": 1,
       "strokeAlignment": "inner",
@@ -5950,12 +5951,12 @@
                 {
                   "type": "shadow",
                   "shadowType": "outer",
-                  "color": "#FF9F0A59",
+                  "color": "#FF9F0A3D",
                   "offset": {
                     "x": 0,
-                    "y": 6
+                    "y": 4
                   },
-                  "blur": 18
+                  "blur": 12
                 },
                 {
                   "type": "shadow",
@@ -6012,7 +6013,8 @@
                   "width": "fill_container",
                   "content": "5分前に更新 · 湿度 52%",
                   "fontFamily": "$font-jp",
-                  "fontSize": 13
+                  "fontSize": 13,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -6679,7 +6681,7 @@
           "u_tintAlpha": "$glass-tint-alpha"
         }
       },
-      "cornerRadius": 28,
+      "cornerRadius": 40,
       "stroke": "$glass-stroke",
       "strokeWidth": 1,
       "strokeAlignment": "inner",
@@ -6746,12 +6748,12 @@
             {
               "type": "shadow",
               "shadowType": "outer",
-              "color": "#FF9F0A66",
+              "color": "#FF9F0A3D",
               "offset": {
                 "x": 0,
-                "y": 6
+                "y": 4
               },
-              "blur": 18
+              "blur": 12
             },
             {
               "type": "shadow",
@@ -6808,7 +6810,8 @@
               "width": "fill_container",
               "content": "開いています · 3分前から",
               "fontFamily": "$font-jp",
-              "fontSize": 13
+              "fontSize": 13,
+              "fontWeight": "normal"
             }
           ]
         },
@@ -6874,7 +6877,7 @@
           "u_tintAlpha": "$glass-tint-alpha"
         }
       },
-      "cornerRadius": 32,
+      "cornerRadius": 40,
       "stroke": "$glass-stroke",
       "strokeWidth": 1,
       "strokeAlignment": "inner",
@@ -6946,12 +6949,12 @@
                 {
                   "type": "shadow",
                   "shadowType": "outer",
-                  "color": "#30D15866",
+                  "color": "#30D1583D",
                   "offset": {
                     "x": 0,
-                    "y": 6
+                    "y": 4
                   },
-                  "blur": 18
+                  "blur": 12
                 },
                 {
                   "type": "shadow",
@@ -7008,7 +7011,8 @@
                   "width": "fill_container",
                   "content": "施錠中 · 08:12 に自動施錠",
                   "fontFamily": "$font-jp",
-                  "fontSize": 13
+                  "fontSize": 13,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -7759,12 +7763,12 @@
                 {
                   "type": "shadow",
                   "shadowType": "outer",
-                  "color": "#7C3AED66",
+                  "color": "#7C3AED3D",
                   "offset": {
                     "x": 0,
-                    "y": 6
+                    "y": 4
                   },
-                  "blur": 18
+                  "blur": 12
                 },
                 {
                   "type": "shadow",
@@ -7928,12 +7932,12 @@
                 {
                   "type": "shadow",
                   "shadowType": "outer",
-                  "color": "#7C3AED66",
+                  "color": "#7C3AED3D",
                   "offset": {
                     "x": 0,
-                    "y": 6
+                    "y": 4
                   },
-                  "blur": 18
+                  "blur": 12
                 },
                 {
                   "type": "shadow",
@@ -8287,12 +8291,12 @@
                 {
                   "type": "shadow",
                   "shadowType": "outer",
-                  "color": "#FF3B3066",
+                  "color": "#FF3B303D",
                   "offset": {
                     "x": 0,
-                    "y": 6
+                    "y": 4
                   },
-                  "blur": 18
+                  "blur": 12
                 },
                 {
                   "type": "shadow",
@@ -8469,12 +8473,12 @@
                 {
                   "type": "shadow",
                   "shadowType": "outer",
-                  "color": "#FF3B3066",
+                  "color": "#FF3B303D",
                   "offset": {
                     "x": 0,
-                    "y": 6
+                    "y": 4
                   },
-                  "blur": 18
+                  "blur": 12
                 },
                 {
                   "type": "shadow",
@@ -8651,12 +8655,12 @@
                 {
                   "type": "shadow",
                   "shadowType": "outer",
-                  "color": "#FFD60A66",
+                  "color": "#FFD60A3D",
                   "offset": {
                     "x": 0,
-                    "y": 6
+                    "y": 4
                   },
-                  "blur": 18
+                  "blur": 12
                 },
                 {
                   "type": "shadow",
@@ -8830,12 +8834,12 @@
                 {
                   "type": "shadow",
                   "shadowType": "outer",
-                  "color": "#FFD60A66",
+                  "color": "#FFD60A3D",
                   "offset": {
                     "x": 0,
-                    "y": 6
+                    "y": 4
                   },
-                  "blur": 18
+                  "blur": 12
                 },
                 {
                   "type": "shadow",
@@ -8907,7 +8911,7 @@
           "u_tintAlpha": "$glass-tint-alpha"
         }
       },
-      "cornerRadius": 32,
+      "cornerRadius": 40,
       "stroke": "$glass-stroke",
       "strokeWidth": 1,
       "strokeAlignment": "inner",
@@ -8979,12 +8983,12 @@
                 {
                   "type": "shadow",
                   "shadowType": "outer",
-                  "color": "#2BB3D066",
+                  "color": "#2BB3D03D",
                   "offset": {
                     "x": 0,
-                    "y": 6
+                    "y": 4
                   },
-                  "blur": 18
+                  "blur": 12
                 },
                 {
                   "type": "shadow",
@@ -9041,7 +9045,8 @@
                   "width": "fill_container",
                   "content": "開度 65% · 停止中",
                   "fontFamily": "$font-jp",
-                  "fontSize": 13
+                  "fontSize": 13,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -9104,7 +9109,7 @@
               "width": "fill_container",
               "height": 180,
               "fill": "$track-bg",
-              "cornerRadius": 24,
+              "cornerRadius": 20,
               "stroke": "$glass-stroke",
               "strokeWidth": 1,
               "strokeAlignment": "inner",
@@ -11350,6 +11355,1165 @@
             "K67thm": {
               "enabled": false,
               "width": 340
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "C3Yb1Q",
+      "x": 4920,
+      "y": -640,
+      "name": "Media Card",
+      "reusable": true,
+      "clip": true,
+      "width": 380,
+      "fill": {
+        "type": "shader",
+        "enabled": true,
+        "url": "liquid-glass.glsl",
+        "uniforms": {
+          "u_tint": "$glass-tint",
+          "u_tintAlpha": "$glass-tint-alpha"
+        }
+      },
+      "cornerRadius": 40,
+      "stroke": "$glass-stroke",
+      "strokeWidth": 1,
+      "strokeAlignment": "inner",
+      "effect": [
+        {
+          "type": "shadow",
+          "shadowType": "outer",
+          "color": "$shadow-glass",
+          "offset": {
+            "x": 0,
+            "y": 14
+          },
+          "blur": 36,
+          "spread": -4
+        },
+        {
+          "type": "shadow",
+          "shadowType": "outer",
+          "color": "$glass-inner",
+          "offset": {
+            "x": 0,
+            "y": 1
+          },
+          "blur": 1
+        }
+      ],
+      "layout": "vertical",
+      "gap": 16,
+      "padding": 20,
+      "children": [
+        {
+          "type": "frame",
+          "id": "F2Xcng",
+          "name": "Device Label",
+          "gap": 6,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "icon",
+              "id": "fbN8N",
+              "name": "Speaker Icon",
+              "width": 14,
+              "height": 14,
+              "icon": "speaker",
+              "library": "lucide",
+              "fill": "$text-secondary"
+            },
+            {
+              "type": "text",
+              "id": "xiUdl",
+              "name": "Device Name",
+              "fill": "$text-secondary",
+              "content": "リビング HomePod",
+              "fontFamily": "$font-jp",
+              "fontSize": 12,
+              "fontWeight": "600"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "ZNFSf",
+          "name": "Header",
+          "width": "fill_container",
+          "gap": 14,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "HDuKw",
+              "name": "Album Art",
+              "metadata": {
+                "type": "unsplash",
+                "username": "rocinante_11",
+                "link": "https://unsplash.com/@rocinante_11",
+                "author": "Mick Haupt"
+              },
+              "clip": true,
+              "width": 72,
+              "height": 72,
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "https://images.unsplash.com/photo-1603373362799-c8c54cdf0992?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w4NDM0ODN8MHwxfHJhbmRvbXx8fHx8fHx8fDE3ODg0MDA5NDF8&ixlib=rb-4.1.0&q=80&w=1080",
+                "mode": "fill"
+              },
+              "cornerRadius": 20,
+              "stroke": "#FFFFFF66",
+              "strokeWidth": 1,
+              "strokeAlignment": "inner",
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "#00000040",
+                "offset": {
+                  "x": 0,
+                  "y": 8
+                },
+                "blur": 20
+              },
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "rH5AC",
+                  "x": 0,
+                  "y": 0,
+                  "name": "Placeholder Icon",
+                  "enabled": false,
+                  "width": 28,
+                  "height": 28,
+                  "icon": "music",
+                  "library": "lucide",
+                  "fill": "$text-secondary"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "m1AJou",
+              "name": "Title",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 3,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "FR9Ax",
+                  "name": "Track",
+                  "fill": "$text-primary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "Midnight City",
+                  "fontFamily": "$font-jp",
+                  "fontSize": 17,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "text",
+                  "id": "DMbmA",
+                  "name": "Artist",
+                  "fill": "$text-secondary",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "M83 — Hurry Up, We're Dreaming",
+                  "fontFamily": "$font-jp",
+                  "fontSize": 13,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "LY2sW",
+                  "name": "Source",
+                  "gap": 5,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "VK1Wr",
+                      "name": "Source Icon",
+                      "width": 12,
+                      "height": 12,
+                      "icon": "audio-lines",
+                      "library": "lucide",
+                      "fill": "#FF375F"
+                    },
+                    {
+                      "type": "text",
+                      "id": "P11AQ",
+                      "name": "Source Name",
+                      "fill": "#FF375F",
+                      "content": "Apple Music",
+                      "fontFamily": "$font-jp",
+                      "fontSize": 11,
+                      "fontWeight": "600"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "YRiiN",
+              "name": "More Button",
+              "width": 36,
+              "height": 36,
+              "fill": "$track-bg",
+              "cornerRadius": 18,
+              "stroke": "$glass-stroke",
+              "strokeWidth": 1,
+              "strokeAlignment": "inner",
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "TvlWd",
+                  "name": "Icon",
+                  "width": 18,
+                  "height": 18,
+                  "icon": "ellipsis",
+                  "library": "lucide",
+                  "fill": "$text-primary"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Wuegp",
+          "name": "Progress",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": 8,
+          "children": [
+            {
+              "type": "frame",
+              "id": "aRRBV",
+              "name": "Track",
+              "clip": true,
+              "width": "fill_container",
+              "height": 7,
+              "fill": "$track-bg",
+              "cornerRadius": 4,
+              "children": [
+                {
+                  "type": "rectangle",
+                  "id": "KTJdZ",
+                  "name": "Fill",
+                  "opacity": 0.85,
+                  "fill": "$text-primary",
+                  "width": 136,
+                  "height": "fill_container"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "vAM85",
+              "name": "Times",
+              "width": "fill_container",
+              "justifyContent": "space_between",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "G9hSAI",
+                  "name": "Elapsed",
+                  "fill": "$text-secondary",
+                  "content": "1:42",
+                  "fontFamily": "$font-ui",
+                  "fontSize": 11,
+                  "fontWeight": "500",
+                  "letterSpacing": -0.2
+                },
+                {
+                  "type": "text",
+                  "id": "iBvzh",
+                  "name": "Remaining",
+                  "fill": "$text-secondary",
+                  "content": "−2:21",
+                  "fontFamily": "$font-ui",
+                  "fontSize": 11,
+                  "fontWeight": "500",
+                  "letterSpacing": -0.2
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "x7Abxe",
+          "name": "Transport",
+          "width": "fill_container",
+          "padding": [
+            0,
+            8
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "icon",
+              "id": "LPU1R",
+              "name": "Shuffle",
+              "width": 20,
+              "height": 20,
+              "icon": "shuffle",
+              "library": "lucide",
+              "fill": "$text-secondary"
+            },
+            {
+              "type": "icon",
+              "id": "lYf3g",
+              "name": "Previous",
+              "width": 32,
+              "height": 32,
+              "icon": "skip-back",
+              "library": "lucide",
+              "fill": "$text-primary"
+            },
+            {
+              "type": "frame",
+              "id": "FHpPU",
+              "name": "Play Button",
+              "width": 68,
+              "height": 68,
+              "fill": {
+                "type": "shader",
+                "enabled": true,
+                "url": "liquid-glass.glsl",
+                "uniforms": {
+                  "u_tint": "#FFFFFF",
+                  "u_tintAlpha": 0.26,
+                  "u_edge": 18,
+                  "u_refraction": 16,
+                  "u_blur": 4,
+                  "u_highlight": 1.1
+                }
+              },
+              "cornerRadius": 34,
+              "stroke": "#FFFFFFD9",
+              "strokeWidth": 1.5,
+              "strokeAlignment": "inner",
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "#00000040",
+                "offset": {
+                  "x": 0,
+                  "y": 6
+                },
+                "blur": 16
+              },
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "VUgBr",
+                  "name": "Play Icon",
+                  "width": 30,
+                  "height": 30,
+                  "icon": "pause",
+                  "library": "lucide",
+                  "fill": "$text-primary"
+                }
+              ]
+            },
+            {
+              "type": "icon",
+              "id": "X4jRz",
+              "name": "Next",
+              "width": 32,
+              "height": 32,
+              "icon": "skip-forward",
+              "library": "lucide",
+              "fill": "$text-primary"
+            },
+            {
+              "type": "icon",
+              "id": "rI3jq",
+              "name": "Repeat",
+              "width": 20,
+              "height": 20,
+              "icon": "repeat",
+              "library": "lucide",
+              "fill": "$text-secondary"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "X9NcYW",
+          "name": "Volume",
+          "width": "fill_container",
+          "gap": 10,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "icon",
+              "id": "i9DfnB",
+              "name": "Volume Low",
+              "width": 20,
+              "height": 20,
+              "icon": "volume",
+              "library": "lucide",
+              "fill": "$text-secondary"
+            },
+            {
+              "type": "frame",
+              "id": "lCIil",
+              "name": "Track",
+              "clip": true,
+              "width": "fill_container",
+              "height": 10,
+              "fill": "$track-bg",
+              "cornerRadius": 5,
+              "children": [
+                {
+                  "type": "rectangle",
+                  "id": "xDmRR",
+                  "name": "Fill",
+                  "opacity": 0.85,
+                  "fill": "$text-primary",
+                  "width": 174,
+                  "height": "fill_container"
+                }
+              ]
+            },
+            {
+              "type": "icon",
+              "id": "Q8dAD",
+              "name": "Volume High",
+              "width": 20,
+              "height": 20,
+              "icon": "volume-2",
+              "library": "lucide",
+              "fill": "$text-secondary"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "H0wBa",
+      "x": 11800,
+      "y": 0,
+      "name": "Media Card / Playing / Light",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 560,
+      "height": 720,
+      "fill": {
+        "type": "gradient",
+        "gradientType": "linear",
+        "enabled": true,
+        "rotation": 135,
+        "size": {
+          "height": 1
+        },
+        "colors": [
+          {
+            "color": "#FFD3BF",
+            "position": 0
+          },
+          {
+            "color": "#F5C8F0",
+            "position": 0.5
+          },
+          {
+            "color": "#BBD9FF",
+            "position": 1
+          }
+        ]
+      },
+      "layout": "vertical",
+      "justifyContent": "center",
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "ellipse",
+          "id": "jYCVf",
+          "layoutPosition": "absolute",
+          "x": -80,
+          "y": -60,
+          "name": "Blob Orange",
+          "opacity": 0.75,
+          "fill": "#FF9F5A",
+          "width": 320,
+          "height": 320,
+          "effect": {
+            "type": "blur",
+            "radius": 40
+          }
+        },
+        {
+          "type": "ellipse",
+          "id": "FI7g7",
+          "layoutPosition": "absolute",
+          "x": 330,
+          "y": 430,
+          "name": "Blob Blue",
+          "opacity": 0.7,
+          "fill": "#5AA9FF",
+          "width": 360,
+          "height": 360,
+          "effect": {
+            "type": "blur",
+            "radius": 50
+          }
+        },
+        {
+          "type": "ellipse",
+          "id": "yRgs3",
+          "layoutPosition": "absolute",
+          "x": 300,
+          "y": 40,
+          "name": "Blob Pink",
+          "opacity": 0.55,
+          "fill": "#FF7AB6",
+          "width": 220,
+          "height": 220,
+          "effect": {
+            "type": "blur",
+            "radius": 40
+          }
+        },
+        {
+          "id": "EYpfh",
+          "type": "ref",
+          "ref": "C3Yb1Q",
+          "name": "Media Card (Playing, Light)"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "HYwtQ",
+      "x": 12480,
+      "y": 0,
+      "name": "Media Card / Playing / Dark",
+      "theme": {
+        "mode": "dark"
+      },
+      "clip": true,
+      "width": 560,
+      "height": 720,
+      "fill": {
+        "type": "gradient",
+        "gradientType": "linear",
+        "enabled": true,
+        "rotation": 135,
+        "size": {
+          "height": 1
+        },
+        "colors": [
+          {
+            "color": "#1B1F3A",
+            "position": 0
+          },
+          {
+            "color": "#2A1B45",
+            "position": 0.5
+          },
+          {
+            "color": "#0E1A2E",
+            "position": 1
+          }
+        ]
+      },
+      "layout": "vertical",
+      "justifyContent": "center",
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "ellipse",
+          "id": "PLxaY",
+          "layoutPosition": "absolute",
+          "x": -90,
+          "y": -70,
+          "name": "Blob Violet",
+          "opacity": 0.6,
+          "fill": "#7B4DFF",
+          "width": 340,
+          "height": 340,
+          "effect": {
+            "type": "blur",
+            "radius": 50
+          }
+        },
+        {
+          "type": "ellipse",
+          "id": "V5XhL",
+          "layoutPosition": "absolute",
+          "x": 320,
+          "y": 440,
+          "name": "Blob Teal",
+          "opacity": 0.55,
+          "fill": "#1FA0C8",
+          "width": 380,
+          "height": 380,
+          "effect": {
+            "type": "blur",
+            "radius": 60
+          }
+        },
+        {
+          "type": "ellipse",
+          "id": "ogabp",
+          "layoutPosition": "absolute",
+          "x": 300,
+          "y": 60,
+          "name": "Blob Amber",
+          "opacity": 0.45,
+          "fill": "#FF7A3D",
+          "width": 220,
+          "height": 220,
+          "effect": {
+            "type": "blur",
+            "radius": 45
+          }
+        },
+        {
+          "id": "L0Dhwu",
+          "type": "ref",
+          "ref": "C3Yb1Q",
+          "name": "Media Card (Playing, Dark)"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "CMVAl",
+      "x": 11800,
+      "y": 840,
+      "name": "Media Card / Paused / Light",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 560,
+      "height": 720,
+      "fill": {
+        "type": "gradient",
+        "gradientType": "linear",
+        "enabled": true,
+        "rotation": 135,
+        "size": {
+          "height": 1
+        },
+        "colors": [
+          {
+            "color": "#FFD3BF",
+            "position": 0
+          },
+          {
+            "color": "#F5C8F0",
+            "position": 0.5
+          },
+          {
+            "color": "#BBD9FF",
+            "position": 1
+          }
+        ]
+      },
+      "layout": "vertical",
+      "justifyContent": "center",
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "ellipse",
+          "id": "Xgjk0",
+          "layoutPosition": "absolute",
+          "x": -80,
+          "y": -60,
+          "name": "Blob Orange",
+          "opacity": 0.75,
+          "fill": "#FF9F5A",
+          "width": 320,
+          "height": 320,
+          "effect": {
+            "type": "blur",
+            "radius": 40
+          }
+        },
+        {
+          "type": "ellipse",
+          "id": "ZYpN6",
+          "layoutPosition": "absolute",
+          "x": 330,
+          "y": 430,
+          "name": "Blob Blue",
+          "opacity": 0.7,
+          "fill": "#5AA9FF",
+          "width": 360,
+          "height": 360,
+          "effect": {
+            "type": "blur",
+            "radius": 50
+          }
+        },
+        {
+          "type": "ellipse",
+          "id": "tgr4s",
+          "layoutPosition": "absolute",
+          "x": 300,
+          "y": 40,
+          "name": "Blob Pink",
+          "opacity": 0.55,
+          "fill": "#FF7AB6",
+          "width": 220,
+          "height": 220,
+          "effect": {
+            "type": "blur",
+            "radius": 40
+          }
+        },
+        {
+          "id": "S98Te",
+          "type": "ref",
+          "ref": "C3Yb1Q",
+          "name": "Media Card (Paused, Light)",
+          "descendants": {
+            "VK1Wr": {
+              "icon": "pause",
+              "fill": "$text-secondary"
+            },
+            "P11AQ": {
+              "content": "一時停止中",
+              "fill": "$text-secondary"
+            },
+            "VUgBr": {
+              "icon": "play"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "uo5MK",
+      "x": 12480,
+      "y": 840,
+      "name": "Media Card / Paused / Dark",
+      "theme": {
+        "mode": "dark"
+      },
+      "clip": true,
+      "width": 560,
+      "height": 720,
+      "fill": {
+        "type": "gradient",
+        "gradientType": "linear",
+        "enabled": true,
+        "rotation": 135,
+        "size": {
+          "height": 1
+        },
+        "colors": [
+          {
+            "color": "#1B1F3A",
+            "position": 0
+          },
+          {
+            "color": "#2A1B45",
+            "position": 0.5
+          },
+          {
+            "color": "#0E1A2E",
+            "position": 1
+          }
+        ]
+      },
+      "layout": "vertical",
+      "justifyContent": "center",
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "ellipse",
+          "id": "SefBX",
+          "layoutPosition": "absolute",
+          "x": -90,
+          "y": -70,
+          "name": "Blob Violet",
+          "opacity": 0.6,
+          "fill": "#7B4DFF",
+          "width": 340,
+          "height": 340,
+          "effect": {
+            "type": "blur",
+            "radius": 50
+          }
+        },
+        {
+          "type": "ellipse",
+          "id": "GK2HN",
+          "layoutPosition": "absolute",
+          "x": 320,
+          "y": 440,
+          "name": "Blob Teal",
+          "opacity": 0.55,
+          "fill": "#1FA0C8",
+          "width": 380,
+          "height": 380,
+          "effect": {
+            "type": "blur",
+            "radius": 60
+          }
+        },
+        {
+          "type": "ellipse",
+          "id": "H5cCv3",
+          "layoutPosition": "absolute",
+          "x": 300,
+          "y": 60,
+          "name": "Blob Amber",
+          "opacity": 0.45,
+          "fill": "#FF7A3D",
+          "width": 220,
+          "height": 220,
+          "effect": {
+            "type": "blur",
+            "radius": 45
+          }
+        },
+        {
+          "id": "a1SWg",
+          "type": "ref",
+          "ref": "C3Yb1Q",
+          "name": "Media Card (Paused, Dark)",
+          "descendants": {
+            "VK1Wr": {
+              "icon": "pause",
+              "fill": "$text-secondary"
+            },
+            "P11AQ": {
+              "content": "一時停止中",
+              "fill": "$text-secondary"
+            },
+            "VUgBr": {
+              "icon": "play"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "krxEG",
+      "x": 11800,
+      "y": 1680,
+      "name": "Media Card / Idle / Light",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 560,
+      "height": 720,
+      "fill": {
+        "type": "gradient",
+        "gradientType": "linear",
+        "enabled": true,
+        "rotation": 135,
+        "size": {
+          "height": 1
+        },
+        "colors": [
+          {
+            "color": "#FFD3BF",
+            "position": 0
+          },
+          {
+            "color": "#F5C8F0",
+            "position": 0.5
+          },
+          {
+            "color": "#BBD9FF",
+            "position": 1
+          }
+        ]
+      },
+      "layout": "vertical",
+      "justifyContent": "center",
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "ellipse",
+          "id": "F3578K",
+          "layoutPosition": "absolute",
+          "x": -80,
+          "y": -60,
+          "name": "Blob Orange",
+          "opacity": 0.75,
+          "fill": "#FF9F5A",
+          "width": 320,
+          "height": 320,
+          "effect": {
+            "type": "blur",
+            "radius": 40
+          }
+        },
+        {
+          "type": "ellipse",
+          "id": "JDeuZ",
+          "layoutPosition": "absolute",
+          "x": 330,
+          "y": 430,
+          "name": "Blob Blue",
+          "opacity": 0.7,
+          "fill": "#5AA9FF",
+          "width": 360,
+          "height": 360,
+          "effect": {
+            "type": "blur",
+            "radius": 50
+          }
+        },
+        {
+          "type": "ellipse",
+          "id": "b5TGD",
+          "layoutPosition": "absolute",
+          "x": 300,
+          "y": 40,
+          "name": "Blob Pink",
+          "opacity": 0.55,
+          "fill": "#FF7AB6",
+          "width": 220,
+          "height": 220,
+          "effect": {
+            "type": "blur",
+            "radius": 40
+          }
+        },
+        {
+          "id": "FFlRq",
+          "type": "ref",
+          "ref": "C3Yb1Q",
+          "name": "Media Card (Idle, Light)",
+          "descendants": {
+            "HDuKw": {
+              "fill": "$track-bg",
+              "stroke": "$glass-stroke",
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "$glass-inner",
+                "offset": {
+                  "x": 0,
+                  "y": 1
+                },
+                "blur": 1
+              }
+            },
+            "rH5AC": {
+              "enabled": true
+            },
+            "FR9Ax": {
+              "content": "再生していません"
+            },
+            "DMbmA": {
+              "content": "待機中"
+            },
+            "LY2sW": {
+              "enabled": false
+            },
+            "Wuegp": {
+              "opacity": 0.35
+            },
+            "KTJdZ": {
+              "width": 1
+            },
+            "G9hSAI": {
+              "content": "0:00"
+            },
+            "iBvzh": {
+              "content": "−0:00"
+            },
+            "LPU1R": {
+              "opacity": 0.4
+            },
+            "lYf3g": {
+              "opacity": 0.4
+            },
+            "VUgBr": {
+              "icon": "play",
+              "fill": "$text-secondary"
+            },
+            "X4jRz": {
+              "opacity": 0.4
+            },
+            "rI3jq": {
+              "opacity": 0.4
+            },
+            "X9NcYW": {
+              "opacity": 0.5
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "qzd9N",
+      "x": 12480,
+      "y": 1680,
+      "name": "Media Card / Idle / Dark",
+      "theme": {
+        "mode": "dark"
+      },
+      "clip": true,
+      "width": 560,
+      "height": 720,
+      "fill": {
+        "type": "gradient",
+        "gradientType": "linear",
+        "enabled": true,
+        "rotation": 135,
+        "size": {
+          "height": 1
+        },
+        "colors": [
+          {
+            "color": "#1B1F3A",
+            "position": 0
+          },
+          {
+            "color": "#2A1B45",
+            "position": 0.5
+          },
+          {
+            "color": "#0E1A2E",
+            "position": 1
+          }
+        ]
+      },
+      "layout": "vertical",
+      "justifyContent": "center",
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "ellipse",
+          "id": "nYaSj",
+          "layoutPosition": "absolute",
+          "x": -90,
+          "y": -70,
+          "name": "Blob Violet",
+          "opacity": 0.6,
+          "fill": "#7B4DFF",
+          "width": 340,
+          "height": 340,
+          "effect": {
+            "type": "blur",
+            "radius": 50
+          }
+        },
+        {
+          "type": "ellipse",
+          "id": "B1KJB",
+          "layoutPosition": "absolute",
+          "x": 320,
+          "y": 440,
+          "name": "Blob Teal",
+          "opacity": 0.55,
+          "fill": "#1FA0C8",
+          "width": 380,
+          "height": 380,
+          "effect": {
+            "type": "blur",
+            "radius": 60
+          }
+        },
+        {
+          "type": "ellipse",
+          "id": "BoLyy",
+          "layoutPosition": "absolute",
+          "x": 300,
+          "y": 60,
+          "name": "Blob Amber",
+          "opacity": 0.45,
+          "fill": "#FF7A3D",
+          "width": 220,
+          "height": 220,
+          "effect": {
+            "type": "blur",
+            "radius": 45
+          }
+        },
+        {
+          "id": "Q8wAs8",
+          "type": "ref",
+          "ref": "C3Yb1Q",
+          "name": "Media Card (Idle, Dark)",
+          "descendants": {
+            "HDuKw": {
+              "fill": "$track-bg",
+              "stroke": "$glass-stroke",
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "$glass-inner",
+                "offset": {
+                  "x": 0,
+                  "y": 1
+                },
+                "blur": 1
+              }
+            },
+            "rH5AC": {
+              "enabled": true
+            },
+            "FR9Ax": {
+              "content": "再生していません"
+            },
+            "DMbmA": {
+              "content": "待機中"
+            },
+            "LY2sW": {
+              "enabled": false
+            },
+            "Wuegp": {
+              "opacity": 0.35
+            },
+            "KTJdZ": {
+              "width": 1
+            },
+            "G9hSAI": {
+              "content": "0:00"
+            },
+            "iBvzh": {
+              "content": "−0:00"
+            },
+            "LPU1R": {
+              "opacity": 0.4
+            },
+            "lYf3g": {
+              "opacity": 0.4
+            },
+            "VUgBr": {
+              "icon": "play",
+              "fill": "$text-secondary"
+            },
+            "X4jRz": {
+              "opacity": 0.4
+            },
+            "rI3jq": {
+              "opacity": 0.4
+            },
+            "X9NcYW": {
+              "opacity": 0.5
             }
           }
         }
