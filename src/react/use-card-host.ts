@@ -1,5 +1,6 @@
 import { useLayoutEffect } from "react";
 import type { BaseCardConfig, HomeAssistant } from "../types";
+import { resolveRefraction } from "./platform";
 
 /** Keep Home Assistant theme/config state on the custom-element host for shadow CSS. */
 export function useCardHost(
@@ -10,7 +11,7 @@ export function useCardHost(
   const isDark =
     config.theme === "dark" ||
     (config.theme !== "light" && Boolean(hass?.themes?.darkMode));
-  const refraction = config.refraction !== false;
+  const refraction = resolveRefraction(config.refraction);
 
   useLayoutEffect(() => {
     host.toggleAttribute("dark", isDark);

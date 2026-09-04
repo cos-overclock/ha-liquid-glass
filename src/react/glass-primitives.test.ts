@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { opticsFor } from "./glass-primitives";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { glassSurfaceStyles, LiquidGlassSurface, opticsFor } from "./glass-primitives";
 
 describe("Liquid Glass optical presets", () => {
   it("uses stronger, clearer optics for clear glass", () => {
@@ -36,5 +38,34 @@ describe("Liquid Glass optical presets", () => {
       bend: 0,
     });
     expect(flat.frost).toBeGreaterThan(0);
+  });
+
+  it("does not mount the filter engine when refraction is off", () => {
+    const markup = renderToStaticMarkup(
+      createElement(LiquidGlassSurface, { refraction: false, className: "card" }, "content"),
+    );
+
+    expect(markup).toContain("data-lg-static-glass");
+    expect(markup).not.toContain("data-liquid-glass");
+    expect(markup).not.toContain("data-lg-refraction-source");
+  });
+
+  it("gives the lightweight surface a layered glass appearance without filters", () => {
+    const staticRuleStart = glassSurfaceStyles.indexOf(
+      '.lg-liquid-surface[data-lg-static-glass=""] {',
+    );
+    const staticRuleEnd = glassSurfaceStyles.indexOf("\n  }", staticRuleStart);
+    const staticRule = glassSurfaceStyles.slice(staticRuleStart, staticRuleEnd);
+
+    expect(staticRule).toContain("radial-gradient");
+    expect(staticRule).toContain("linear-gradient");
+    expect(staticRule).toContain("inset 1px 1px 0");
+    expect(staticRule).not.toContain("backdrop-filter");
+    expect(staticRule).not.toMatch(/(?:^|[;{\s])filter\s*:/);
+  });
+
+  it("uses a smaller displacement map for enabled surfaces", () => {
+    expect(opticsFor(true, "regular", "card").mapSize).toBe(256);
+    expect(opticsFor(true, "clear", "control").mapSize).toBe(256);
   });
 });

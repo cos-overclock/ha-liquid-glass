@@ -144,6 +144,8 @@ describe("liquid-glass-lock-card", () => {
     expect(element.shadowRoot?.querySelector(".slide")?.classList.contains("disabled")).toBe(true);
     expect(element.shadowRoot?.querySelector(".hint")?.textContent).toContain("操作できません");
     expect(element.hasAttribute("refraction")).toBe(false);
+    expect(element.shadowRoot?.querySelectorAll("[data-lg-static-glass]").length).toBeGreaterThanOrEqual(2);
+    expect(element.shadowRoot?.querySelector("[data-liquid-glass]")).toBeNull();
     expect(callService).not.toHaveBeenCalled();
   });
 });

@@ -192,8 +192,8 @@ const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}${glassS
   .track-wrap {
     position: relative;
     --lg-slider-height: var(--lg-track-h, 44px);
-    --lg-slider-bar-height: var(--lg-bar-h, 12px);
-    --lg-slider-knob-size: var(--lg-knob-size, 32px);
+    --lg-slider-bar-height: var(--lg-bar-h, 6px);
+    --lg-slider-knob-size: var(--lg-knob-size, 22px);
     --lg-slider-fill: linear-gradient(90deg, var(--fill-from), var(--fill-to));
   }
   @supports (container-type: inline-size) {
@@ -201,8 +201,8 @@ const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}${glassS
       --lg-sv: clamp(20px, 7.4cqi, 28px);
       --lg-sv-unit: clamp(11px, 3.9cqi, 15px);
       --lg-track-h: clamp(34px, 11.6cqi, 44px);
-      --lg-bar-h: clamp(8px, 3.2cqi, 12px);
-      --lg-knob-size: clamp(24px, 8.4cqi, 32px);
+      --lg-bar-h: clamp(5px, 1.6cqi, 6px);
+      --lg-knob-size: clamp(18px, 5.8cqi, 22px);
     }
   }
 `;
@@ -214,7 +214,7 @@ function settled(spec: SliderSpec, pending: number | undefined): boolean {
 }
 
 function SliderCard({ config, hass, host }: ReactCardProps<SliderCardConfig>) {
-  const { refraction } = useCardHost(host, config, hass);
+  const { isDark, refraction } = useCardHost(host, config, hass);
   const [preview, setPreview] = useState<number>();
   const [pending, setPending] = useState<number>();
   const pendingTimer = useRef<number | undefined>(undefined);
@@ -339,6 +339,7 @@ function SliderCard({ config, hass, host }: ReactCardProps<SliderCardConfig>) {
           disabled={!spec.call}
           refraction={refraction}
           glassVariant={config.glass_variant}
+          scheme={isDark ? "dark" : "light"}
           showFill={!zero}
           ticks={tickCount}
           label={config.name ?? friendlyName(entity, config.entity ?? "")}

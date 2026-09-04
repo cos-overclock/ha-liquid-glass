@@ -1,10 +1,14 @@
-import { Glass, type GlassOptics, type GlassProps } from "@samasante/liquid-glass";
-import { createElement, type ReactNode } from "react";
+import { Glass, type GlassOptics } from "@samasante/liquid-glass";
+import { createElement, type HTMLAttributes, type ReactNode } from "react";
+import { isEmbeddedCompanionWebView } from "./platform";
 
 type GlassVariant = "regular" | "clear";
-type GlassSurface = "card" | "compact" | "control" | "slider";
+type GlassSurface = "card" | "compact" | "control";
 
 const regularCardOptics: Partial<GlassOptics> = {
+  // The dependency defaults to a 512px displacement map per surface. A 256px
+  // map cuts its CPU work and backing memory by 75% without changing geometry.
+  mapSize: 256,
   strength: 0.035,
   // A panel bends light at its rim and stays flat in the middle.
   depth: 0.22,
@@ -70,47 +74,6 @@ const clearControlOptics: Partial<GlassOptics> = {
   saturate: 1.45,
 };
 
-/*
- * A switch knob is glass all the time, so `regularControlOptics`' whole-body dome
- * (depth 0.88) and 4px frost read fine at rest. A slider thumb needs to dissolve
- * from a solid pill into that glass, and a foggy dome never sells "transparent" —
- * so it gets its own preset: no frost, and a shallow `depth` that keeps the bend to
- * a thin rim (paired with `unstable_lens.tintOpacity` fading the pill away).
- */
-const sliderControlOptics: Partial<GlassOptics> = {
-  strength: 0.12,
-  depth: 0.2,
-  curvature: 0.55,
-  // Dispersion has to stay off here too (see regularCardOptics above): the
-  // sourceBackground gradient this knob refracts is deliberately translucent
-  // (a soft radial highlight), and dispersion sums that alpha three times —
-  // which is what was reading as a dark/blackish veil over the whole knob.
-  dispersion: 0,
-  scaleX: 0.06,
-  scaleY: 0.06,
-  splay: 0.5,
-  bend: 0.1,
-  bendWidth: 0.05,
-  frost: 0,
-  saturate: 1.3,
-  brightness: 0.06,
-  specular: 1.5,
-  sheenAngle: 45,
-  glow: 0.4,
-  glowSpread: 0.5,
-  glowFalloff: 1.5,
-  sheen: 0,
-  sheenWidth: 3,
-  sheenFalloff: 1.5,
-};
-
-const clearSliderControlOptics: Partial<GlassOptics> = {
-  ...sliderControlOptics,
-  strength: 0.14,
-  curvature: 0.62,
-  saturate: 1.45,
-};
-
 const flat = (optics: Partial<GlassOptics>): Partial<GlassOptics> => ({
   ...optics,
   strength: 0,
@@ -126,13 +89,11 @@ const opticPresets = {
     card: regularCardOptics,
     compact: regularCardOptics,
     control: regularControlOptics,
-    slider: sliderControlOptics,
   },
   clear: {
     card: clearCardOptics,
     compact: clearCardOptics,
     control: clearControlOptics,
-    slider: clearSliderControlOptics,
   },
 } as const;
 
@@ -148,15 +109,57 @@ export function opticsFor(
 
 export const glassSurfaceStyles = `
   .lg-liquid-surface {
+    --lg-surface-tint: var(--lg-glass-tint);
+    --lg-surface-tint-alpha: var(--lg-glass-tint-alpha);
     isolation: isolate;
-    background: rgba(var(--lg-glass-tint), var(--lg-glass-tint-alpha));
+    background: rgba(var(--lg-surface-tint), var(--lg-surface-tint-alpha));
+  }
+  /*
+   * Filter-free glass for embedded WebViews. Static lighting across the face and
+   * asymmetric inner edges suggest a curved lens without asking the compositor
+   * for backdrop blur, SVG displacement, canvas maps or per-frame updates.
+  */
+  .lg-liquid-surface[data-lg-static-glass=""] {
+    overflow: hidden;
+    background:
+      radial-gradient(135% 105% at 8% -14%, var(--lg-static-glass-highlight) 0%, transparent 47%),
+      radial-gradient(95% 100% at 104% 112%, var(--lg-static-glass-lowlight) 0%, transparent 66%),
+      linear-gradient(132deg, var(--lg-static-glass-sheen) 0%, transparent 38%),
+      rgba(var(--lg-surface-tint), var(--lg-surface-tint-alpha));
+    box-shadow:
+      0 10px 26px -8px var(--lg-shadow-glass),
+      0 1px 1px var(--lg-glass-inner),
+      inset 1px 1px 0 var(--lg-glass-stroke),
+      inset -1px -1px 0 var(--lg-static-glass-lowlight),
+      inset 0 12px 24px -24px var(--lg-static-glass-highlight);
+  }
+  .lg-liquid-surface[data-lg-static-glass=""].lg-liquid-compact {
+    box-shadow:
+      0 3px 10px -3px var(--lg-shadow-glass),
+      inset 1px 1px 0 var(--lg-glass-stroke),
+      inset -1px -1px 0 var(--lg-static-glass-lowlight);
+  }
+  .lg-liquid-surface[data-lg-static-glass=""].lg-liquid-control {
+    box-shadow:
+      0 5px 14px rgba(0, 0, 0, 0.32),
+      inset 1px 1px 0 var(--lg-glass-stroke),
+      inset -1px -1px 0 var(--lg-static-glass-lowlight),
+      inset 0 10px 16px -16px var(--lg-static-glass-highlight);
+  }
+  .lg-liquid-surface[data-lg-static-glass=""].active {
+    box-shadow:
+      0 10px 26px -8px var(--lg-shadow-glass),
+      inset 1px 1px 0 var(--lg-glass-stroke-active),
+      inset -1px -1px 0 var(--lg-static-glass-lowlight),
+      inset 0 12px 24px -24px var(--lg-static-glass-highlight);
   }
   .lg-liquid-card {
     box-shadow: 0 10px 26px -8px var(--lg-shadow-glass);
   }
   /* A card that is its own switch reads brighter while the entity is on. */
   .lg-liquid-surface.active {
-    background: rgba(var(--lg-glass-tint-active), var(--lg-glass-tint-active-alpha));
+    --lg-surface-tint: var(--lg-glass-tint-active);
+    --lg-surface-tint-alpha: var(--lg-glass-tint-active-alpha);
   }
   .lg-liquid-card.active {
     box-shadow:
@@ -233,7 +236,7 @@ export const glassSurfaceStyles = `
   }
 `;
 
-interface LiquidGlassSurfaceProps extends Omit<GlassProps, "behind" | "filterResolution" | "optics" | "refract"> {
+interface LiquidGlassSurfaceProps extends HTMLAttributes<HTMLDivElement> {
   refraction: boolean;
   variant?: GlassVariant;
   surface?: GlassSurface;
@@ -269,6 +272,17 @@ export function LiquidGlassSurface({
   ) : undefined;
   const surfaceClass = `lg-liquid-surface lg-liquid-${surface}${className ? ` ${className}` : ""}`;
 
+  // Do not mount <Glass> here: even with zero displacement it creates a canvas,
+  // a displacement map and an SVG/backdrop filter. The tint and rim CSS above
+  // retain the material appearance at a fraction of the mobile rendering cost.
+  if (!refraction) {
+    return (
+      <div {...props} className={surfaceClass} data-lg-static-glass="">
+        {children}
+      </div>
+    );
+  }
+
   return (
     <Glass
       {...props}
@@ -276,7 +290,7 @@ export function LiquidGlassSurface({
       optics={opticsFor(refraction, variant, surface)}
       refract={source}
       behind="var(--primary-background-color, transparent)"
-      filterResolution={refraction ? 2 : undefined}
+      filterResolution={isEmbeddedCompanionWebView() ? 1 : 2}
     >
       {children}
     </Glass>

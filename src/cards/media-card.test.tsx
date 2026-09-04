@@ -74,7 +74,7 @@ describe("liquid-glass-media-card", () => {
     expect(customElements.get("liquid-glass-media-card")).toBe(LiquidGlassMediaCard);
   });
 
-  it("shows what is playing and seeks on the bare progress bar", async () => {
+  it("shows what is playing and seeks with the shared glass slider", async () => {
     const callService = vi.fn<HomeAssistant["callService"]>(async () => undefined);
     const target = player("playing");
     const element = document.createElement("liquid-glass-media-card") as CardElement;
@@ -85,8 +85,7 @@ describe("liquid-glass-media-card", () => {
     const root = element.shadowRoot!;
     expect(root.querySelector(".name")?.textContent).toBe("Midnight City");
     expect(root.querySelector(".times span")?.textContent).toBe("1:00");
-    // The seek bar has no thumb, so the whole width maps to the track.
-    expect(root.querySelector(".progress .slider-knob-cap")).toBeNull();
+    expect(root.querySelector(".progress .slider-knob.moving")).toBeTruthy();
     expect(element.getCardSize()).toBe(4);
 
     const track = mockTrack(root.querySelector<HTMLElement>(".progress .slider-track")!);

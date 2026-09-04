@@ -42,7 +42,7 @@ export interface BaseCardConfig {
   entity?: string;
   name?: string;
   icon?: string;
-  /** "auto" | true | false: enable refraction (cross-browser on React cards). */
+  /** "auto" | true | false: auto disables costly refraction in embedded WebViews. */
   refraction?: "auto" | boolean;
   /** Force theme: "auto" | "light" | "dark". */
   theme?: "auto" | "light" | "dark";

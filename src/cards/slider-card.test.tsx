@@ -50,7 +50,12 @@ function createHass(target: HassEntity, callService: HomeAssistant["callService"
 
 function mockTrack(element: SliderElement): HTMLElement {
   const track = element.shadowRoot?.querySelector<HTMLElement>(".slider-track");
+  const slider = element.shadowRoot?.querySelector<HTMLElement>(".lg-react-slider");
   expect(track).toBeTruthy();
+  expect(slider).toBeTruthy();
+  Object.defineProperty(slider, "getBoundingClientRect", {
+    value: () => ({ left: 0, width: 300, right: 300, top: 0, bottom: 44, height: 44, x: 0, y: 0, toJSON: () => ({}) }),
+  });
   Object.defineProperty(track, "getBoundingClientRect", {
     value: () => ({ left: 0, width: 300, right: 300, top: 0, bottom: 56, height: 56, x: 0, y: 0, toJSON: () => ({}) }),
   });
@@ -111,14 +116,35 @@ describe("liquid-glass-slider-card", () => {
 
     const track = mockTrack(element);
     const slider = element.shadowRoot?.querySelector(".lg-react-slider");
+    const styles = element.shadowRoot?.querySelector("style")?.textContent ?? "";
     // The knob reads as an opaque pill until it moves, then the glass tint fades away.
     expect(element.shadowRoot?.querySelector(".slider-knob")).toBeTruthy();
+    expect(element.shadowRoot?.querySelector(".slider-refraction-bar .slider-fill")).toBeTruthy();
+    // The refracted copy is a sibling of the visible track, so its fill variables must
+    // live on their shared slider root or the copied fill becomes an invalid grey layer.
+    expect(styles).toMatch(/\.lg-react-slider\s*\{[^}]*--lg-effective-thumb-width/s);
     expect(slider?.classList.contains("active")).toBe(false);
 
     await act(async () => {
       track.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, button: 0, clientX: 223 }));
     });
     expect(slider?.classList.contains("active")).toBe(true);
+    expect((element.shadowRoot?.querySelector(".slider-glass") as HTMLElement).style.width).toBe("352px");
+    expect((element.shadowRoot?.querySelector(".slider-knob.moving") as HTMLElement).style.transform)
+      .toBe("translateX(212px)");
+
+    await act(async () => {
+      track.dispatchEvent(new MouseEvent("pointermove", { bubbles: true, button: 0, clientX: 500 }));
+    });
+    const overdrag = Number.parseFloat(
+      (element.shadowRoot?.querySelector(".slider-knob.moving") as HTMLElement).style.transform.match(/[-\d.]+/)?.[0] ?? "0",
+    );
+    expect(overdrag).toBeGreaterThan(278);
+    expect(overdrag).toBeLessThan(293);
+
+    await act(async () => {
+      track.dispatchEvent(new MouseEvent("pointermove", { bubbles: true, button: 0, clientX: 223 }));
+    });
 
     await act(async () => {
       track.dispatchEvent(new MouseEvent("pointerup", { bubbles: true, button: 0, clientX: 223 }));
@@ -161,5 +187,23 @@ describe("liquid-glass-slider-card", () => {
       entity_id: sensor.entity_id,
       level: 100,
     });
+  });
+
+  it("uses the filter-free slider and card surfaces when refraction is disabled", async () => {
+    const fan = entity("fan", "on", { percentage: 40, percentage_step: 10 });
+    const element = document.createElement("liquid-glass-slider-card") as SliderElement;
+    element.setConfig({
+      type: "custom:liquid-glass-slider-card",
+      entity: fan.entity_id,
+      refraction: false,
+    });
+    element.hass = createHass(fan, async () => undefined);
+
+    await act(async () => document.body.append(element));
+    expect(element.shadowRoot?.querySelector(".card")?.getAttribute("data-lg-static-glass")).toBe("");
+    expect(element.shadowRoot?.querySelector(".slider-track")).toBeTruthy();
+    expect(element.shadowRoot?.querySelector(".slider-knob.moving.static")).toBeTruthy();
+    expect(element.shadowRoot?.querySelector(".slider-glass")).toBeNull();
+    expect(element.shadowRoot?.querySelector("[data-liquid-glass]")).toBeNull();
   });
 });

@@ -161,7 +161,7 @@ function hexToRgbTuple(hex: string): [number, number, number] {
  * shown are derived from the entity's supported_color_modes.
  */
 function LightCard({ config, hass, host }: ReactCardProps<LightCardConfig>) {
-  const { refraction } = useCardHost(host, config, hass);
+  const { isDark, refraction } = useCardHost(host, config, hass);
   const t = createTranslator(config.language ?? hass?.locale?.language ?? hass?.language);
   const [uiMode, setUiMode] = useState<ColorUiMode>();
   const [preview, setPreview] = useState<{ brightness?: number; kelvin?: number; hue?: number; sat?: number }>({});
@@ -315,6 +315,7 @@ function LightCard({ config, hass, host }: ReactCardProps<LightCardConfig>) {
             showFill={on}
             refraction={refraction}
             glassVariant={config.glass_variant}
+            scheme={isDark ? "dark" : "light"}
             label={t("brightness")}
             onInput={(next) => setPreview((current) => ({ ...current, brightness: next }))}
             onChange={(next) => {
@@ -339,6 +340,7 @@ function LightCard({ config, hass, host }: ReactCardProps<LightCardConfig>) {
           showFill={false}
           refraction={refraction}
           glassVariant={config.glass_variant}
+          scheme={isDark ? "dark" : "light"}
           label={t("color_temp")}
           onInput={(next) => setPreview((current) => ({ ...current, kelvin: next }))}
           onChange={(next) => {
@@ -363,6 +365,7 @@ function LightCard({ config, hass, host }: ReactCardProps<LightCardConfig>) {
             showFill={false}
             refraction={refraction}
             glassVariant={config.glass_variant}
+            scheme={isDark ? "dark" : "light"}
             label={t("hue")}
             onInput={(next) => setPreview((current) => ({ ...current, hue: next }))}
             onChange={(next) => {
@@ -388,6 +391,7 @@ function LightCard({ config, hass, host }: ReactCardProps<LightCardConfig>) {
             showFill={false}
             refraction={refraction}
             glassVariant={config.glass_variant}
+            scheme={isDark ? "dark" : "light"}
             label={t("saturation")}
             onInput={(next) => setPreview((current) => ({ ...current, sat: next }))}
             onChange={(next) => {

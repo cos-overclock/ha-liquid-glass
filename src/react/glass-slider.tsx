@@ -1,20 +1,118 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from "react";
-import { animateGlassValue, cubicBezier, glassValue, rubberBand, useLensWobble } from "@samasante/liquid-glass";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+  type PointerEvent,
+} from "react";
+import {
+  Glass,
+  GlassDiv,
+  animateGlassValue,
+  cubicBezier,
+  deriveGlass,
+  glassValue,
+  rubberBand,
+  useLensWobble,
+  type GlassOptics,
+} from "@samasante/liquid-glass";
 import { clamp } from "../utils";
-import { LiquidGlassSurface } from "./glass-primitives";
+import { isEmbeddedCompanionWebView } from "./platform";
 
-/** Fraction of the track's usable travel the thumb can creep past an end while dragging. */
 const RUBBER_OVERSHOOT = 0.05;
-/** How hard that overshoot resists further movement — higher damps sooner. */
 const RUBBER_DAMPENING = 30;
-// Same motion signature as the reference glass slider: a bouncy expand into the
-// lens, a slower ease-out dissolve back to the resting pill. The CSS strings drive
-// the plain DOM transform/box-shadow transitions; the `animateGlassValue` configs
-// drive the lens's own tint fade, which the library updates imperatively per frame.
-const EXPAND_TRANSFORM = "0.27s cubic-bezier(0.34, 1.36, 0.42, 1)";
-const COLLAPSE_TRANSFORM = "0.46s cubic-bezier(0.36, 0, 0.18, 1)";
-const EXPAND_ANIM = { ease: cubicBezier(0.34, 1.36, 0.42, 1), duration: 0.27 };
-const COLLAPSE_ANIM = { ease: cubicBezier(0.36, 0, 0.18, 1), duration: 0.46 };
+export const GLASS_SLIDER_EXPAND_ANIM = { ease: cubicBezier(0.34, 1.36, 0.42, 1), duration: 0.27 };
+export const GLASS_SLIDER_COLLAPSE_ANIM = { ease: cubicBezier(0.36, 0, 0.18, 1), duration: 0.46 };
+
+const SLIDER_BASE: Partial<GlassOptics> = {
+  mapSize: 128,
+  depth: 0.2,
+  dispersion: 0.5,
+  scaleX: 0.06,
+  scaleY: 0.06,
+  clipToShape: true,
+  softEdge: true,
+  curvature: 0.55,
+  splay: 0.5,
+  bend: 0.1,
+  bendWidth: 0.05,
+  frost: 0,
+  brightness: 0.06,
+  specular: 1.5,
+  sheenAngle: 45,
+  sheenDark: false,
+  glow: 0.4,
+  glowSpread: 0.5,
+  glowFalloff: 1.5,
+  sheen: 0,
+  sheenWidth: 3,
+  sheenFalloff: 1.5,
+  edgeShadow: "0 2px 6px rgba(0, 0, 0, 0.16)",
+  edgeInsetShadow: "0 -4px 10px rgba(0, 0, 0, 0.12)",
+};
+
+const SLIDER_DARK: Partial<GlassOptics> = {
+  restEdgeShadow: "0 1.333px 5.333px rgba(0, 0, 0, 0.5)",
+  scaleX: 0.133,
+  scaleY: 0.135,
+  brightness: 0.12,
+  sheenAngle: 45,
+  glowFalloff: 1.5,
+  sheen: 0.5,
+  sheenWidth: 1,
+  sheenFalloff: 1.5,
+};
+
+const SLIDER_LIGHT: Partial<GlassOptics> = {
+  restEdgeShadow: "0 1.333px 5.333px rgba(46, 15, 15, 0.12)",
+  scaleX: 0.1,
+  scaleY: 0.1,
+  brightness: -0.02,
+  sheenAngle: 30,
+  glowFalloff: 2,
+  sheen: 1,
+  sheenWidth: 1,
+  sheenFalloff: 1,
+};
+
+const SLIDER_SAFARI: Partial<GlassOptics> = { scaleY: 0.25 };
+
+const useIsSafari = (): boolean => {
+  const [safari, setSafari] = useState(false);
+  useEffect(() => {
+    setSafari(
+      typeof navigator !== "undefined"
+      && /^((?!chrome|chromium|android).)*safari/i.test(navigator.userAgent),
+    );
+  }, []);
+  return safari;
+};
+
+/** The reference slider's light/dark/Safari lens recipe, shared by linear and dial controls. */
+export function useGlassSliderOptics(
+  refraction: boolean,
+  scheme: "light" | "dark",
+): Partial<GlassOptics> {
+  const isSafari = useIsSafari();
+  return useMemo(() => ({
+    ...SLIDER_BASE,
+    ...(scheme === "dark" ? SLIDER_DARK : SLIDER_LIGHT),
+    ...(isSafari ? SLIDER_SAFARI : null),
+    ...(refraction ? null : {
+      strength: 0,
+      scaleX: 0,
+      scaleY: 0,
+      curvature: 0,
+      dispersion: 0,
+      bend: 0,
+    }),
+    sheenDark: scheme === "light",
+  }), [isSafari, refraction, scheme]);
+}
 
 /** Which handle a change came from. A single-value slider always reports "low". */
 export type SliderHandle = "low" | "high";
@@ -28,16 +126,15 @@ export interface GlassSliderProps {
   step: number;
   disabled?: boolean;
   refraction: boolean;
+  /** Retained for card API compatibility; the reference slider owns its lens recipe. */
   glassVariant?: "regular" | "clear";
+  scheme?: "light" | "dark";
   showFill?: boolean;
-  /**
-   * Reveal the fill by clipping a full-width layer instead of sizing it. A gradient fill
-   * then keeps its own scale, so the colour under the thumb always means the same value.
-   */
+  /** Keep a full-width gradient stationary and reveal it with a clip. */
   clipFill?: boolean;
-  /** Drop the thumb for a bare progress bar, the way a seek bar reads at rest. */
+  /** A disabled/progress-only control can omit the lens thumb. */
   showKnob?: boolean;
-  /** Fill from this value to the current one instead of from the start, for a tilt. */
+  /** Fill from this value to the current one instead of from the start. */
   fillFrom?: number;
   /** Step marks drawn along the bar. 0 draws none. */
   ticks?: number;
@@ -48,35 +145,48 @@ export interface GlassSliderProps {
 
 export const glassSliderStyles = `
   .lg-react-slider {
+    --lg-effective-slider-height: var(--lg-slider-height, 44px);
+    --lg-effective-bar-height: var(--lg-slider-bar-height, 6px);
+    --lg-effective-thumb-width: var(--lg-slider-thumb-width, var(--lg-slider-knob-size, 22px));
+    --lg-effective-thumb-height: var(--lg-slider-thumb-height, 34px);
+    position: relative;
     display: block;
+    width: 100%;
+    height: var(--lg-slider-height, 44px);
+    overflow: visible;
     touch-action: none;
     user-select: none;
     -webkit-user-select: none;
   }
-  .lg-react-slider.disabled { pointer-events: none; }
-  /*
-   * Apple's slider is a thin capsule with a round thumb riding over it, so the row
-   * height here is only the touch target: the bar and the knob are centred in it.
-   */
+  .lg-react-slider.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .slider-glass {
+    position: absolute !important;
+    overflow: visible !important;
+  }
+  .slider-content,
+  .slider-refraction-content { box-sizing: content-box; }
+  .slider-refraction-content {
+    display: flex;
+    align-items: center;
+  }
   .slider-track {
-    --lg-effective-slider-height: var(--lg-slider-height, 44px);
-    --lg-effective-bar-height: var(--lg-slider-bar-height, 12px);
-    --lg-effective-knob-size: var(--lg-slider-knob-size, 32px);
-    /* A card that paints its own fill also names its ends; the rest get the accent. */
-    --lg-effective-fill-from: var(--fill-from, rgba(255, 255, 255, 0.9));
-    --lg-effective-fill-to: var(--fill-to, var(--lg-accent));
     position: relative;
     width: 100%;
     height: var(--lg-effective-slider-height);
     border-radius: 999px;
     cursor: pointer;
+    touch-action: none;
   }
+  .lg-react-slider.disabled .slider-track { cursor: not-allowed; }
   .slider-track:focus-visible {
     outline: 2px solid var(--lg-cool-deep);
     outline-offset: 2px;
   }
-  /* The bar carries no stroke or drop shadow of its own; it is a flat filled capsule. */
-  .slider-bar {
+  .slider-bar,
+  .slider-refraction-bar {
     position: absolute;
     inset-inline: 0;
     top: calc((var(--lg-effective-slider-height) - var(--lg-effective-bar-height)) / 2);
@@ -84,6 +194,12 @@ export const glassSliderStyles = `
     overflow: hidden;
     border-radius: 999px;
     background: var(--lg-slider-track, var(--lg-slider-bar-bg));
+  }
+  .slider-refraction-bar {
+    position: relative;
+    inset: auto;
+    top: auto;
+    transform-origin: center;
   }
   .slider-fill {
     position: absolute;
@@ -97,10 +213,7 @@ export const glassSliderStyles = `
     inset-inline: 0;
     transition: clip-path 0.35s cubic-bezier(0.3, 0.8, 0.3, 1);
   }
-  .lg-react-slider.active .slider-fill.clipped {
-    transition: none;
-  }
-  /* Where a two-way fill starts from, e.g. the flat position of a tilt. */
+  .lg-react-slider.active .slider-fill.clipped { transition: none; }
   .slider-anchor {
     position: absolute;
     top: 50%;
@@ -112,11 +225,10 @@ export const glassSliderStyles = `
     background: var(--lg-slider-mark);
     pointer-events: none;
   }
-  /* Step marks sit under the knob, spaced between the two positions it can reach. */
   .marks {
     position: absolute;
     inset-block: 0;
-    inset-inline: calc(var(--lg-effective-knob-size) / 2 - 2px);
+    inset-inline: calc(var(--lg-effective-thumb-width) / 2 - 2px);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -129,46 +241,68 @@ export const glassSliderStyles = `
     background: var(--lg-slider-mark);
   }
   .slider-knob {
-    top: calc((var(--lg-effective-slider-height) - var(--lg-effective-knob-size)) / 2);
-    width: var(--lg-effective-knob-size);
-    height: var(--lg-effective-knob-size);
-    border-radius: 50%;
+    position: absolute;
+    top: calc((var(--lg-effective-slider-height) - var(--lg-effective-thumb-height)) / 2);
+    left: 0;
+    width: var(--lg-effective-thumb-width);
+    height: var(--lg-effective-thumb-height);
+    border-radius: 999px;
     pointer-events: none;
-    /* Coefficients match the reference glass slider's lensW/lensH squash-stretch,
-       tuned for a spring-driven wobble that tops out around 0.34, not 0..1. */
-    transform: scaleX(calc(1 - var(--lg-wobble, 0) * 0.2)) scaleY(calc(1 + var(--lg-wobble, 0) * 0.4));
+  }
+  .slider-knob.static {
+    background: var(--lg-knob-solid);
     box-shadow: var(--lg-knob-shadow);
-    transition:
-      left 80ms linear,
-      transform ${COLLAPSE_TRANSFORM},
-      box-shadow ${COLLAPSE_TRANSFORM};
   }
-  /*
-   * Lifting the thumb while it is dragged is what sells it as a floating lens. The
-   * pill-to-glass dissolve itself is the lens's own unstable_lens.tintOpacity
-   * fading out (set in JS, alongside this box-shadow/scale crossfade).
-   */
-  .lg-react-slider.active .slider-knob.moving {
-    box-shadow: var(--lg-knob-shadow-active);
-    transform: scaleX(calc(1.06 - var(--lg-wobble, 0) * 0.2)) scaleY(calc(1.06 + var(--lg-wobble, 0) * 0.4));
-    transition:
-      left 80ms linear,
-      transform ${EXPAND_TRANSFORM},
-      box-shadow ${EXPAND_TRANSFORM};
-  }
-  /* A hidden probe purely for measuring the knob's own (possibly clamp()-responsive) size. */
   .knob-probe {
     position: absolute;
     visibility: hidden;
-    width: var(--lg-effective-knob-size);
-    height: var(--lg-effective-knob-size);
+    width: var(--lg-effective-thumb-width);
+    height: var(--lg-effective-thumb-height);
+    pointer-events: none;
   }
   @media (prefers-reduced-motion: reduce) {
-    .slider-knob { transition-duration: 0.01ms !important; }
+    .slider-fill.clipped { transition-duration: 0.01ms !important; }
   }
 `;
 
-/** Pointer and keyboard accessible slider with a @samasante/liquid-glass thumb. */
+interface Geometry {
+  trackW: number;
+  controlH: number;
+  thumbW: number;
+  thumbH: number;
+  pad: number;
+  fullW: number;
+  fullH: number;
+  travel: number;
+  refractionTrackH: number;
+}
+
+const geometryFor = (trackW: number, controlH: number, thumbW: number, thumbH: number): Geometry => {
+  const travel = Math.max(0, trackW - thumbW);
+  const rubberLimit = trackW * RUBBER_OVERSHOOT;
+  const pad = Math.ceil(0.5 * Math.max(thumbW / 2, thumbH / 2) + rubberLimit) + 2;
+  return {
+    trackW,
+    controlH,
+    thumbW,
+    thumbH,
+    pad,
+    fullW: trackW + 2 * pad,
+    fullH: controlH + 2 * pad,
+    travel,
+    refractionTrackH: Math.round(0.75 * thumbH),
+  };
+};
+
+const DEFAULT_GEOMETRY = geometryFor(240, 44, 22, 34);
+const sameGeometry = (a: Geometry, b: Geometry): boolean =>
+  a.trackW === b.trackW
+  && a.controlH === b.controlH
+  && a.thumbW === b.thumbW
+  && a.thumbH === b.thumbH
+  && a.pad === b.pad;
+
+/** Responsive, range-capable adaptation of the reference GlassSlider example. */
 export function GlassSlider({
   value,
   highValue,
@@ -177,7 +311,7 @@ export function GlassSlider({
   step,
   disabled = false,
   refraction,
-  glassVariant = "regular",
+  scheme = "light",
   showFill = true,
   clipFill = false,
   showKnob = true,
@@ -187,102 +321,235 @@ export function GlassSlider({
   onInput,
   onChange,
 }: GlassSliderProps) {
-  const [drag, setDrag] = useState<{ handle: SliderHandle; value: number; overdragPx: number }>();
-  /** Keeps the glass exposed for a beat after a key press, the way a drag does. */
+  const optics = useGlassSliderOptics(refraction, scheme);
+  const isRange = highValue !== undefined;
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const probeRef = useRef<HTMLDivElement>(null);
+  const pointerIdRef = useRef<number | null>(null);
+  const draggingRef = useRef(false);
+  const startClientXRef = useRef(0);
+  const startThumbXRef = useRef(0);
+  const activeHandleRef = useRef<SliderHandle>("low");
+  const geometryRef = useRef(DEFAULT_GEOMETRY);
+  const valuesRef = useRef({ value, highValue, min, max, step });
+  valuesRef.current = { value, highValue, min, max, step };
+
+  const [geometry, setGeometry] = useState(DEFAULT_GEOMETRY);
+  const [activeHandle, setActiveHandle] = useState<SliderHandle>("low");
+  const [drag, setDrag] = useState<{ handle: SliderHandle; value: number }>();
   const [keyActive, setKeyActive] = useState(false);
   const keyTimer = useRef<number | undefined>(undefined);
-  const trackRef = useRef<HTMLDivElement>(null);
-  const knobRef = useRef<HTMLDivElement>(null);
-  // Velocity-driven squash/stretch spring, same primitive the reference glass
-  // slider uses: `pos` only ever feeds the spring's own velocity sampling.
-  // `tintOpacity` is the lens's own white veil — 1 is the resting solid pill, 0
-  // dissolves it into clear glass, same mechanism as the reference component.
-  const motion = useMemo(() => ({ pos: glassValue(0), stretch: glassValue(0), tintOpacity: glassValue(1) }), []);
+
+  const valueToX = useCallback((raw: number, current = geometryRef.current): number => {
+    const span = valuesRef.current.max - valuesRef.current.min;
+    return span > 0 ? ((raw - valuesRef.current.min) / span) * current.travel : 0;
+  }, []);
+
+  const xToValue = useCallback((x: number, current = geometryRef.current): number => {
+    const { min: lower, max: upper, step: increment } = valuesRef.current;
+    const clampedX = clamp(x, 0, current.travel);
+    const raw = current.travel > 0 ? lower + (clampedX / current.travel) * (upper - lower) : lower;
+    const snapped = increment > 0 ? Math.round((raw - lower) / increment) * increment + lower : raw;
+    return clamp(snapped, lower, upper);
+  }, []);
+
+  const initialValueRef = useRef(value);
+  const motion = useMemo(() => {
+    const initial = DEFAULT_GEOMETRY.travel * clamp(
+      (initialValueRef.current - valuesRef.current.min) / (valuesRef.current.max - valuesRef.current.min || 1),
+      0,
+      1,
+    );
+    const thumbX = glassValue(initial);
+    const surfaceW = glassValue(DEFAULT_GEOMETRY.fullW);
+    const pad = glassValue(DEFAULT_GEOMETRY.pad);
+    const thumbW = glassValue(DEFAULT_GEOMETRY.thumbW);
+    const halfW = glassValue(DEFAULT_GEOMETRY.thumbW / 2);
+    const halfH = glassValue(DEFAULT_GEOMETRY.thumbH / 2);
+    const radius = glassValue(Math.min(DEFAULT_GEOMETRY.thumbW, DEFAULT_GEOMETRY.thumbH) / 2);
+    const tintOpacity = glassValue(1);
+    const trackScaleX = glassValue(0.85);
+    const trackScaleY = glassValue(0.525);
+    const shadowOpacity = glassValue(0);
+    const restShadowOpacity = deriveGlass([shadowOpacity], () => 1 - shadowOpacity.get());
+    const stretch = glassValue(0);
+    const lensX = deriveGlass(
+      [thumbX, surfaceW, pad, thumbW],
+      () => (pad.get() + thumbW.get() / 2 + thumbX.get()) / surfaceW.get(),
+    );
+    const lensW = deriveGlass(
+      [halfW, stretch],
+      () => halfW.get() * (1 - 0.2 * stretch.get()) * 2,
+    );
+    const lensH = deriveGlass(
+      [halfH, stretch],
+      () => halfH.get() * (1 + 0.4 * stretch.get()) * 2,
+    );
+    return {
+      thumbX,
+      surfaceW,
+      pad,
+      thumbW,
+      halfW,
+      halfH,
+      radius,
+      tintOpacity,
+      trackScaleX,
+      trackScaleY,
+      shadowOpacity,
+      restShadowOpacity,
+      stretch,
+      lensX,
+      lensW,
+      lensH,
+    };
+  }, []);
+
   const holdRef = useRef(0);
   const kickWobbleRef = useRef<() => void>(() => {});
-  useLensWobble(motion.pos, motion.stretch, holdRef, kickWobbleRef);
-  const isRange = highValue !== undefined;
-  const low = drag?.handle === "low" ? drag.value : value;
-  const high = drag?.handle === "high" ? drag.value : highValue ?? value;
-  const active = drag !== undefined || keyActive;
-  const span = max - min || 1;
-  const asRatio = (raw: number): number => clamp((raw - min) / span, 0, 1);
-  const lowRatio = asRatio(low);
-  const highRatio = asRatio(high);
-  // The knob is the only thing that travels, so it sets the reachable span.
-  const travel = showKnob ? "(100% - var(--lg-effective-knob-size))" : "100%";
-  /** Distance from the bar's left edge to a handle's centre. */
-  const centre = (ratio: number) =>
-    showKnob ? `calc(var(--lg-effective-knob-size) / 2 + ${travel} * ${ratio})` : `${(ratio * 100).toFixed(3)}%`;
+  const idleWobblePosition = useMemo(() => glassValue(0), []);
+  useLensWobble(refraction ? motion.thumbX : idleWobblePosition, motion.stretch, holdRef, kickWobbleRef);
+
+  const syncGeometry = useCallback(() => {
+    const wrapper = wrapperRef.current;
+    const track = trackRef.current;
+    const probe = probeRef.current;
+    if (!wrapper || !track || !probe) return;
+    const wrapperRect = wrapper.getBoundingClientRect();
+    const trackRect = track.getBoundingClientRect();
+    const probeRect = probe.getBoundingClientRect();
+    const previous = geometryRef.current;
+    const next = geometryFor(
+      wrapperRect.width || trackRect.width || previous.trackW,
+      trackRect.height || previous.controlH,
+      probeRect.width || probe.offsetWidth || previous.thumbW,
+      probeRect.height || probe.offsetHeight || previous.thumbH,
+    );
+    geometryRef.current = next;
+    motion.surfaceW.set(next.fullW);
+    motion.pad.set(next.pad);
+    motion.thumbW.set(next.thumbW);
+    if (!draggingRef.current) {
+      motion.halfW.set(next.thumbW / 2);
+      motion.halfH.set(next.thumbH / 2);
+      motion.radius.set(Math.min(next.thumbW, next.thumbH) / 2);
+      const currentValue = activeHandleRef.current === "high" ? highValue ?? value : value;
+      motion.thumbX.set(valueToX(currentValue, next));
+    }
+    setGeometry((current) => sameGeometry(current, next) ? current : next);
+  }, [highValue, motion, value, valueToX]);
+
+  useLayoutEffect(() => {
+    syncGeometry();
+    if (typeof ResizeObserver === "undefined" || !wrapperRef.current) return;
+    const observer = new ResizeObserver(syncGeometry);
+    observer.observe(wrapperRef.current);
+    return () => observer.disconnect();
+  }, [syncGeometry]);
 
   useEffect(() => {
-    const detach = motion.stretch.on("change", (next) => {
-      const reducedMotion = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
-      if (next === 0 || reducedMotion) trackRef.current?.style.removeProperty("--lg-wobble");
-      else trackRef.current?.style.setProperty("--lg-wobble", next.toFixed(4));
-    });
-    return () => {
-      detach();
-      window.clearTimeout(keyTimer.current);
-    };
-  }, [motion.stretch]);
+    if (draggingRef.current || !showKnob) return;
+    const currentValue = activeHandleRef.current === "high" ? highValue ?? value : value;
+    motion.thumbX.set(valueToX(currentValue));
+  }, [highValue, motion.thumbX, showKnob, value, valueToX]);
 
-  /** Pointer position resolved against the track: the clamped value plus how far
-   *  past an end the finger has dragged, for the rubber-band overshoot. */
-  const resolvePointer = (clientX: number): { value: number; overdragPx: number } => {
-    const rect = trackRef.current?.getBoundingClientRect();
-    if (!rect) return { value, overdragPx: 0 };
-    // The knob centre stops half a knob in from either end, so that is the dead margin.
-    const pad = showKnob ? (knobRef.current?.offsetWidth || rect.height) / 2 : 0;
-    const usable = Math.max(1, rect.width - pad * 2);
-    const rawPx = clientX - rect.left - pad;
-    const pointerRatio = clamp(rawPx / usable, 0, 1);
-    let next = min + pointerRatio * (max - min);
-    if (step > 0) next = Math.round(next / step) * step;
-    const limit = usable * RUBBER_OVERSHOOT;
-    const range = limit * RUBBER_DAMPENING;
-    const overdragPx = rawPx < 0
-      ? -rubberBand(-rawPx, limit, range)
-      : rawPx > usable ? rubberBand(rawPx - usable, limit, range) : 0;
-    return { value: clamp(next, min, max), overdragPx };
-  };
+  useEffect(() => () => {
+    window.clearTimeout(keyTimer.current);
+    const pointerId = pointerIdRef.current;
+    if (pointerId !== null && trackRef.current?.hasPointerCapture?.(pointerId)) {
+      trackRef.current.releasePointerCapture(pointerId);
+    }
+  }, []);
 
-  const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
-    if (disabled || event.button !== 0) return;
-    event.preventDefault();
-    event.currentTarget.setPointerCapture?.(event.pointerId);
-    const { value: next, overdragPx } = resolvePointer(event.clientX);
-    // A range grabs whichever end the pointer landed nearer to, and keeps it for the drag.
-    const handle: SliderHandle = isRange && Math.abs(next - high) < Math.abs(next - low) ? "high" : "low";
-    motion.pos.set(event.clientX);
+  const expand = useCallback(() => {
+    if (!refraction) return;
+    animateGlassValue(motion.halfW, 1.5 * geometryRef.current.thumbW / 2, GLASS_SLIDER_EXPAND_ANIM);
+    animateGlassValue(motion.halfH, 1.5 * geometryRef.current.thumbH / 2, GLASS_SLIDER_EXPAND_ANIM);
+    animateGlassValue(motion.radius, 1.5 * Math.min(geometryRef.current.thumbW, geometryRef.current.thumbH) / 2, GLASS_SLIDER_EXPAND_ANIM);
+    animateGlassValue(motion.tintOpacity, 0, GLASS_SLIDER_EXPAND_ANIM);
+    animateGlassValue(motion.trackScaleX, 0.95, GLASS_SLIDER_EXPAND_ANIM);
+    animateGlassValue(motion.trackScaleY, 0.975, GLASS_SLIDER_EXPAND_ANIM);
+    animateGlassValue(motion.shadowOpacity, 1, GLASS_SLIDER_EXPAND_ANIM);
+  }, [motion, refraction]);
+
+  const collapse = useCallback(() => {
+    if (!refraction) return;
+    animateGlassValue(motion.halfW, geometryRef.current.thumbW / 2, GLASS_SLIDER_COLLAPSE_ANIM);
+    animateGlassValue(motion.halfH, geometryRef.current.thumbH / 2, GLASS_SLIDER_COLLAPSE_ANIM);
+    animateGlassValue(motion.radius, Math.min(geometryRef.current.thumbW, geometryRef.current.thumbH) / 2, GLASS_SLIDER_COLLAPSE_ANIM);
+    animateGlassValue(motion.tintOpacity, 1, GLASS_SLIDER_COLLAPSE_ANIM);
+    animateGlassValue(motion.trackScaleX, 0.85, GLASS_SLIDER_COLLAPSE_ANIM);
+    animateGlassValue(motion.trackScaleY, 0.525, GLASS_SLIDER_COLLAPSE_ANIM);
+    animateGlassValue(motion.shadowOpacity, 0, GLASS_SLIDER_COLLAPSE_ANIM);
+  }, [motion, refraction]);
+
+  const beginInteraction = useCallback(() => {
+    expand();
     holdRef.current = 0.175;
     kickWobbleRef.current();
-    animateGlassValue(motion.tintOpacity, 0, EXPAND_ANIM);
-    setDrag({ handle, value: next, overdragPx });
+  }, [expand]);
+
+  const displayedLow = drag?.handle === "low" ? drag.value : value;
+  const displayedHigh = drag?.handle === "high" ? drag.value : highValue ?? value;
+
+  const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (disabled || !showKnob || event.button !== 0 || pointerIdRef.current !== null) return;
+    event.preventDefault();
+    syncGeometry();
+    pointerIdRef.current = event.pointerId;
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    draggingRef.current = true;
+    event.currentTarget.focus({ preventScroll: true });
+    const rect = event.currentTarget.getBoundingClientRect();
+    const raw = event.clientX - rect.left - geometryRef.current.thumbW / 2;
+    const x = clamp(raw, 0, geometryRef.current.travel);
+    const next = xToValue(x);
+    const handle: SliderHandle = isRange
+      && Math.abs(next - displayedHigh) < Math.abs(next - displayedLow) ? "high" : "low";
+    activeHandleRef.current = handle;
+    setActiveHandle(handle);
+    motion.thumbX.set(x);
+    setDrag({ handle, value: next });
+    startClientXRef.current = event.clientX;
+    startThumbXRef.current = x;
+    beginInteraction();
     onInput(next, handle);
   };
 
   const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
-    if (!drag) return;
-    motion.pos.set(event.clientX);
-    const { value: next, overdragPx } = resolvePointer(event.clientX);
-    if (next !== drag.value) onInput(next, drag.handle);
-    if (next !== drag.value || overdragPx !== drag.overdragPx) setDrag({ ...drag, value: next, overdragPx });
+    if (event.pointerId !== pointerIdRef.current) return;
+    let x = startThumbXRef.current + event.clientX - startClientXRef.current;
+    const rubberLimit = geometryRef.current.trackW * RUBBER_OVERSHOOT;
+    const rubberRange = rubberLimit * RUBBER_DAMPENING;
+    if (x < 0) x = -rubberBand(-x, rubberLimit, rubberRange);
+    else if (x > geometryRef.current.travel) {
+      x = geometryRef.current.travel
+        + rubberBand(x - geometryRef.current.travel, rubberLimit, rubberRange);
+    }
+    motion.thumbX.set(x);
+    const next = xToValue(x);
+    const handle = activeHandleRef.current;
+    setDrag({ handle, value: next });
+    onInput(next, handle);
   };
 
   const finishDrag = (event: PointerEvent<HTMLDivElement>) => {
-    if (!drag) return;
-    const { value: next } = resolvePointer(event.clientX);
-    const handle = drag.handle;
-    setDrag(undefined);
+    if (event.pointerId !== pointerIdRef.current) return;
+    const handle = activeHandleRef.current;
+    const settledX = clamp(motion.thumbX.get(), 0, geometryRef.current.travel);
+    const next = xToValue(settledX);
+    pointerIdRef.current = null;
+    draggingRef.current = false;
     holdRef.current = 0;
-    animateGlassValue(motion.tintOpacity, 1, COLLAPSE_ANIM);
+    setDrag(undefined);
+    animateGlassValue(motion.thumbX, settledX, GLASS_SLIDER_COLLAPSE_ANIM);
+    collapse();
     onChange(next, handle);
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    // A range has two ends and one focus ring; the keys would be ambiguous.
-    if (disabled || isRange) return;
+    if (disabled || !showKnob || isRange) return;
     const increment = step > 0 ? step : (max - min) / 20;
     let next = value;
     if (event.key === "ArrowRight" || event.key === "ArrowUp") next += increment;
@@ -291,99 +558,152 @@ export function GlassSlider({
     else if (event.key === "End") next = max;
     else return;
     event.preventDefault();
+    next = clamp(next, min, max);
+    activeHandleRef.current = "low";
+    setActiveHandle("low");
+    motion.thumbX.set(valueToX(next));
     setKeyActive(true);
-    animateGlassValue(motion.tintOpacity, 0, EXPAND_ANIM);
+    beginInteraction();
     window.clearTimeout(keyTimer.current);
     keyTimer.current = window.setTimeout(() => {
+      holdRef.current = 0;
       setKeyActive(false);
-      animateGlassValue(motion.tintOpacity, 1, COLLAPSE_ANIM);
+      collapse();
     }, 320);
-    onChange(clamp(next, min, max), "low");
+    onChange(next, "low");
   };
 
+  const span = max - min || 1;
+  const asRatio = (raw: number): number => clamp((raw - min) / span, 0, 1);
+  const lowRatio = asRatio(displayedLow);
+  const highRatio = asRatio(displayedHigh);
+  const travelCss = showKnob ? "(100% - var(--lg-effective-thumb-width))" : "100%";
+  const centre = (ratio: number) => showKnob
+    ? `calc(var(--lg-effective-thumb-width) / 2 + ${travelCss} * ${ratio})`
+    : `${(ratio * 100).toFixed(3)}%`;
   const anchor = fillFrom === undefined ? undefined : clamp((fillFrom - min) / span, 0, 1);
-  // Where the fill starts and stops: an anchor, the lower handle, or the bar's own start.
   const from = anchor !== undefined ? Math.min(anchor, highRatio) : isRange ? lowRatio : 0;
   const to = anchor !== undefined ? Math.max(anchor, highRatio) : highRatio;
   const fillStyle: CSSProperties = clipFill
-    ? { clipPath: `inset(0 calc(100% - ${centre(to)}) 0 ${isRange || anchor !== undefined ? centre(from) : "0px"} round 999px)` }
+    ? {
+        clipPath: `inset(0 calc(100% - ${centre(to)}) 0 ${isRange || anchor !== undefined ? centre(from) : "0px"} round 999px)`,
+      }
     : anchor !== undefined || isRange
-      ? {
-          left: centre(from),
-          width: `calc(${travel} * ${to - from})`,
-        }
+      ? { left: centre(from), width: `calc(${travelCss} * ${to - from})` }
       : { width: centre(to) };
-  const knobStyle = (ratio: number, overdragPx = 0): CSSProperties => ({
-    display: "block",
-    position: "absolute",
-    // Glass sizes itself to its content when it has no refraction source, so the
-    // knob has to state its width where the library cannot overrule it.
-    width: "var(--lg-effective-knob-size)",
-    // The dragged handle can creep a rubber-banded amount past either end.
-    left: overdragPx ? `calc(${travel} * ${ratio} + ${overdragPx.toFixed(2)}px)` : `calc(${travel} * ${ratio})`,
-  });
-  // What the thumb has behind it: the card, crossed by the band of bar it covers.
-  const band = (ratio: number) => (!showFill || (ratio <= 0 && !isRange)
-    ? "linear-gradient(var(--lg-slider-bar-bg), var(--lg-slider-bar-bg))"
-    : ratio >= 1
-      ? "linear-gradient(90deg, var(--lg-effective-fill-from), var(--lg-effective-fill-to))"
-      : "linear-gradient(90deg, var(--lg-effective-fill-from) 0%, var(--lg-effective-fill-to) 46%, var(--lg-slider-bar-bg) 54%)");
-  const sourceBackground = (ratio: number) => `${band(ratio)} center / 100% 38% no-repeat,
-    radial-gradient(circle at 30% 18%, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.28))`;
 
   const handles: Array<{ key: SliderHandle; ratio: number }> = isRange
     ? [{ key: "low", ratio: lowRatio }, { key: "high", ratio: highRatio }]
     : [{ key: "low", ratio: highRatio }];
+  const active = drag !== undefined || keyActive;
+
+  const trackContents = (
+    <div
+      ref={trackRef}
+      className="slider-track"
+      role="slider"
+      tabIndex={disabled ? -1 : 0}
+      aria-label={label}
+      aria-valuemin={min}
+      aria-valuemax={max}
+      aria-valuenow={isRange ? undefined : displayedHigh}
+      aria-valuetext={isRange ? `${displayedLow}-${displayedHigh}` : undefined}
+      aria-disabled={disabled}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={finishDrag}
+      onPointerCancel={finishDrag}
+      onKeyDown={onKeyDown}
+      onDragStart={(event) => event.preventDefault()}
+    >
+      <div className="slider-bar">
+        {showFill && <div className={`slider-fill${clipFill ? " clipped" : ""}`} style={fillStyle} />}
+      </div>
+      {anchor !== undefined && <div className="slider-anchor" style={{ left: centre(anchor) }} aria-hidden="true" />}
+      {ticks > 0 && <div className="marks" aria-hidden="true">
+        {Array.from({ length: ticks }, (_, index) => <span key={index} />)}
+      </div>}
+      {showKnob && <div ref={probeRef} className="knob-probe" aria-hidden="true" />}
+      {showKnob && handles
+        .filter(({ key }) => key !== activeHandle)
+        .map(({ key, ratio }) => (
+          <div
+            key={key}
+            className="slider-knob static"
+            style={{ left: `calc(${travelCss} * ${ratio})` }}
+            aria-hidden="true"
+          />
+        ))}
+      {showKnob && (
+        <GlassDiv
+          x={motion.thumbX}
+          className={`slider-knob moving${refraction ? "" : " static"}`}
+          aria-hidden="true"
+        />
+      )}
+    </div>
+  );
+
+  if (!showKnob || !refraction) {
+    return (
+      <div ref={wrapperRef} className={`lg-react-slider${active ? " active" : ""}${disabled ? " disabled" : ""}`}>
+        {trackContents}
+      </div>
+    );
+  }
 
   return (
-    <div className={`lg-react-slider${active ? " active" : ""}${disabled ? " disabled" : ""}`}>
-      <div
-        ref={trackRef}
-        className="slider-track"
-        role="slider"
-        tabIndex={disabled ? -1 : 0}
-        aria-label={label}
-        aria-valuemin={min}
-        aria-valuemax={max}
-        aria-valuenow={isRange ? undefined : high}
-        aria-valuetext={isRange ? `${low}–${high}` : undefined}
-        aria-disabled={disabled}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={finishDrag}
-        onPointerCancel={finishDrag}
-        onKeyDown={onKeyDown}
+    <div ref={wrapperRef} className={`lg-react-slider${active ? " active" : ""}${disabled ? " disabled" : ""}`}>
+      <Glass
+        className="slider-glass"
+        optics={optics}
+        center={{ x: motion.lensX, y: 0.5 }}
+        size={[motion.lensW, motion.lensH]}
+        radius={motion.radius}
+        unstable_lens={{
+          tintColor: "var(--lg-knob-solid)",
+          tintOpacity: motion.tintOpacity,
+          shadowOpacity: motion.shadowOpacity,
+          restShadowOpacity: motion.restShadowOpacity,
+        }}
+        filterResolution={isEmbeddedCompanionWebView() ? 1 : 2}
+        behind={scheme === "dark" ? "#1f1f24" : "#ffffff"}
+        style={{
+          left: -geometry.pad,
+          top: -geometry.pad,
+          width: geometry.fullW,
+          height: geometry.fullH,
+        }}
+        refract={refraction ? (
+          <div
+            className="slider-refraction-content"
+            data-lg-refraction-source="copy"
+            aria-hidden="true"
+            style={{
+              padding: geometry.pad,
+              width: geometry.trackW,
+              height: geometry.controlH,
+            }}
+          >
+            <GlassDiv
+              className="slider-refraction-bar"
+              scaleX={motion.trackScaleX}
+              scaleY={motion.trackScaleY}
+              style={{
+                width: geometry.trackW,
+                height: geometry.refractionTrackH,
+                borderRadius: geometry.refractionTrackH / 2,
+              }}
+            >
+              {showFill && <div className={`slider-fill${clipFill ? " clipped" : ""}`} style={fillStyle} />}
+            </GlassDiv>
+          </div>
+        ) : undefined}
       >
-        <div className="slider-bar">
-          {showFill && <div className={`slider-fill${clipFill ? " clipped" : ""}`} style={fillStyle} />}
+        <div className="slider-content" style={{ padding: geometry.pad }}>
+          {trackContents}
         </div>
-        {anchor !== undefined && <div
-          className="slider-anchor"
-          style={{ left: centre(anchor) }}
-          aria-hidden="true"
-        />}
-        {ticks > 0 && <div className="marks" aria-hidden="true">
-          {Array.from({ length: ticks }, (_, index) => <span key={index} />)}
-        </div>}
-        {showKnob && <div ref={knobRef} className="knob-probe" aria-hidden="true" />}
-        {showKnob && handles.map(({ key, ratio }) => {
-          // Only one handle can be under the finger, so only that one lifts and clears.
-          const moving = drag ? drag.handle === key : !isRange || key === "low";
-          const overdragPx = drag?.handle === key ? drag.overdragPx : 0;
-          return (
-            <LiquidGlassSurface
-              key={key}
-              className={`slider-knob${moving ? " moving" : ""}`}
-              refraction={refraction}
-              variant={glassVariant}
-              surface="slider"
-              sourceBackground={sourceBackground(ratio)}
-              style={knobStyle(ratio, overdragPx)}
-              unstable_lens={{ tintColor: "var(--lg-knob-solid)", tintOpacity: moving ? motion.tintOpacity : 1 }}
-            />
-          );
-        })}
-      </div>
+      </Glass>
     </div>
   );
 }

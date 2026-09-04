@@ -13,6 +13,10 @@ export const tokens = css`
     --lg-glass-tint-alpha: 0.2;
     --lg-glass-stroke: rgba(255, 255, 255, 0.7);
     --lg-glass-inner: rgba(255, 255, 255, 0.5);
+    /* Filter-free glass lighting used by embedded/mobile WebViews. */
+    --lg-static-glass-highlight: rgba(255, 255, 255, 0.5);
+    --lg-static-glass-sheen: rgba(255, 255, 255, 0.2);
+    --lg-static-glass-lowlight: rgba(28, 28, 30, 0.1);
     --lg-track-bg: rgba(255, 255, 255, 0.4);
     /* A slider knob is solid until it is dragged, when the glass under it is revealed. */
     --lg-knob-solid: #ffffff;
@@ -87,6 +91,9 @@ export const tokens = css`
     --lg-glass-tint-alpha: 0.24;
     --lg-glass-stroke: rgba(255, 255, 255, 0.25);
     --lg-glass-inner: rgba(255, 255, 255, 0.12);
+    --lg-static-glass-highlight: rgba(255, 255, 255, 0.18);
+    --lg-static-glass-sheen: rgba(255, 255, 255, 0.09);
+    --lg-static-glass-lowlight: rgba(0, 0, 0, 0.26);
     --lg-track-bg: rgba(255, 255, 255, 0.14);
     --lg-knob-solid: #f2f2f7;
     --lg-knob-solid-rim: rgba(28, 28, 30, 0.12);

@@ -118,10 +118,12 @@ const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}${glassS
     --fill-from: color-mix(in srgb, var(--lg-text-primary) 70%, transparent);
     --fill-to: color-mix(in srgb, var(--lg-text-primary) 82%, transparent);
   }
-  /* A seek bar is a bare capsule; the thumb would only get in the way of the times. */
+  /* The seek bar uses a compact instance of the same glass slider as volume. */
   .progress .lg-react-slider {
     --lg-slider-height: 14px;
-    --lg-slider-bar-height: 7px;
+    --lg-slider-bar-height: 6px;
+    --lg-slider-knob-size: 18px;
+    --lg-slider-thumb-height: 26px;
   }
   .times {
     display: flex;
@@ -193,8 +195,9 @@ const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}${glassS
   .volume .lg-react-slider {
     flex: 1;
     --lg-slider-height: 26px;
-    --lg-slider-bar-height: 8px;
+    --lg-slider-bar-height: 6px;
     --lg-slider-knob-size: 20px;
+    --lg-slider-thumb-height: 30px;
   }
   .dim,
   .fade {
@@ -232,7 +235,7 @@ function position(entity: HassEntity, playing: boolean): { pos: number; duration
  * liquid-glass play button, and a volume slider.
  */
 function MediaCard({ config, hass, host }: ReactCardProps<MediaCardConfig>) {
-  const { refraction } = useCardHost(host, config, hass);
+  const { isDark, refraction } = useCardHost(host, config, hass);
   const t = createTranslator(config.language ?? hass?.locale?.language ?? hass?.language);
   const [, setTick] = useState(0);
   const [seekPreview, setSeekPreview] = useState<number>();
@@ -329,7 +332,7 @@ function MediaCard({ config, hass, host }: ReactCardProps<MediaCardConfig>) {
           disabled={!canSeek}
           refraction={refraction}
           glassVariant={config.glass_variant}
-          showKnob={false}
+          scheme={isDark ? "dark" : "light"}
           label={title}
           onInput={setSeekPreview}
           onChange={(next) => {
@@ -403,6 +406,7 @@ function MediaCard({ config, hass, host }: ReactCardProps<MediaCardConfig>) {
           step={0.01}
           refraction={refraction}
           glassVariant={config.glass_variant}
+          scheme={isDark ? "dark" : "light"}
           label={t("ed_show_volume")}
           onInput={setVolumePreview}
           onChange={(next) => {

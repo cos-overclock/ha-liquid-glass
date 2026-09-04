@@ -97,6 +97,7 @@ export function defineReactCard<C extends BaseCardConfig>(
     private hassValue?: HomeAssistant;
     private root?: Root;
     private readonly mountNode: HTMLDivElement;
+    private renderQueued = false;
 
     constructor() {
       super();
@@ -111,6 +112,7 @@ export function defineReactCard<C extends BaseCardConfig>(
     }
 
     set hass(value: HomeAssistant | undefined) {
+      if (this.hassValue === value) return;
       this.hassValue = value;
       this.requestRender();
     }
@@ -141,16 +143,23 @@ export function defineReactCard<C extends BaseCardConfig>(
     }
 
     requestRender(): void {
-      if (!this.isConnected || !this.configValue) return;
-      this.root ??= createRoot(this.mountNode);
-      const currentDefinition = this.currentDefinition();
-      this.root.render(
-        createElement(currentDefinition.component, {
-          config: this.configValue,
-          hass: this.hassValue,
-          host: this,
-        }),
-      );
+      if (!this.isConnected || !this.configValue || this.renderQueued) return;
+      this.renderQueued = true;
+      // HA may assign config and hass back-to-back. Render only their latest
+      // values once instead of reconciling the full card twice in one task.
+      queueMicrotask(() => {
+        this.renderQueued = false;
+        if (!this.isConnected || !this.configValue) return;
+        this.root ??= createRoot(this.mountNode);
+        const currentDefinition = this.currentDefinition();
+        this.root.render(
+          createElement(currentDefinition.component, {
+            config: this.configValue,
+            hass: this.hassValue,
+            host: this,
+          }),
+        );
+      });
     }
 
     private currentDefinition(): ReactCardDefinition<BaseCardConfig> {

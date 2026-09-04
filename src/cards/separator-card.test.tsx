@@ -91,7 +91,8 @@ describe("liquid-glass-separator-card", () => {
         refraction: false,
       });
     });
-    expect(element.shadowRoot?.querySelector(".pill")?.getAttribute("data-liquid-glass")).toBe("material");
+    expect(element.shadowRoot?.querySelector(".pill")?.getAttribute("data-lg-static-glass")).toBe("");
+    expect(element.shadowRoot?.querySelector(".pill")?.hasAttribute("data-liquid-glass")).toBe(false);
     expect(element.shadowRoot?.querySelector("[data-lg-refraction-source='copy']")).toBeNull();
 
     await act(async () => {

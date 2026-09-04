@@ -118,4 +118,29 @@ describe("defineReactCard", () => {
     expect(Card).toBe(ExistingCard);
     expect(customElements.get(existingTagName)).toBe(ExistingCard);
   });
+
+  it("coalesces same-task updates and ignores an identical hass assignment", async () => {
+    const updateTagName = "liquid-glass-update-adapter-test";
+    let renders = 0;
+    defineReactCard<TestConfig>({
+      tagName: updateTagName,
+      component: ({ config, hass: currentHass }: ReactCardProps<TestConfig>) => {
+        renders += 1;
+        return <span>{config.label}:{currentHass?.language ?? "none"}</span>;
+      },
+    });
+
+    const element = document.createElement(updateTagName) as TestElement;
+    element.setConfig({ type: `custom:${updateTagName}`, label: "first" });
+    await act(async () => document.body.append(element));
+    expect(renders).toBe(1);
+
+    await act(async () => {
+      element.setConfig({ type: `custom:${updateTagName}`, label: "latest" });
+      element.hass = hass;
+      element.hass = hass;
+    });
+    expect(renders).toBe(2);
+    expect(element.shadowRoot?.textContent).toContain("latest:ja");
+  });
 });

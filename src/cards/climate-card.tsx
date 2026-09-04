@@ -1,11 +1,18 @@
-import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent } from "react";
+import { Glass, animateGlassValue, deriveGlass, glassValue, useLensWobble } from "@samasante/liquid-glass";
 import { loadHaFormComponents } from "../editor/load";
 import { createTranslator, type Translator } from "../i18n";
 import { Badge, CardTitle, IconWell, UnavailableCard, type BadgeStyle, type WellStyle } from "../react/card-parts";
 import { reactCardStyles } from "../react/card-styles";
 import { defineReactCard, type ReactCardProps } from "../react/define-react-card";
 import { glassSurfaceStyles, Icon, LiquidGlassSurface } from "../react/glass-primitives";
-import { GlassSlider, glassSliderStyles } from "../react/glass-slider";
+import {
+  GlassSlider,
+  GLASS_SLIDER_COLLAPSE_ANIM,
+  GLASS_SLIDER_EXPAND_ANIM,
+  glassSliderStyles,
+  useGlassSliderOptics,
+} from "../react/glass-slider";
 import { useCardHost } from "../react/use-card-host";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HomeAssistant } from "../types";
@@ -44,11 +51,144 @@ const START_ANGLE = 135;
 /** How long a just-sent setpoint is trusted before the entity's own value takes over. */
 const PENDING_MS = 4000;
 const SWEEP = 270;
+const DIAL_THUMB_WIDTH = 22;
+const DIAL_THUMB_HEIGHT = 34;
+const DIAL_LENS_PAD = 28;
 
 const polar = (deg: number, r = RADIUS): [number, number] => {
   const rad = (deg * Math.PI) / 180;
   return [DIAL / 2 + r * Math.cos(rad), DIAL / 2 + r * Math.sin(rad)];
 };
+
+interface DialGlassThumbProps {
+  id: Which;
+  x: number;
+  y: number;
+  rotation: number;
+  motionPosition: number;
+  active: boolean;
+  refraction: boolean;
+  scheme: "light" | "dark";
+  sourceBackground: string;
+}
+
+/** A circular-track thumb driven by the same lens recipe and motion as GlassSlider. */
+function DialGlassThumb({
+  id,
+  x,
+  y,
+  rotation,
+  motionPosition,
+  active,
+  refraction,
+  scheme,
+  sourceBackground,
+}: DialGlassThumbProps) {
+  const optics = useGlassSliderOptics(refraction, scheme);
+  const dialOptics = useMemo(() => ({
+    ...optics,
+    edgeShadow: "",
+    edgeInsetShadow: "",
+    restEdgeShadow: "",
+    restEdgeInsetShadow: "",
+  }), [optics]);
+  const motion = useMemo(() => {
+    const position = glassValue(motionPosition);
+    const halfW = glassValue(DIAL_THUMB_WIDTH / 2);
+    const halfH = glassValue(DIAL_THUMB_HEIGHT / 2);
+    const radius = glassValue(DIAL_THUMB_WIDTH / 2);
+    const tintOpacity = glassValue(1);
+    const stretch = glassValue(0);
+    const lensW = deriveGlass(
+      [halfW, stretch],
+      () => halfW.get() * (1 - 0.2 * stretch.get()) * 2,
+    );
+    const lensH = deriveGlass(
+      [halfH, stretch],
+      () => halfH.get() * (1 + 0.4 * stretch.get()) * 2,
+    );
+    return {
+      position,
+      halfW,
+      halfH,
+      radius,
+      tintOpacity,
+      stretch,
+      lensW,
+      lensH,
+    };
+  }, []);
+  const holdRef = useRef(0);
+  const kickWobbleRef = useRef<() => void>(() => {});
+  const activeRef = useRef(false);
+  const idleWobblePosition = useMemo(() => glassValue(0), []);
+  useLensWobble(refraction ? motion.position : idleWobblePosition, motion.stretch, holdRef, kickWobbleRef);
+
+  useLayoutEffect(() => {
+    if (motion.position.get() !== motionPosition) motion.position.set(motionPosition);
+  }, [motion, motionPosition]);
+
+  useEffect(() => {
+    if (!refraction) return;
+    if (active === activeRef.current) return;
+    activeRef.current = active;
+    if (active) {
+      animateGlassValue(motion.halfW, 1.5 * DIAL_THUMB_WIDTH / 2, GLASS_SLIDER_EXPAND_ANIM);
+      animateGlassValue(motion.halfH, 1.5 * DIAL_THUMB_HEIGHT / 2, GLASS_SLIDER_EXPAND_ANIM);
+      animateGlassValue(motion.radius, 1.5 * DIAL_THUMB_WIDTH / 2, GLASS_SLIDER_EXPAND_ANIM);
+      animateGlassValue(motion.tintOpacity, 0, GLASS_SLIDER_EXPAND_ANIM);
+      holdRef.current = 0.175;
+      kickWobbleRef.current();
+    } else {
+      holdRef.current = 0;
+      animateGlassValue(motion.halfW, DIAL_THUMB_WIDTH / 2, GLASS_SLIDER_COLLAPSE_ANIM);
+      animateGlassValue(motion.halfH, DIAL_THUMB_HEIGHT / 2, GLASS_SLIDER_COLLAPSE_ANIM);
+      animateGlassValue(motion.radius, DIAL_THUMB_WIDTH / 2, GLASS_SLIDER_COLLAPSE_ANIM);
+      animateGlassValue(motion.tintOpacity, 1, GLASS_SLIDER_COLLAPSE_ANIM);
+    }
+  }, [active, motion, refraction]);
+
+  const surfaceWidth = DIAL_THUMB_WIDTH + DIAL_LENS_PAD * 2;
+  const surfaceHeight = DIAL_THUMB_HEIGHT + DIAL_LENS_PAD * 2;
+  return (
+    <div
+      className={`dial-glass-thumb-position${active ? " active" : ""}`}
+      data-dial-glass-thumb={id}
+      style={{
+        left: `${(x * 100).toFixed(3)}%`,
+        top: `${(y * 100).toFixed(3)}%`,
+        width: surfaceWidth,
+        height: surfaceHeight,
+        transform: "translate(-50%, -50%)",
+        "--dial-thumb-rotation": `${rotation.toFixed(3)}deg`,
+      } as CSSProperties}
+    >
+      {refraction ? <Glass
+        className="dial-glass-lens"
+        optics={dialOptics}
+        center={{ x: 0.5, y: 0.5 }}
+        size={[motion.lensW, motion.lensH]}
+        radius={motion.radius}
+        unstable_lens={{
+          tintColor: "var(--lg-knob-solid)",
+          tintOpacity: motion.tintOpacity,
+        }}
+        // A supersampled refraction surface is twice this box's dimensions. Rotating
+        // that internal copy gives it a different centre from the tint layer.
+        filterResolution={1}
+        behind={scheme === "dark" ? "#1f1f24" : "#ffffff"}
+        style={{ width: surfaceWidth, height: surfaceHeight }}
+        refract={(
+          <div
+            className="dial-refraction-source"
+            aria-hidden="true"
+            style={{ width: "100%", height: "100%", background: sourceBackground }}
+          />
+        )}
+      /> : <div className="dial-thumb-static" aria-hidden="true" />}
+    </div>
+  );
+}
 
 function arcPath(fromDeg: number, toDeg: number): string {
   const [x1, y1] = polar(fromDeg);
@@ -103,65 +243,47 @@ const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}${glassS
       --lg-ring-1 0.42s ease,
       --lg-ring-2 0.42s ease;
   }
-  .dial-knob,
-  .dial-knob-cap {
+  .dial-glass-thumb-position {
+    position: absolute !important;
+    z-index: 1;
+    transform-origin: center;
+    pointer-events: none !important;
+  }
+  .dial-glass-lens {
+    position: absolute !important;
+    inset: 0;
+    overflow: visible !important;
+    pointer-events: none !important;
+  }
+  .dial-thumb-static {
     position: absolute;
-    width: var(--lg-knob, 30px);
-    height: var(--lg-knob, 30px);
-    border-radius: 999px;
-    transform: translate(-50%, -50%);
-    pointer-events: none;
-    transition: left 0.45s cubic-bezier(0.3, 0.8, 0.3, 1), top 0.45s cubic-bezier(0.3, 0.8, 0.3, 1), transform 0.12s ease;
-  }
-  /* Elevation lives on the glass knob, so the cap on top of it stays flat. */
-  .dial-knob {
-    box-shadow: var(--lg-knob-shadow);
-    transition:
-      left 0.45s cubic-bezier(0.3, 0.8, 0.3, 1),
-      top 0.45s cubic-bezier(0.3, 0.8, 0.3, 1),
-      transform 0.12s ease,
-      box-shadow 200ms ease;
-  }
-  /*
-   * Same rule as every other slider: opaque at rest, glass only while a knob is being
-   * dragged. The glass knob stays mounted underneath so its filter is already warm.
-   */
-  .dial-knob-cap {
+    left: 50%;
+    top: 50%;
+    width: ${DIAL_THUMB_WIDTH}px;
+    height: ${DIAL_THUMB_HEIGHT}px;
+    border-radius: ${DIAL_THUMB_WIDTH / 2}px;
+    transform: translate(-50%, -50%) rotate(var(--dial-thumb-rotation));
     background: var(--lg-knob-solid);
-    box-shadow: inset 0 0 0 1px var(--lg-knob-solid-rim);
-    transition:
-      left 0.45s cubic-bezier(0.3, 0.8, 0.3, 1),
-      top 0.45s cubic-bezier(0.3, 0.8, 0.3, 1),
-      transform 0.12s ease,
-      opacity 220ms ease;
+    box-shadow: var(--lg-knob-shadow), inset 0 0 0 1px var(--lg-knob-solid-rim);
+    transition: transform 120ms ease;
   }
-  /* Anything that eased towards the finger would feel like lag, so while a drag is in
-     flight the knob and the arc track the pointer exactly. Only the knob under the
-     finger turns to glass; the other end of a heat_cool range stays solid. */
-  .dial.dragging .dial-knob,
-  .dial.dragging .dial-knob-cap {
-    transition: transform 0.12s ease;
+  .dial-glass-thumb-position.active .dial-thumb-static {
+    transform: translate(-50%, -50%) rotate(var(--dial-thumb-rotation)) scale(1.08);
   }
+  /* Keep the measured Glass box axis-aligned. Rotating an ancestor changes its
+     bounding rect, which makes the lens engine calculate an offset centre. */
+  .dial-glass-lens > div:nth-child(2),
+  .dial-glass-lens > div:nth-child(3) {
+    transform-origin: center;
+    rotate: var(--dial-thumb-rotation);
+  }
+  /* The arc and lens both follow the pointer without an eased position lag. */
   .dial.dragging .ring-fill {
     transition: none;
   }
-  .dial.dragging .dial-knob-cap.moving {
-    opacity: 0;
-    transition-duration: 0.12s;
-  }
-  .dial.dragging .dial-knob.moving {
-    box-shadow: var(--lg-knob-shadow-active);
-  }
-  .dial.dragging .dial-knob.moving,
-  .dial.dragging .dial-knob-cap.moving {
-    transform: translate(-50%, -50%) scale(1.08);
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .dial-knob,
-    .dial-knob-cap { transition-duration: 0.01ms !important; }
-  }
   .center {
     position: absolute;
+    z-index: 2;
     inset: 14%;
     display: flex;
     flex-direction: column;
@@ -209,6 +331,7 @@ const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}${glassS
   }
   .minmax {
     position: absolute;
+    z-index: 2;
     bottom: 5%;
     left: 14%;
     right: 14%;
@@ -230,8 +353,8 @@ const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}${glassS
    */
   .card.climate-compact .lg-react-slider {
     --lg-slider-height: var(--lg-tile-row-h, 44px);
-    --lg-slider-bar-height: var(--lg-tile-bar-h, 12px);
-    --lg-slider-knob-size: var(--lg-tile-knob, 32px);
+    --lg-slider-bar-height: var(--lg-tile-bar-h, 6px);
+    --lg-slider-knob-size: var(--lg-tile-knob, 22px);
   }
   .tile-readout {
     min-width: 0;
@@ -342,15 +465,14 @@ const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}${glassS
   }
   @supports (container-type: inline-size) {
     .card {
-      --lg-knob: clamp(22px, 8cqi, 30px);
       --lg-temp: clamp(34px, 14.2cqi, 54px);
       --lg-temp-range: clamp(26px, 10.5cqi, 40px);
       --lg-temp-fraction: clamp(15px, 5.8cqi, 22px);
     }
     .card.climate-compact {
       --lg-tile-row-h: clamp(34px, 11.6cqi, 44px);
-      --lg-tile-bar-h: clamp(8px, 3.2cqi, 12px);
-      --lg-tile-knob: clamp(24px, 8.4cqi, 32px);
+      --lg-tile-bar-h: clamp(5px, 1.6cqi, 6px);
+      --lg-tile-knob: clamp(18px, 5.8cqi, 22px);
       --lg-tile-temp: clamp(38px, 14.7cqi, 56px);
       --lg-tile-range: clamp(28px, 10.5cqi, 40px);
       --lg-tile-fraction: clamp(17px, 6.3cqi, 24px);
@@ -545,7 +667,7 @@ function modeMeta(mode: string, t: Translator): { icon: string; label: string } 
  * and fan / preset detail dropdowns. `design: compact` swaps the dial for a slider tile.
  */
 function ClimateCard({ config, hass, host }: ReactCardProps<ClimateCardConfig>) {
-  const { refraction } = useCardHost(host, config, hass);
+  const { isDark, refraction } = useCardHost(host, config, hass);
   const t = createTranslator(config.language ?? hass?.locale?.language ?? hass?.language);
   const [drag, setDrag] = useState<{ which: Which; value: number }>();
   /**
@@ -755,6 +877,7 @@ function ClimateCard({ config, hass, host }: ReactCardProps<ClimateCardConfig>) 
           clipFill
           refraction={refraction}
           glassVariant={config.glass_variant}
+          scheme={isDark ? "dark" : "light"}
           label={isRange ? t("target_range") : t("target_temp")}
           onInput={(next, handle) => setDrag({ which: isRange ? handle : "single", value: next })}
           onChange={(next, handle) => {
@@ -806,7 +929,7 @@ function ClimateCard({ config, hass, host }: ReactCardProps<ClimateCardConfig>) 
   // The dial's ring is a gradient itself, so the knob's glass echoes its two ends
   // rather than the single flat colour a linear slider bar would give it.
   const dialSourceBackground = `linear-gradient(90deg, ${c0}, ${c2}) center / 100% 38% no-repeat,
-    radial-gradient(circle at 30% 18%, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.28))`;
+    radial-gradient(circle at 30% 18%, rgba(255, 255, 255, 0.42), transparent 34px)`;
   const knobs: Array<{ which: Which; value: number }> = isRange
     ? [{ which: "low", value: low }, { which: "high", value: high }]
     : [{ which: "single", value: single }];
@@ -883,31 +1006,21 @@ function ClimateCard({ config, hass, host }: ReactCardProps<ClimateCardConfig>) 
           </svg>
 
           {!off && knobs.map(({ which, value }) => {
-            const [x, y] = polar(START_ANGLE + ratio(value) * SWEEP);
-            // Glass sizes itself to its content when it has no refraction source, so the
-            // knob has to state its own size where the library cannot overrule it.
-            const knobStyle: CSSProperties = {
-              display: "block",
-              position: "absolute",
-              width: "var(--lg-knob, 30px)",
-              height: "var(--lg-knob, 30px)",
-              left: `${((x / DIAL) * 100).toFixed(3)}%`,
-              top: `${((y / DIAL) * 100).toFixed(3)}%`,
-            };
-            // Only the knob under the finger lifts and turns to glass.
-            const moving = drag ? drag.which === which : !isRange || which === "low";
+            const angle = START_ANGLE + ratio(value) * SWEEP;
+            const [x, y] = polar(angle);
             return (
-              <div key={which}>
-                <LiquidGlassSurface
-                  className={`dial-knob${moving ? " moving" : ""}`}
-                  refraction={refraction}
-                  variant={config.glass_variant}
-                  surface="control"
-                  sourceBackground={dialSourceBackground}
-                  style={knobStyle}
-                />
-                <div className={`dial-knob-cap${moving ? " moving" : ""}`} style={knobStyle} aria-hidden="true" />
-              </div>
+              <DialGlassThumb
+                key={which}
+                id={which}
+                x={x / DIAL}
+                y={y / DIAL}
+                rotation={angle - 90}
+                motionPosition={ratio(value) * DIAL}
+                active={drag?.which === which}
+                refraction={refraction}
+                scheme={isDark ? "dark" : "light"}
+                sourceBackground={dialSourceBackground}
+              />
             );
           })}
 

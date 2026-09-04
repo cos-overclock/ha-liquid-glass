@@ -103,13 +103,13 @@ Home Assistant はリソースを強くキャッシュします。ファイル�
 entity: light.living_room   # 必須
 name: リビング              # 表示名（省略時は friendly_name）
 icon: mdi:lightbulb         # アイコン上書き
-refraction: auto            # auto | true | false（SVG 屈折フィルタ）
+refraction: auto            # auto | true | false（Android WebViewではautoが軽量表示）
 theme: auto                 # auto | light | dark
 glass_variant: regular      # regular | clear（写真・映像上では clear が有効）
 language: ja                # 省略時は HA の言語設定
 ```
 
-`regular` は文字の読みやすさを保つ標準素材です。`clear` は tint と blur を抑えて背後の写真や映像を優先します。屈折対応ブラウザではカードの実寸と角丸からSDF変位マップを生成し、サイズ変更時だけ再生成します。スライダーやトグルなどの小型コントロールは、対応環境では推定色ではなく実際のトラックやカード面を屈折します。
+`regular` は文字の読みやすさを保つ標準素材です。`clear` は tint と blur を抑えて背後の写真や映像を優先します。通常のブラウザではカードの実寸と角丸からSDF変位マップを生成し、サイズ変更時だけ再生成します。Android CompanionアプリのWebViewでは、`auto`がCanvas/SVGフィルタを生成しない軽量なCSS表示へ自動的に切り替わります。屈折を強制する場合だけ`refraction: true`を指定してください。
 
 ### Light
 

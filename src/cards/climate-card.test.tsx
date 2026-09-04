@@ -84,12 +84,14 @@ describe("liquid-glass-climate-card", () => {
     const root = element.shadowRoot!;
     expect(root.querySelector(".target")?.textContent).toBe("22");
     expect(root.querySelector(".fraction")?.textContent).toBe(".0°");
-    expect(root.querySelectorAll(".dial-knob")).toHaveLength(1);
-    // The dial knob is opaque at rest and only turns to glass while dragged, same as
-    // every other slider's thumb.
-    expect(root.querySelectorAll(".dial-knob-cap")).toHaveLength(1);
-    // The cap only fades once the parent ".dial" gets the "dragging" class, so
-    // sitting on "moving" by default at rest is harmless.
+    // The dial uses the same animated Glass lens as every linear slider.
+    expect(root.querySelectorAll("[data-dial-glass-thumb]")).toHaveLength(1);
+    expect(root.querySelectorAll(".dial-knob")).toHaveLength(0);
+    expect(root.querySelectorAll(".dial-knob-cap")).toHaveLength(0);
+    const dialLens = root.querySelector<HTMLElement>(".dial-glass-lens")!;
+    // Supersampling wraps the refracted copy in a scaled 2x surface, whose rotation
+    // centre diverges from the tint layer and displays as a second detached knob.
+    expect((dialLens.children[1] as HTMLElement).style.transform).not.toContain("scale(");
     expect(root.querySelector(".dial")?.classList.contains("dragging")).toBe(false);
     expect(root.querySelectorAll(".segment.modes > button")).toHaveLength(4);
     expect(element.getCardSize()).toBe(6);
@@ -97,6 +99,12 @@ describe("liquid-glass-climate-card", () => {
     // Straight up from the centre is the top of the 270° sweep, i.e. the midpoint.
     const dial = mockRect(root.querySelector<HTMLElement>(".dial")!, { width: 200, height: 200 });
     await act(async () => dial.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, button: 0, clientX: 100, clientY: 0 })));
+    expect(root.querySelector("[data-dial-glass-thumb]")?.classList.contains("active")).toBe(true);
+    // The position wrapper stays unrotated so Glass measures the correct box; its
+    // drawing layers receive the angle through this custom property instead.
+    const glassThumb = root.querySelector<HTMLElement>("[data-dial-glass-thumb]")!;
+    expect(glassThumb.style.transform).toBe("translate(-50%, -50%)");
+    expect(glassThumb.style.getPropertyValue("--dial-thumb-rotation")).toBe("180.000deg");
     await act(async () => dial.dispatchEvent(new MouseEvent("pointerup", { bubbles: true, button: 0, clientX: 100, clientY: 0 })));
     expect(callService).toHaveBeenCalledWith("climate", "set_temperature", {
       entity_id: target.entity_id,

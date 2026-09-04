@@ -1057,13 +1057,9 @@
         const dash = (el) => el.style.strokeDasharray.split(" ").map(parseFloat);
         await new Promise((resolve) => requestAnimationFrame(resolve));
 
-        const dialKnobGlass = hr.querySelector(".dial-knob .dial-knob-shader");
-        check("climate dial: knob uses the transparent shader", dialKnobGlass?.hasAttribute("shader-ready"));
-        check("climate dial: knob uses high-quality diffusion", dialKnobGlass?.highQualityBlur === true && dialKnobGlass?.renderScale === 1.5 && dialKnobGlass?.pixelRatioLimit === 3);
-        check("climate dial: knob follows the design refraction profile", dialKnobGlass?.refraction === (heat.hasAttribute("refraction") ? 14 : 0) && dialKnobGlass?.edge === 14 && dialKnobGlass?.highlight === 1.1);
-        const dialKnobStyle = getComputedStyle(dialKnobGlass.parentElement);
-        const dialKnobBackdrop = dialKnobStyle.backdropFilter || dialKnobStyle.webkitBackdropFilter;
-        check("climate dial: shader leaves the real backdrop visible", dialKnobGlass?.surfaceAlpha === 0.52 && Boolean(dialKnobBackdrop) && dialKnobBackdrop !== "none", dialKnobBackdrop || "(unsupported)");
+        const dialKnobGlass = hr.querySelector("[data-dial-glass-thumb]");
+        check("climate dial: knob uses the shared Glass lens", hr.querySelector(".dial-glass-lens")?.hasAttribute("data-liquid-glass"));
+        check("climate dial: knob has one visual source", hr.querySelectorAll(".dial-knob").length === 0);
 
         // The arc is drawn once at full length and revealed by the dash pattern, so its
         // length can interpolate instead of the path being rebuilt on every change.
@@ -1105,12 +1101,12 @@
         const off = await mkClimate("off");
         check("motion: off fades the arc rather than removing it", off.shadowRoot.querySelector(".ring-fill").style.opacity === "0");
 
-        check("motion: the knob eases to its new angle", getComputedStyle(hr.querySelector(".dial-knob")).transitionProperty.includes("left"));
+        check("motion: the dial knob has no position lag", !getComputedStyle(dialKnobGlass).transitionProperty.includes("left"));
         check("motion: the icon well interpolates its gradient colours", getComputedStyle(hr.querySelector(".icon-well")).transitionProperty.includes("--well-from"));
 
         // Easing towards the finger would read as lag, so a drag in flight turns it off.
         hr.querySelector(".dial").classList.add("dragging");
-        check("motion: a drag is not eased", getComputedStyle(hr.querySelector(".ring-fill")).transitionProperty === "none" && !getComputedStyle(hr.querySelector(".dial-knob")).transitionProperty.includes("left"));
+        check("motion: a drag is not eased", getComputedStyle(hr.querySelector(".ring-fill")).transitionProperty === "none" && !getComputedStyle(dialKnobGlass).transitionProperty.includes("left"));
         hr.querySelector(".dial").classList.remove("dragging");
 
         // The mode pill: one element that travels, rather than a background handed from
@@ -1173,10 +1169,10 @@
           check("motion: the released value survives a stale entity", sr.querySelector(".target").textContent === "26", sr.querySelector(".target").textContent);
           check("motion: the arc stays where it was released", Math.abs(parseFloat(sr.querySelector(".ring-fill").style.strokeDasharray) - 0.8) < 0.02, sr.querySelector(".ring-fill").style.strokeDasharray);
 
-          const before = sr.querySelector(".dial-knob").style.left;
+          const before = sr.querySelector("[data-dial-glass-thumb]").style.left;
           el.hass = at(26);
           await el.updateComplete;
-          check("motion: the confirmation moves nothing", sr.querySelector(".dial-knob").style.left === before, `${before} then ${sr.querySelector(".dial-knob").style.left}`);
+          check("motion: the confirmation moves nothing", sr.querySelector("[data-dial-glass-thumb]").style.left === before, `${before} then ${sr.querySelector("[data-dial-glass-thumb]").style.left}`);
           check("motion: the hold is released once confirmed", el.pending === undefined);
           el.remove();
 

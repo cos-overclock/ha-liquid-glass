@@ -185,7 +185,7 @@ const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}${glassS
  * set the position, up / stop / down buttons, and an optional tilt slider.
  */
 function CoverCard({ config, hass, host }: ReactCardProps<CoverCardConfig>) {
-  const { refraction } = useCardHost(host, config, hass);
+  const { isDark, refraction } = useCardHost(host, config, hass);
   const t = createTranslator(config.language ?? hass?.locale?.language ?? hass?.language);
   const [dragPos, setDragPos] = useState<number>();
   const [tiltPreview, setTiltPreview] = useState<number>();
@@ -391,6 +391,7 @@ function CoverCard({ config, hass, host }: ReactCardProps<CoverCardConfig>) {
           showFill={!closed}
           refraction={refraction}
           glassVariant={config.glass_variant}
+          scheme={isDark ? "dark" : "light"}
           label={t("tilt")}
           onInput={setTiltPreview}
           onChange={(next) => {
