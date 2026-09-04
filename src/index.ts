@@ -16,6 +16,13 @@ import "./cards/group-card";
 import "./cards/separator-card";
 import type { CustomCardRegistration, HassEntity, HomeAssistant } from "./types";
 
+export { defineReactCard } from "./react/define-react-card";
+export type {
+  ReactCardConstructor,
+  ReactCardDefinition,
+  ReactCardProps,
+} from "./react/define-react-card";
+
 export { LiquidGlassLightCard } from "./cards/light-card";
 export { LiquidGlassClimateCard } from "./cards/climate-card";
 export { LiquidGlassSwitchCard } from "./cards/switch-card";

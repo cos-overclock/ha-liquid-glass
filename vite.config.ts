@@ -42,6 +42,7 @@ export default defineConfig(({ mode }) => {
     define: {
       __LG_VERSION__: JSON.stringify(packageJson.version),
       __LG_BUILD__: JSON.stringify(stamp),
+      "process.env.NODE_ENV": JSON.stringify(developmentBuild ? "development" : "production"),
     },
     build: {
       target: "es2020",
