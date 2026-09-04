@@ -12,7 +12,8 @@ export interface ReactCardDefinition<C extends BaseCardConfig> {
   tagName: `${string}-${string}`;
   component: ComponentType<ReactCardProps<C>>;
   normalizeConfig?: (config: C) => C;
-  getCardSize?: (config: C) => number;
+  /** `host` is the custom element, for a card whose size depends on runtime state. */
+  getCardSize?: (config: C, host: HTMLElement) => number;
   getConfigElement?: () => HTMLElement | Promise<HTMLElement>;
   getStubConfig?: (
     hass?: HomeAssistant,
@@ -123,7 +124,7 @@ export function defineReactCard<C extends BaseCardConfig>(
 
     getCardSize(): number {
       if (!this.configValue) return 3;
-      return this.currentDefinition().getCardSize?.(this.configValue) ?? 3;
+      return this.currentDefinition().getCardSize?.(this.configValue, this) ?? 3;
     }
 
     connectedCallback(): void {
