@@ -146,7 +146,7 @@ describe("liquid-glass-climate-card", () => {
     expect(root.querySelector(".tile-target .number")?.textContent).toBe("22");
     // The compact design uses the same slider component as every other card.
     expect(root.querySelector(".climate-compact .slider-track")).toBeTruthy();
-    expect(root.querySelectorAll(".climate-compact .slider-knob-cap")).toHaveLength(1);
+    expect(root.querySelectorAll(".climate-compact .slider-knob")).toHaveLength(1);
     // The bar is a flat colour for the active mode, not the old fixed rainbow gradient.
     expect(root.querySelector<HTMLElement>(".climate-compact")?.style.getPropertyValue("--lg-slider-fill")).toBe("var(--lg-heat)");
     // The +/- step buttons are gone; dragging the bar is the only way to change the target.
@@ -208,13 +208,13 @@ describe("liquid-glass-climate-card", () => {
 
     await act(async () => document.body.append(element));
     const root = element.shadowRoot!;
-    expect(root.querySelectorAll(".climate-compact .slider-knob-cap")).toHaveLength(2);
+    expect(root.querySelectorAll(".climate-compact .slider-knob")).toHaveLength(2);
 
     // Drag the handle nearest 100 on a 10..30 range, i.e. the high end.
     const track = mockRect(root.querySelector<HTMLElement>(".climate-compact .slider-track")!, { width: 200, height: 44 });
     await act(async () => track.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, button: 0, clientX: 190 })));
     // Only the handle under the finger turns to glass; the low end stays solid.
-    expect(root.querySelectorAll(".climate-compact .slider-knob-cap.moving")).toHaveLength(1);
+    expect(root.querySelectorAll(".climate-compact .slider-knob.moving")).toHaveLength(1);
     await act(async () => track.dispatchEvent(new MouseEvent("pointerup", { bubbles: true, button: 0, clientX: 190 })));
     expect(callService).toHaveBeenCalledWith("climate", "set_temperature", {
       entity_id: target.entity_id,

@@ -111,8 +111,8 @@ describe("liquid-glass-slider-card", () => {
 
     const track = mockTrack(element);
     const slider = element.shadowRoot?.querySelector(".lg-react-slider");
-    // The knob is capped opaque until it moves, then the glass under the cap is revealed.
-    expect(element.shadowRoot?.querySelector(".slider-knob-cap")).toBeTruthy();
+    // The knob reads as an opaque pill until it moves, then the glass tint fades away.
+    expect(element.shadowRoot?.querySelector(".slider-knob")).toBeTruthy();
     expect(slider?.classList.contains("active")).toBe(false);
 
     await act(async () => {

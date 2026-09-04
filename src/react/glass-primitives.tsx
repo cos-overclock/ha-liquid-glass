@@ -2,7 +2,7 @@ import { Glass, type GlassOptics, type GlassProps } from "@samasante/liquid-glas
 import { createElement, type ReactNode } from "react";
 
 type GlassVariant = "regular" | "clear";
-type GlassSurface = "card" | "compact" | "control";
+type GlassSurface = "card" | "compact" | "control" | "slider";
 
 const regularCardOptics: Partial<GlassOptics> = {
   strength: 0.035,
@@ -70,6 +70,47 @@ const clearControlOptics: Partial<GlassOptics> = {
   saturate: 1.45,
 };
 
+/*
+ * A switch knob is glass all the time, so `regularControlOptics`' whole-body dome
+ * (depth 0.88) and 4px frost read fine at rest. A slider thumb needs to dissolve
+ * from a solid pill into that glass, and a foggy dome never sells "transparent" —
+ * so it gets its own preset: no frost, and a shallow `depth` that keeps the bend to
+ * a thin rim (paired with `unstable_lens.tintOpacity` fading the pill away).
+ */
+const sliderControlOptics: Partial<GlassOptics> = {
+  strength: 0.12,
+  depth: 0.2,
+  curvature: 0.55,
+  // Dispersion has to stay off here too (see regularCardOptics above): the
+  // sourceBackground gradient this knob refracts is deliberately translucent
+  // (a soft radial highlight), and dispersion sums that alpha three times —
+  // which is what was reading as a dark/blackish veil over the whole knob.
+  dispersion: 0,
+  scaleX: 0.06,
+  scaleY: 0.06,
+  splay: 0.5,
+  bend: 0.1,
+  bendWidth: 0.05,
+  frost: 0,
+  saturate: 1.3,
+  brightness: 0.06,
+  specular: 1.5,
+  sheenAngle: 45,
+  glow: 0.4,
+  glowSpread: 0.5,
+  glowFalloff: 1.5,
+  sheen: 0,
+  sheenWidth: 3,
+  sheenFalloff: 1.5,
+};
+
+const clearSliderControlOptics: Partial<GlassOptics> = {
+  ...sliderControlOptics,
+  strength: 0.14,
+  curvature: 0.62,
+  saturate: 1.45,
+};
+
 const flat = (optics: Partial<GlassOptics>): Partial<GlassOptics> => ({
   ...optics,
   strength: 0,
@@ -85,11 +126,13 @@ const opticPresets = {
     card: regularCardOptics,
     compact: regularCardOptics,
     control: regularControlOptics,
+    slider: sliderControlOptics,
   },
   clear: {
     card: clearCardOptics,
     compact: clearCardOptics,
     control: clearControlOptics,
+    slider: clearSliderControlOptics,
   },
 } as const;
 
