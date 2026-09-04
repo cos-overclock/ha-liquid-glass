@@ -118,7 +118,7 @@
       }
       customElements.define("ha-icon", HaIcon);
 
-      await import("../dist/liquid-glass-cards.js");
+      await import("../src/index.ts");
 
       // ---- mock hass ----
       const ago = (min) => new Date(Date.now() - min * 60000).toISOString();

@@ -32,7 +32,7 @@ export { LiquidGlassCameraCard } from "./cards/camera-card";
 export { LiquidGlassGroupCard } from "./cards/group-card";
 export { LiquidGlassSeparatorCard } from "./cards/separator-card";
 
-/** Replaced at build time by scripts/build.mjs. */
+/** Replaced at build time by Vite. */
 declare const __LG_VERSION__: string;
 declare const __LG_BUILD__: string;
 
