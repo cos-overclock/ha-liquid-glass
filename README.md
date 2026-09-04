@@ -432,17 +432,19 @@ src/
   index.ts                    カード登録 / customCards への追加
   react/define-react-card.tsx React と HA Custom Element 契約のアダプター
   react/use-card-host.ts      hass / config をホスト属性へ同期する React Hook
-  base-card.ts                移行前カードの Lit 共通処理
+  react/glass-primitives.tsx  ガラス面（Glass ラッパーと光学プリセット）
+  react/glass-slider.tsx      Apple 風スライダー（バー＋つまみ）
+  react/card-parts.tsx        アイコンウェル / タイトル / バッジなどの共通部品
+  react/card-styles.ts        カード共通レイアウトのスタイルシート
   i18n.ts                     日本語 / 英語の文言
   styles/tokens.ts            デザイントークン（design.pen の variables）
-  styles/glass.ts             ガラス表面の共通スタイル
-  styles/glass-defs.ts        liquid-glass.glsl を移植した SVG フィルタ
-  components/lg-slider.ts     bar / thumb / thin の 3 種類のスライダー
   components/lg-icon.ts       ha-icon ラッパー
   editor/lg-card-editor.ts    全カード共通のビジュアルエディタ
   editor/schema.ts            カード種別ごとの ha-form スキーマ
   editor/load.ts              ha-form の遅延読み込み
-  cards/*.ts(x)               各カード（React へ順次移行）
+  cards/*.tsx                 各カード（すべて React）
 ```
+
+`base-card.ts` `styles/glass.ts` `styles/glass-defs.ts` `components/lg-slider.ts` `components/lg-glass-surface.ts` は移行前の Lit 実装で、現在どのカードからも参照されていません（ビルド成果物にも含まれません）。
 
 主なトークンに加えて、スライダーカードは `--lg-slider-accent` `--lg-slider-accent-deep` `--lg-slider-accent-light` `--lg-slider-fill-light` を使います。バーとつまみは `--lg-slider-bar-bg`（未充填部分）`--lg-slider-mark`（目盛り）`--lg-knob-solid` `--lg-knob-solid-rim`（待機中のつまみ）`--lg-knob-shadow` `--lg-knob-shadow-active`（つまみの影）で調整できます。
