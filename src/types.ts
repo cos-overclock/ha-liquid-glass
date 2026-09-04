@@ -49,20 +49,46 @@ export interface BaseCardConfig {
   language?: string;
 }
 
+/** Any Lovelace card config: ours or a built-in one nested inside the group card. */
+export interface LovelaceCardConfig {
+  type: string;
+  [key: string]: unknown;
+}
+
 export interface LovelaceCard extends HTMLElement {
   hass?: HomeAssistant;
   setConfig(config: BaseCardConfig): void;
   getCardSize?(): number;
 }
 
+export interface LovelaceCardSuggestion {
+  label?: string;
+  config: {
+    type: string;
+    [key: string]: unknown;
+  };
+}
+
+export interface CustomCardRegistration {
+  type: string;
+  name: string;
+  description?: string;
+  preview?: boolean;
+  documentationURL?: string;
+  getEntitySuggestion?: (
+    hass: HomeAssistant,
+    entityId: string,
+  ) => LovelaceCardSuggestion | LovelaceCardSuggestion[] | null;
+}
+
+/** Home Assistant's card factory, used by stack-like cards to build their children. */
+export interface CardHelpers {
+  createCardElement(config: LovelaceCardConfig): LovelaceCard;
+}
+
 declare global {
   interface Window {
-    customCards?: Array<{
-      type: string;
-      name: string;
-      description?: string;
-      preview?: boolean;
-      documentationURL?: string;
-    }>;
+    customCards?: CustomCardRegistration[];
+    loadCardHelpers?: () => Promise<CardHelpers>;
   }
 }

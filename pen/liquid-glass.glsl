@@ -12,7 +12,7 @@ uniform sampler2D u_sdf;
 /**
  * @label Edge Width
  * @default 28
- * @range 1, 160
+ * @range 1, 200
  */
 uniform float u_edge;
 
@@ -79,64 +79,109 @@ uniform float u_lightAngle;
  */
 uniform float u_saturation;
 
-vec3 sampleBackdrop(vec2 uv, vec2 px) {
-  vec3 acc = vec3(0.0);
-  float r = u_blur;
-  acc += texture2D(u_backdrop, uv).rgb * 2.0;
-  acc += texture2D(u_backdrop, uv + vec2( 0.94, 0.34) * r * px).rgb;
-  acc += texture2D(u_backdrop, uv + vec2(-0.94,-0.34) * r * px).rgb;
-  acc += texture2D(u_backdrop, uv + vec2( 0.34,-0.94) * r * px).rgb;
-  acc += texture2D(u_backdrop, uv + vec2(-0.34, 0.94) * r * px).rgb;
-  acc += texture2D(u_backdrop, uv + vec2( 0.71, 0.71) * r * 0.6 * px).rgb;
-  acc += texture2D(u_backdrop, uv + vec2(-0.71,-0.71) * r * 0.6 * px).rgb;
-  acc += texture2D(u_backdrop, uv + vec2( 0.71,-0.71) * r * 0.6 * px).rgb;
-  acc += texture2D(u_backdrop, uv + vec2(-0.71, 0.71) * r * 0.6 * px).rgb;
-  return acc / 10.0;
+vec2 g_invRes;
+vec3 g_light;
+
+const int BLUR_TAPS = 8;
+
+// Rounded bevel profile: flat in the middle, falling away steeply at the rim.
+float surfaceHeight(float t) {
+  float s = 1.0 - t;
+  float s4 = s * s * s * s;
+  return pow(1.0 - s4, 0.25);
+}
+
+// Snell displacement with the trig identities folded out.
+float refractDisp(float sinI, float slope, float n) {
+  float sinR = clamp(sinI / n, -0.9999, 0.9999);
+  return sinR * inversesqrt(1.0 - sinR * sinR) - slope;
+}
+
+// Frosted backdrop: golden-angle spiral so the taps never line up into banding.
+vec3 sampleBg(vec2 coord) {
+  if (u_blur <= 0.0) {
+    return texture2D(u_backdrop, coord * g_invRes).rgb;
+  }
+  vec3 sum = texture2D(u_backdrop, coord * g_invRes).rgb;
+  for (int i = 0; i < BLUR_TAPS; i++) {
+    float fi = float(i) + 0.5;
+    float a = fi * 2.39996323;
+    float r = sqrt(fi / float(BLUR_TAPS)) * u_blur;
+    sum += texture2D(u_backdrop, (coord + vec2(cos(a), sin(a)) * r) * g_invRes).rgb;
+  }
+  return sum / (float(BLUR_TAPS) + 1.0);
 }
 
 void main() {
-  vec2 uv = gl_FragCoord.xy / u_resolution;
-  vec2 px = 1.0 / u_resolution;
+  g_invRes = 1.0 / u_resolution;
 
-  vec4 sdf = texture2D(u_sdf, uv);
-  float d = sdf.r;
-  vec2 g = sdf.gb;
-  float gl = length(g);
-  vec2 inward = gl > 0.0001 ? g / gl : vec2(0.0, 1.0);
-  vec2 normal = -inward;
+  float a = radians(u_lightAngle);
+  g_light = normalize(vec3(cos(a), sin(a), 0.85));
 
-  float mask = clamp(d + 0.5, 0.0, 1.0);
-  float t = clamp(1.0 - d / u_edge, 0.0, 1.0);
-  float lens = t * t * (3.0 - 2.0 * t);
-  float bulge = lens * lens;
+  vec2 coord = gl_FragCoord.xy;
+  vec4 sdf = texture2D(u_sdf, coord * g_invRes);
+  float sd = sdf.r;
 
-  vec2 shift = inward * bulge * u_refraction * px;
-  vec2 shiftR = shift * (1.0 + u_chroma * 0.35);
-  vec2 shiftB = shift * (1.0 - u_chroma * 0.35);
+  float edge = smoothstep(-1.0, 1.0, sd);
+  float ew = max(u_edge, 1.0);
+  float t = clamp(sd / ew, 0.0, 1.0);
+
+  // Outward, shape-following surface direction straight from the SDF gradient.
+  vec2 borderDir = -normalize(sdf.gb + 1e-6);
+
+  float delta = 0.001;
+  float h1 = surfaceHeight(clamp(t - delta, 0.0, 1.0));
+  float h2 = surfaceHeight(clamp(t + delta, 0.0, 1.0));
+  float slope = (h2 - h1) * (0.5 / delta);
+
+  float sinI = slope * inversesqrt(1.0 + slope * slope);
+  float ior = 1.0 + u_refraction * 0.045;
+
+  float dispG = refractDisp(sinI, slope, ior) * ew;
 
   vec3 col;
-  col.r = sampleBackdrop(uv + shiftR, px).r;
-  col.g = sampleBackdrop(uv + shift, px).g;
-  col.b = sampleBackdrop(uv + shiftB, px).b;
+  if (u_chroma <= 0.0) {
+    col = sampleBg(coord + borderDir * dispG);
+  } else {
+    float spread = u_chroma * 0.12;
+    float dispR = refractDisp(sinI, slope, ior - spread) * ew;
+    float dispB = refractDisp(sinI, slope, ior + spread) * ew;
+    col = vec3(
+      sampleBg(coord + borderDir * dispR).r,
+      sampleBg(coord + borderDir * dispG).g,
+      sampleBg(coord + borderDir * dispB).b
+    );
+  }
 
   float luma = dot(col, vec3(0.299, 0.587, 0.114));
   col = mix(vec3(luma), col, u_saturation);
 
   col = mix(col, u_tint, u_tintAlpha);
 
-  float a = radians(u_lightAngle);
-  vec2 L = vec2(cos(a), sin(a));
-  float ndl = dot(normal, L);
-  float rimBand = smoothstep(0.0, 1.0, t) * (1.0 - smoothstep(0.55, 1.0, t));
-  float rimEdge = 1.0 - smoothstep(0.0, 2.2, d);
-  float specTop = pow(max(ndl, 0.0), 2.2);
-  float specBottom = pow(max(-ndl, 0.0), 2.6) * 0.55;
-  float spec = (specTop + specBottom) * (rimBand * 0.55 + rimEdge * 0.9) * u_highlight;
-  float innerGlow = bulge * 0.10 * u_highlight;
-  col += u_highlightColor * (spec + innerGlow);
+  // Lit surface normal of the bevel, used for both specular and fresnel.
+  vec3 N = normalize(vec3(-slope * borderDir, 1.0));
 
-  float shade = pow(max(-ndl, 0.0), 1.5) * rimBand * 0.10;
-  col -= shade;
+  // How much this piece of rim faces the light. Without this the highlight
+  // wraps the whole silhouette and reads as an outline instead of a surface.
+  float facing = dot(borderDir, g_light.xy);
+  float lit = max(facing, 0.0);
+  float back = max(-facing, 0.0);
 
-  gl_FragColor = vec4(col, mask);
+  vec3 R = reflect(-g_light, N);
+  float spec = pow(max(R.z, 0.0), 26.0) * lit;
+
+  // The opposing rim picks up a weaker bounce, never as bright as the key.
+  float spec2 = pow(max(R.z, 0.0), 48.0) * back * 0.3;
+
+  // Hairline at the extreme edge: always present, brightest where lit.
+  float hairline = (1.0 - smoothstep(0.0, 2.0, sd)) * (0.22 + 0.78 * lit);
+
+  float fresnel = pow(1.0 - N.z, 3.0) * (0.15 + 0.85 * lit);
+
+  col += u_highlightColor * ((spec + spec2) * 1.5 + fresnel * 0.30 + hairline * 0.28) * u_highlight;
+
+  // Slight darkening on the shadowed side of the bevel gives it thickness.
+  col -= back * (1.0 - N.z) * 0.14;
+
+  gl_FragColor = vec4(col * edge, edge);
 }

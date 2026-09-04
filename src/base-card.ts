@@ -7,8 +7,12 @@ import { glassDefs, supportsRefraction } from "./styles/glass-defs";
 import type { BaseCardConfig, HassEntity, HomeAssistant } from "./types";
 import { friendlyName, moreInfo } from "./utils";
 import { loadHaFormComponents } from "./editor/load";
+import { registerAnimatableColors } from "./styles/motion";
 import "./components/lg-icon";
 import "./components/lg-slider";
+
+// Every card imports this module, so registering here covers all of them.
+registerAnimatableColors();
 
 export interface IconWellStyle {
   from: string;

@@ -1,4 +1,5 @@
-import { css } from "lit";
+import { css, unsafeCSS } from "lit";
+import { rimBackground } from "./rim";
 
 /**
  * Shared "liquid glass" surface styles.
@@ -6,9 +7,8 @@ import { css } from "lit";
  * The .pen design renders every surface through liquid-glass.glsl. The browser port layers:
  *   1. backdrop-filter  – blur + saturation (+ SVG edge refraction on Chromium, see glass-defs.ts)
  *   2. tint             – rgba fill from --lg-glass-tint / --lg-glass-tint-alpha
- *   3. rim highlight    – ::before gradient ring (specular from the shader's light angle)
- *   4. inner glow       – ::after inset shadow (shader's innerGlow term)
- *   5. drop shadow      – 0 14px 36px -4px shadow-glass, 0 1px 1px glass-inner
+ *   3. rim              – ::before, the shader's specular / fresnel / hairline in CSS
+ *   4. drop shadow      – 0 14px 36px -4px shadow-glass, 0 1px 1px glass-inner
  */
 export const glassStyles = css`
   * {
@@ -49,49 +49,22 @@ export const glassStyles = css`
     -webkit-backdrop-filter: url(#lg-card);
     backdrop-filter: url(#lg-card);
   }
-  .glass::before,
-  .glass::after {
+  .glass::before {
     content: "";
     position: absolute;
     inset: 0;
     border-radius: inherit;
     pointer-events: none;
   }
-  .glass::before {
-    padding: 1.5px;
-    background: linear-gradient(
-      180deg,
-      var(--lg-rim-top) 0%,
-      rgba(255, 255, 255, 0.12) 22%,
-      rgba(255, 255, 255, 0) 55%,
-      var(--lg-rim-bottom) 100%
-    );
-    -webkit-mask:
-      linear-gradient(#000 0 0) content-box,
-      linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor;
-    mask:
-      linear-gradient(#000 0 0) content-box,
-      linear-gradient(#000 0 0);
-    mask-composite: exclude;
-  }
-  .glass::after {
-    box-shadow:
-      inset 0 18px 32px -18px rgba(255, 255, 255, 0.55),
-      inset 0 0 28px rgba(255, 255, 255, 0.12);
-  }
-  :host([dark]) .glass::after {
-    box-shadow:
-      inset 0 18px 32px -18px rgba(255, 255, 255, 0.22),
-      inset 0 0 28px rgba(255, 255, 255, 0.05);
-  }
-
   /*
-   * Metrics every card sizes itself from. The plain values are the 380px design; the
-   * @supports block below rewrites them as clamps against the card's own inline size so a
-   * narrow dashboard column shrinks the whole card instead of clipping its text.
-   * --lg-radius stays the upper bound so a theme override is still respected.
+   * Specular, fresnel and hairline, evaluated from liquid-glass.glsl and painted in pixel
+   * stops so the rim keeps its real width on a card of any size. The shader concentrates
+   * almost all of it within three pixels of the edge, which is what reads as a glass slab
+   * rather than a tinted panel.
    */
+  .glass::before {
+    background: ${unsafeCSS(rimBackground())};
+  }
   .card {
     --lg-pad: 20px;
     --lg-pad-row: 16px;
@@ -215,7 +188,13 @@ export const glassStyles = css`
       0 1px 1px rgba(255, 255, 255, 0.7),
       inset 0 0 0 1px rgba(255, 255, 255, 0.5);
     cursor: pointer;
-    transition: background 0.25s ease, box-shadow 0.25s ease;
+    /* The gradient itself cannot interpolate, so the colours it is built from do. */
+    transition:
+      --well-from 0.42s ease,
+      --well-to 0.42s ease,
+      --well-glow 0.42s ease,
+      background 0.25s ease,
+      box-shadow 0.25s ease;
   }
   .icon-well.idle {
     background: var(--lg-track-bg);
@@ -246,6 +225,7 @@ export const glassStyles = css`
     background: var(--badge-bg, var(--lg-track-bg));
     box-shadow: inset 0 0 0 1px var(--badge-stroke, var(--lg-glass-stroke));
     white-space: nowrap;
+    transition: background-color 0.42s ease, color 0.42s ease, box-shadow 0.42s ease;
   }
   .badge > span:last-child {
     overflow: hidden;
@@ -258,6 +238,7 @@ export const glassStyles = css`
     border-radius: 4px;
     background: var(--badge-color, var(--lg-text-secondary));
     box-shadow: 0 0 6px var(--badge-glow, transparent);
+    transition: background-color 0.42s ease, box-shadow 0.42s ease;
   }
   /*
    * Below this width the badge would eat the room the name needs, and the state line
@@ -462,5 +443,16 @@ export const glassStyles = css`
   button:focus-visible {
     outline: 2px solid var(--lg-cool-deep);
     outline-offset: 2px;
+  }
+
+  /* Someone who has asked for less motion gets the end state, immediately. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+    }
   }
 `;

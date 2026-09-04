@@ -24,8 +24,17 @@ export const tokens = css`
     --lg-trend-down: #0a7ea4;
     --lg-trend-down-bg: rgba(43, 179, 208, 0.18);
     --lg-cover-badge: #0a7ea4;
-    --lg-rim-top: rgba(255, 255, 255, 0.75);
-    --lg-rim-bottom: rgba(0, 0, 0, 0.05);
+    /* Scales the whole shader-derived rim; see styles/rim.ts. */
+    --lg-rim-gain: 1;
+    /* A tile or chip held down. */
+    --lg-press-fill: rgba(255, 255, 255, 0.9);
+    --lg-press-stroke: rgba(94, 92, 230, 0.65);
+    --lg-press-label: #3f3dbf;
+    --lg-press-glow: rgba(94, 92, 230, 0.3);
+    --lg-motion-label: #b36a00;
+    /* Group panel: a container that holds glass cards, so it must not be glass itself. */
+    --lg-group-panel: rgba(255, 255, 255, 0.32);
+    --lg-group-panel-stroke: rgba(255, 255, 255, 0.54);
 
     --lg-accent: #ffb340;
     --lg-accent-deep: #ff8a1f;
@@ -80,7 +89,14 @@ export const tokens = css`
     --lg-trend-down: #5dd6ee;
     --lg-trend-down-bg: rgba(93, 214, 238, 0.2);
     --lg-cover-badge: #5dd6ee;
-    --lg-rim-top: rgba(255, 255, 255, 0.35);
-    --lg-rim-bottom: rgba(0, 0, 0, 0.25);
+    /* The rim reads brighter against a dark backdrop, so it sits back a little. */
+    --lg-rim-gain: 0.8;
+    --lg-press-fill: rgba(94, 92, 230, 0.35);
+    --lg-press-stroke: rgba(176, 175, 255, 0.8);
+    --lg-press-label: #ffffff;
+    --lg-press-glow: rgba(94, 92, 230, 0.4);
+    --lg-motion-label: #ffc46b;
+    --lg-group-panel: rgba(255, 255, 255, 0.08);
+    --lg-group-panel-stroke: rgba(255, 255, 255, 0.12);
   }
 `;

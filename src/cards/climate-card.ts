@@ -1,4 +1,4 @@
-import { html, css, nothing, svg } from "lit";
+import { html, css, nothing } from "lit";
 import { state } from "lit/decorators.js";
 import { classMap } from "lit/directives/class-map.js";
 import { styleMap } from "lit/directives/style-map.js";
@@ -9,6 +9,8 @@ import type { BaseCardConfig, HomeAssistant } from "../types";
 import { clamp, formatNumber, isUnavailable, pickEntity } from "../utils";
 
 export interface ClimateCardConfig extends BaseCardConfig {
+  /** Visual treatment. The original dial remains the default for backwards compatibility. */
+  design?: "classic" | "compact" | "a";
   show_fan_mode?: boolean;
   show_preset_mode?: boolean;
   show_swing_mode?: boolean;
@@ -29,6 +31,8 @@ const DIAL = 250;
 const RING_WIDTH = 24;
 const RADIUS = DIAL / 2 - RING_WIDTH / 2;
 const START_ANGLE = 135;
+/** How long a just-sent setpoint is trusted before the entity's own value takes over. */
+const PENDING_MS = 4000;
 const SWEEP = 270;
 
 const polar = (deg: number, r = RADIUS): [number, number] => {
@@ -49,6 +53,13 @@ function arcPath(fromDeg: number, toDeg: number): string {
  */
 export class LiquidGlassClimateCard extends LiquidGlassBaseCard<ClimateCardConfig> {
   @state() private drag: { which: "low" | "high" | "single"; value: number } | undefined;
+  /**
+   * What was just sent, held until the entity reports it back. Without this the dial would
+   * fall back to the old attribute the moment the finger lifts, and then animate from there
+   * to the new value once Home Assistant answers — a bounce the user never asked for.
+   */
+  @state() private pending: Partial<Record<"single" | "low" | "high", number>> | undefined;
+  private pendingTimer: number | undefined;
 
   static override styles = [
     tokens,
@@ -86,7 +97,18 @@ export class LiquidGlassClimateCard extends LiquidGlassBaseCard<ClimateCardConfi
       .ring-fill {
         fill: none;
         stroke-width: ${RING_WIDTH}px;
+        stroke-linecap: butt;
         filter: drop-shadow(0 0 7px var(--ring-glow));
+        transition:
+          stroke-dasharray 0.45s cubic-bezier(0.3, 0.8, 0.3, 1),
+          stroke-dashoffset 0.45s cubic-bezier(0.3, 0.8, 0.3, 1),
+          opacity 0.3s ease;
+      }
+      svg {
+        transition:
+          --lg-ring-0 0.42s ease,
+          --lg-ring-1 0.42s ease,
+          --lg-ring-2 0.42s ease;
       }
       .dial-knob {
         position: absolute;
@@ -94,7 +116,15 @@ export class LiquidGlassClimateCard extends LiquidGlassBaseCard<ClimateCardConfi
         height: var(--lg-knob, 30px);
         transform: translate(-50%, -50%);
         cursor: grab;
+        transition: left 0.45s cubic-bezier(0.3, 0.8, 0.3, 1), top 0.45s cubic-bezier(0.3, 0.8, 0.3, 1), transform 0.12s ease;
+      }
+      /* Anything that eased towards the finger would feel like lag, so while a drag is in
+         flight the knob and the arc track the pointer exactly. */
+      .dial.dragging .dial-knob {
         transition: transform 0.12s ease;
+      }
+      .dial.dragging .ring-fill {
+        transition: none;
       }
       .dial-knob:active {
         cursor: grabbing;
@@ -160,6 +190,177 @@ export class LiquidGlassClimateCard extends LiquidGlassBaseCard<ClimateCardConfi
         color: var(--lg-text-secondary);
         pointer-events: none;
       }
+      .card.climate-compact {
+        --lg-gap: 16px;
+      }
+      .tile-readout {
+        min-width: 0;
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 16px;
+      }
+      .tile-target {
+        min-width: 0;
+        display: flex;
+        align-items: flex-start;
+        gap: 2px;
+        color: var(--lg-text-primary);
+        font-family: var(--lg-font-ui);
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+      }
+      .tile-target .number {
+        font-size: var(--lg-tile-temp, 56px);
+        line-height: 1;
+        letter-spacing: -2px;
+        white-space: nowrap;
+      }
+      .tile-target.range .number {
+        font-size: var(--lg-tile-range, 40px);
+        line-height: 1.25;
+        letter-spacing: -1px;
+      }
+      .tile-target .fraction {
+        color: var(--lg-text-secondary);
+        font-size: var(--lg-tile-fraction, 24px);
+        line-height: 1.15;
+        letter-spacing: -0.2px;
+        white-space: nowrap;
+      }
+      .tile-target.off {
+        color: var(--lg-text-secondary);
+      }
+      .tile-room {
+        flex: none;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 1px;
+        padding-bottom: 3px;
+      }
+      .tile-room .caption {
+        font-size: var(--lg-tick);
+        font-weight: 500;
+      }
+      .tile-room .value {
+        color: var(--lg-text-primary);
+        font-family: var(--lg-font-ui);
+        font-size: var(--lg-tile-room, 17px);
+        font-weight: 600;
+        letter-spacing: -0.2px;
+        font-variant-numeric: tabular-nums;
+      }
+      .tile-track {
+        position: relative;
+        width: 100%;
+        height: 40px;
+        overflow: hidden;
+        border-radius: 20px;
+        background: var(--lg-track-bg);
+        box-shadow:
+          0 2px 4px rgba(0, 0, 0, 0.14),
+          inset 0 0 0 1px var(--lg-glass-stroke);
+        cursor: pointer;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      .tile-track.off {
+        cursor: default;
+      }
+      .tile-gradient {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg, #5ac8fa 0%, #ffd9a0 35%, #ff9f0a 62%, #ff2d55 100%);
+        clip-path: inset(0 var(--clip-right) 0 var(--clip-left));
+        transition: clip-path 0.35s cubic-bezier(0.3, 0.8, 0.3, 1), opacity 0.25s ease;
+        pointer-events: none;
+      }
+      .tile-track.dragging .tile-gradient,
+      .tile-track.dragging .tile-thumb {
+        transition: none;
+      }
+      .room-marker {
+        position: absolute;
+        top: 9px;
+        left: calc(var(--room) * 100%);
+        width: 3px;
+        height: 22px;
+        border-radius: 2px;
+        background: #fff;
+        transform: translateX(-50%);
+        pointer-events: none;
+      }
+      .tile-thumb {
+        position: absolute;
+        top: 4px;
+        left: calc(var(--value) * 100%);
+        width: 32px;
+        height: 32px;
+        transform: translateX(-50%);
+        transition: left 0.35s cubic-bezier(0.3, 0.8, 0.3, 1), transform 0.12s ease;
+        pointer-events: none;
+      }
+      .tile-track.dragging .tile-thumb {
+        transform: translateX(-50%) scale(1.06);
+      }
+      .tile-ticks {
+        display: flex;
+        justify-content: space-between;
+        padding: 0 6px;
+        color: var(--lg-text-secondary);
+        font-family: var(--lg-font-ui);
+        font-size: var(--lg-tick);
+        font-weight: 500;
+        letter-spacing: -0.2px;
+      }
+      .tile-modes {
+        position: relative;
+        display: flex;
+        gap: 2px;
+        padding: 3px;
+        border-radius: 25px;
+        background: var(--lg-track-bg);
+        box-shadow: inset 0 0 0 1px var(--lg-glass-stroke);
+      }
+      .tile-mode-pill {
+        --seg-w: calc((100% - 6px - (var(--n) - 1) * 2px) / var(--n));
+        position: absolute;
+        top: 3px;
+        bottom: 3px;
+        left: calc(3px + var(--i) * (var(--seg-w) + 2px));
+        width: var(--seg-w);
+        border-radius: 22px;
+        background: var(--lg-segment-selected);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.14);
+        transition: left 0.32s cubic-bezier(0.3, 0.8, 0.3, 1), opacity 0.2s ease;
+        pointer-events: none;
+      }
+      .tile-modes button {
+        position: relative;
+        z-index: 1;
+        flex: 1;
+        min-width: 0;
+        height: 44px;
+        display: grid;
+        place-items: center;
+        padding: 0;
+        border: 0;
+        border-radius: 22px;
+        color: var(--lg-text-secondary);
+        background: transparent;
+        cursor: pointer;
+      }
+      .tile-modes lg-icon {
+        --mdc-icon-size: 19px;
+        width: 19px;
+        height: 19px;
+        transition: color 0.32s ease;
+      }
+      .tile-modes button.selected lg-icon {
+        color: var(--selected-color);
+      }
       @supports (container-type: inline-size) {
         .card {
           --lg-knob: clamp(22px, 8cqi, 30px);
@@ -167,15 +368,49 @@ export class LiquidGlassClimateCard extends LiquidGlassBaseCard<ClimateCardConfi
           --lg-temp-range: clamp(26px, 10.5cqi, 40px);
           --lg-temp-fraction: clamp(15px, 5.8cqi, 22px);
         }
+        .card.climate-compact {
+          --lg-tile-temp: clamp(38px, 14.7cqi, 56px);
+          --lg-tile-range: clamp(28px, 10.5cqi, 40px);
+          --lg-tile-fraction: clamp(17px, 6.3cqi, 24px);
+          --lg-tile-room: clamp(13px, 4.5cqi, 17px);
+        }
       }
       .segment.modes {
+        position: relative;
         border-radius: 20px;
       }
+      /*
+       * The buttons are flex: 1 inside 3px of padding with a 2px gap, so one button is
+       * (width - 6px - gaps) / n and the pill's offset is that plus a gap, per button.
+       * Deriving it here keeps the pill on the button without measuring anything.
+       */
+      .seg-pill {
+        --seg-w: calc((100% - 6px - (var(--n) - 1) * 2px) / var(--n));
+        position: absolute;
+        top: 3px;
+        bottom: 3px;
+        left: calc(3px + var(--i) * (var(--seg-w) + 2px));
+        width: var(--seg-w);
+        border-radius: 17px;
+        background: var(--lg-segment-selected);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.14);
+        transition: left 0.32s cubic-bezier(0.3, 0.8, 0.3, 1), opacity 0.2s ease;
+        pointer-events: none;
+      }
       .segment.modes > button {
+        position: relative;
         height: clamp(44px, 14cqi, 54px);
         border-radius: 17px;
         font-size: var(--lg-tick);
         padding: 0 2px;
+      }
+      /* The pill draws the selection now, so the button underneath must not draw it too. */
+      .segment.modes > button.selected {
+        background: transparent;
+        box-shadow: none;
+      }
+      .segment.modes lg-icon {
+        transition: color 0.32s ease;
       }
       .segment.modes > button > span {
         max-width: 100%;
@@ -378,6 +613,18 @@ export class LiquidGlassClimateCard extends LiquidGlassBaseCard<ClimateCardConfi
     return parts.join(" · ");
   }
 
+  /** The compact slider moves the room temperature into the large readout row. */
+  private tileStateText(): string {
+    const a = this.entity?.attributes ?? {};
+    const parts = [this.actionText()];
+    if (a.current_humidity !== undefined) parts.push(`${this.t("humidity")} ${formatNumber(this.hass, a.current_humidity as number, 0)}%`);
+    return parts.join(" · ");
+  }
+
+  private shownValue(key: "single" | "low" | "high", reported: number | undefined, fallback: number): number {
+    return this.drag?.which === key ? this.drag.value : this.pending?.[key] ?? reported ?? fallback;
+  }
+
   private valueFromPointer(e: PointerEvent): number {
     const dial = this.shadowRoot?.querySelector(".dial") as HTMLElement | null;
     if (!dial) return 0;
@@ -390,6 +637,15 @@ export class LiquidGlassClimateCard extends LiquidGlassBaseCard<ClimateCardConfi
     const [min, max] = this.range;
     const raw = min + (deg / SWEEP) * (max - min);
     return clamp(Math.round(raw / this.step) * this.step, min, max);
+  }
+
+  private valueFromTilePointer(e: PointerEvent): number {
+    const track = this.shadowRoot?.querySelector(".tile-track") as HTMLElement | null;
+    if (!track) return this.range[0];
+    const rect = track.getBoundingClientRect();
+    const ratio = clamp((e.clientX - rect.left) / Math.max(rect.width, 1), 0, 1);
+    const [min, max] = this.range;
+    return clamp(Math.round((min + ratio * (max - min)) / this.step) * this.step, min, max);
   }
 
   private onDialDown = (e: PointerEvent) => {
@@ -412,53 +668,152 @@ export class LiquidGlassClimateCard extends LiquidGlassBaseCard<ClimateCardConfi
     if (v !== this.drag.value) this.drag = { ...this.drag, value: v };
   };
 
+  private onTileDown = (e: PointerEvent) => {
+    if (this.mode === "off" || e.button !== 0) return;
+    e.preventDefault();
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    const value = this.valueFromTilePointer(e);
+    let which: "low" | "high" | "single" = "single";
+    if (this.isRange) {
+      const a = this.entity!.attributes;
+      const low = this.shownValue("low", a.target_temp_low as number | undefined, this.range[0]);
+      const high = this.shownValue("high", a.target_temp_high as number | undefined, this.range[1]);
+      which = Math.abs(value - low) <= Math.abs(value - high) ? "low" : "high";
+    }
+    this.drag = { which, value };
+  };
+
+  private onTileMove = (e: PointerEvent) => {
+    if (!this.drag) return;
+    const value = this.valueFromTilePointer(e);
+    if (value !== this.drag.value) this.drag = { ...this.drag, value };
+  };
+
+  private onTileKeyDown = (e: KeyboardEvent) => {
+    if (this.mode === "off" || this.isRange) return;
+    const [min, max] = this.range;
+    const reported = this.entity?.attributes.temperature as number | undefined;
+    let value = this.shownValue("single", reported, min);
+    if (e.key === "ArrowRight" || e.key === "ArrowUp") value += this.step;
+    else if (e.key === "ArrowLeft" || e.key === "ArrowDown") value -= this.step;
+    else if (e.key === "Home") value = min;
+    else if (e.key === "End") value = max;
+    else return;
+    e.preventDefault();
+    this.drag = { which: "single", value: clamp(value, min, max) };
+    this.onDialUp();
+  };
+
   private onDialUp = () => {
     if (!this.drag) return;
     const { which, value } = this.drag;
     this.drag = undefined;
     const a = this.entity?.attributes ?? {};
+    // The knobs cannot cross, so a range end is clamped before it is sent — and what is
+    // held has to be what was sent, not what the finger asked for.
+    let sent = value;
     if (which === "single") this.callService("climate", "set_temperature", { temperature: value });
     else if (which === "low") {
-      this.callService("climate", "set_temperature", { target_temp_low: Math.min(value, (a.target_temp_high as number) - this.step), target_temp_high: a.target_temp_high });
+      sent = Math.min(value, (a.target_temp_high as number) - this.step);
+      this.callService("climate", "set_temperature", { target_temp_low: sent, target_temp_high: a.target_temp_high });
     } else {
-      this.callService("climate", "set_temperature", { target_temp_low: a.target_temp_low, target_temp_high: Math.max(value, (a.target_temp_low as number) + this.step) });
+      sent = Math.max(value, (a.target_temp_low as number) + this.step);
+      this.callService("climate", "set_temperature", { target_temp_low: a.target_temp_low, target_temp_high: sent });
     }
+    this.hold(which, sent);
   };
+
+  private hold(which: "single" | "low" | "high", value: number): void {
+    this.pending = { ...this.pending, [which]: value };
+    window.clearTimeout(this.pendingTimer);
+    // A service call that never lands would otherwise freeze the dial on a value the
+    // thermostat never took.
+    this.pendingTimer = window.setTimeout(() => (this.pending = undefined), PENDING_MS);
+  }
+
+  /** True once the entity reports something close enough to what is being held. */
+  private settled(key: "single" | "low" | "high", reported: number | undefined): boolean {
+    const want = this.pending?.[key];
+    if (want === undefined) return true;
+    if (reported === undefined) return false;
+    return Math.abs(reported - want) <= Math.max(this.step / 2, 0.01);
+  }
+
+  override disconnectedCallback(): void {
+    super.disconnectedCallback();
+    window.clearTimeout(this.pendingTimer);
+  }
+
+  protected override updated(): void {
+    if (!this.pending) return;
+    const a = this.entity?.attributes ?? {};
+    const done =
+      this.settled("single", a.temperature as number | undefined) &&
+      this.settled("low", a.target_temp_low as number | undefined) &&
+      this.settled("high", a.target_temp_high as number | undefined);
+    if (done) {
+      window.clearTimeout(this.pendingTimer);
+      this.pending = undefined;
+    }
+  }
 
   private renderDial(theme: ModeTheme) {
     const a = this.entity!.attributes;
     const off = this.mode === "off";
     const t = this.t;
     const [min, max] = this.range;
-    const single = this.drag?.which === "single" ? this.drag.value : ((a.temperature as number | undefined) ?? min);
-    const low = this.drag?.which === "low" ? this.drag.value : ((a.target_temp_low as number | undefined) ?? min);
-    const high = this.drag?.which === "high" ? this.drag.value : ((a.target_temp_high as number | undefined) ?? max);
+    // The finger wins, then whatever was just sent, then what the entity reports.
+    const single = this.shownValue("single", a.temperature as number | undefined, min);
+    const low = this.shownValue("low", a.target_temp_low as number | undefined, min);
+    const high = this.shownValue("high", a.target_temp_high as number | undefined, max);
     const isRange = this.isRange;
 
     const fillFrom = isRange ? START_ANGLE + this.ratio(low) * SWEEP : START_ANGLE;
     const fillTo = START_ANGLE + this.ratio(isRange ? high : single) * SWEEP;
     const [c0, c1, c2] = theme.ring;
-    const [gx1, gy1] = polar(fillFrom);
-    const [gx2, gy2] = polar(fillTo);
+    // Fractions of the sweep, which is what the dash pattern is expressed in.
+    const from = (fillFrom - START_ANGLE) / SWEEP;
+    const to = (fillTo - START_ANGLE) / SWEEP;
 
     const knobs = isRange ? [low, high] : [single];
     const shown = isRange ? formatNumber(this.hass, low, 0) + "–" + formatNumber(this.hass, high, 0) : formatNumber(this.hass, Math.floor(single), 0);
     const fraction = isRange ? "°" : `.${Math.round((single - Math.floor(single)) * 10)}°`;
 
     return html`<div class="dial-row">
-      <div class="dial" @pointerdown=${this.onDialDown} @pointermove=${this.onDialMove} @pointerup=${this.onDialUp} @pointercancel=${this.onDialUp}>
-        <svg viewBox="0 0 ${DIAL} ${DIAL}" style=${styleMap({ "--ring-glow": theme.glow })}>
+      <div class=${classMap({ dial: true, dragging: this.drag !== undefined })} @pointerdown=${this.onDialDown} @pointermove=${this.onDialMove} @pointerup=${this.onDialUp} @pointercancel=${this.onDialUp}>
+        <svg
+          viewBox="0 0 ${DIAL} ${DIAL}"
+          style=${styleMap({ "--ring-glow": theme.glow, "--lg-ring-0": c0, "--lg-ring-1": c1, "--lg-ring-2": c2 })}
+        >
           <defs>
-            <linearGradient id="ring-grad" gradientUnits="userSpaceOnUse" x1=${gx1} y1=${gy1} x2=${gx2} y2=${gy2}>
-              <stop offset="0" stop-color=${c0} />
-              <stop offset="0.55" stop-color=${c1} />
-              <stop offset="1" stop-color=${c2} />
+            <!--
+              Pinned across the dial rather than to the ends of the filled arc: the design
+              draws it that way, and a vector that moved with the fill would swing about
+              while the arc animates to its new length.
+            -->
+            <linearGradient id="ring-grad" gradientUnits="userSpaceOnUse" x1="0" y1=${DIAL} x2=${DIAL} y2="0">
+              <stop offset="0" stop-color="var(--lg-ring-0)" />
+              <stop offset="0.55" stop-color="var(--lg-ring-1)" />
+              <stop offset="1" stop-color="var(--lg-ring-2)" />
             </linearGradient>
           </defs>
           <path class="ring-track" d=${arcPath(START_ANGLE, START_ANGLE + SWEEP)} />
-          ${off || fillTo - fillFrom < 0.5
-            ? nothing
-            : svg`<path class="ring-fill" stroke="url(#ring-grad)" d=${arcPath(fillFrom, fillTo)} />`}
+          <!--
+            The fill is the whole arc, revealed by the dash pattern. Redrawing a shorter
+            path would jump between modes; a dash length interpolates.
+            pathLength="1" puts the dash values in fractions of the sweep.
+          -->
+          <path
+            class="ring-fill"
+            d=${arcPath(START_ANGLE, START_ANGLE + SWEEP)}
+            pathLength="1"
+            stroke="url(#ring-grad)"
+            style=${styleMap({
+              strokeDasharray: `${Math.max(to - from, 0).toFixed(4)} 1`,
+              strokeDashoffset: (-from).toFixed(4),
+              opacity: off ? "0" : "1",
+            })}
+          />
         </svg>
         ${off ? nothing : knobs.map((v) => this.renderKnobAt(v))}
         <div class="center">
@@ -502,6 +857,131 @@ export class LiquidGlassClimateCard extends LiquidGlassBaseCard<ClimateCardConfi
     </div>`;
   }
 
+  private tileSelectedColor(): string {
+    switch (this.mode) {
+      case "heat":
+        return "var(--lg-heat-deep)";
+      case "cool":
+        return "var(--lg-cool-deep)";
+      case "dry":
+        return "#0A7EA4";
+      case "fan_only":
+        return "#5C6B82";
+      case "heat_cool":
+      case "auto":
+        return "#1E9E4A";
+      default:
+        return "var(--lg-text-primary)";
+    }
+  }
+
+  private tileModeMeta(mode: string): { icon: string; label: string } {
+    const meta = this.modeMeta(mode);
+    // The compact source artwork uses the plain circular-arrows glyph, without an A.
+    return mode === "auto" ? { ...meta, icon: "mdi:refresh" } : meta;
+  }
+
+  private targetParts(value: number): { number: string; fraction: string } {
+    const [whole, fraction] = (Math.round(value * 10) / 10).toFixed(1).split(".");
+    return {
+      number: formatNumber(this.hass, Number(whole), 0),
+      fraction: `.${fraction}°`,
+    };
+  }
+
+  private renderCompact(theme: ModeTheme, modes: string[]) {
+    const a = this.entity!.attributes;
+    const off = this.mode === "off";
+    const [min, max] = this.range;
+    const single = this.shownValue("single", a.temperature as number | undefined, min);
+    const low = this.shownValue("low", a.target_temp_low as number | undefined, min);
+    const high = this.shownValue("high", a.target_temp_high as number | undefined, max);
+    const isRange = this.isRange;
+    const from = isRange ? this.ratio(low) : 0;
+    const to = this.ratio(isRange ? high : single);
+    const current = a.current_temperature as number | undefined;
+    const parts = this.targetParts(single);
+    const selected = this.tileSelectedColor();
+
+    return html`${this.renderDefs()}
+      <div class="glass card climate-compact">
+        <div class="header">
+          ${this.renderIconWell(this.config.icon ?? theme.icon, theme.well)}
+          ${this.renderTitle(this.entityName, this.tileStateText())}
+          ${this.renderBadge(theme.label, theme.badge)}
+        </div>
+
+        <div class="tile-readout">
+          <div class=${classMap({ "tile-target": true, range: isRange, off })}>
+            <span class="number">${isRange ? `${formatNumber(this.hass, low, 0)}–${formatNumber(this.hass, high, 0)}` : parts.number}</span>
+            <span class="fraction">${isRange ? "°" : parts.fraction}</span>
+          </div>
+          ${current === undefined
+            ? nothing
+            : html`<div class="tile-room">
+                <span class="caption">${this.t("room_temp")}</span>
+                <span class="value">${formatNumber(this.hass, current, 1)}°</span>
+              </div>`}
+        </div>
+
+        <div
+          class=${classMap({ "tile-track": true, dragging: this.drag !== undefined, off })}
+          style=${styleMap({
+            "--clip-left": `${from * 100}%`,
+            "--clip-right": `${(1 - to) * 100}%`,
+            "--room": String(current === undefined ? 0 : this.ratio(current)),
+          })}
+          role="slider"
+          tabindex=${off ? -1 : 0}
+          aria-valuemin=${min}
+          aria-valuemax=${max}
+          aria-valuenow=${isRange ? nothing : single}
+          aria-valuetext=${isRange ? `${low}–${high}` : String(single)}
+          aria-disabled=${off}
+          @pointerdown=${this.onTileDown}
+          @pointermove=${this.onTileMove}
+          @pointerup=${this.onDialUp}
+          @pointercancel=${this.onDialUp}
+          @keydown=${this.onTileKeyDown}
+        >
+          <div class="tile-gradient" style=${styleMap({ opacity: off ? "0" : "1" })}></div>
+          ${off || current === undefined ? nothing : html`<div class="room-marker"></div>`}
+          ${off
+            ? nothing
+            : (isRange ? [low, high] : [single]).map(
+                (value) => html`<div class="knob tile-thumb" style=${styleMap({ "--value": String(this.ratio(value)) })}></div>`,
+              )}
+        </div>
+
+        <div class="tile-ticks"><span>${formatNumber(this.hass, min, 0)}°</span><span>${formatNumber(this.hass, max, 0)}°</span></div>
+
+        ${modes.length
+          ? html`<div
+              class="tile-modes"
+              style=${styleMap({ "--selected-color": selected, "--n": String(modes.length), "--i": String(Math.max(modes.indexOf(this.mode), 0)) })}
+            >
+              <div class="tile-mode-pill" style=${styleMap({ opacity: modes.includes(this.mode) ? "1" : "0" })}></div>
+              ${modes.map((mode) => {
+                const meta = this.tileModeMeta(mode);
+                return html`<button
+                  class=${classMap({ selected: mode === this.mode })}
+                  title=${meta.label}
+                  aria-label=${meta.label}
+                  aria-pressed=${mode === this.mode}
+                  @click=${() => this.callService("climate", "set_hvac_mode", { hvac_mode: mode })}
+                >
+                  <lg-icon .icon=${meta.icon}></lg-icon>
+                </button>`;
+              })}
+            </div>`
+          : nothing}
+
+        ${this.config.show_fan_mode === true
+          ? html`<div class=${classMap({ details: true, muted: off })}>${this.renderDetail("fan_mode", "mdi:weather-windy")}</div>`
+          : nothing}
+      </div>`;
+  }
+
   override render() {
     const entity = this.entity;
     if (!entity || isUnavailable(entity)) return this.renderUnavailable();
@@ -511,6 +991,8 @@ export class LiquidGlassClimateCard extends LiquidGlassBaseCard<ClimateCardConfi
     const showFan = this.config.show_fan_mode !== false;
     const showPreset = this.config.show_preset_mode !== false;
     const showSwing = this.config.show_swing_mode === true;
+
+    if (this.config.design === "compact" || this.config.design === "a") return this.renderCompact(theme, modes);
 
     return html`${this.renderDefs()}
       <div class="glass card">
@@ -523,7 +1005,17 @@ export class LiquidGlassClimateCard extends LiquidGlassBaseCard<ClimateCardConfi
         ${this.renderDial(theme)}
 
         ${modes.length
-          ? html`<div class="segment modes" style=${styleMap({ "--selected-color": theme.selectedColor })}>
+          ? html`<div
+              class="segment modes"
+              style=${styleMap({ "--selected-color": theme.selectedColor, "--n": String(modes.length), "--i": String(Math.max(modes.indexOf(this.mode), 0)) })}
+            >
+              <!--
+                One pill that slides between the buttons, rather than a background that
+                appears on the newly selected button and vanishes from the old one. Only a
+                single element can travel; two cross-fading ones read as a blink.
+                An unlisted mode leaves nothing selected, so the pill sits out.
+              -->
+              <div class="seg-pill" style=${styleMap({ opacity: modes.includes(this.mode) ? "1" : "0" })}></div>
               ${modes.map((m) => {
                 const meta = this.modeMeta(m);
                 return html`<button class=${classMap({ selected: m === this.mode })} @click=${() => this.callService("climate", "set_hvac_mode", { hvac_mode: m })}>

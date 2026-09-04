@@ -15,8 +15,14 @@ Lit + TypeScript で書かれ、単一ファイル `dist/liquid-glass-cards.js` 
 | Media | `custom:liquid-glass-media-card` | `media_player`（再生操作、シーク、音量） |
 | Slider | `custom:liquid-glass-slider-card` | 任意の数値（`input_number` `number` `fan` `light` など） |
 | Weather | `custom:liquid-glass-weather-card` | `weather`（現在の天気、時間ごと・日ごとの予報） |
+| Button | `custom:liquid-glass-button-card` | `scene` `script` `automation` `button` `input_button` |
+| Scenes | `custom:liquid-glass-scene-card` | 複数のシーンをタイルまたはチップで並べる |
+| Camera | `custom:liquid-glass-camera-card` | `camera`（静止画、動体検知、履歴） |
+| Group | `custom:liquid-glass-group-card` | 他のカードをまとめる折りたたみ可能なパネル |
 
 すべてのカードはライト / ダークテーマ（`hass.themes.darkMode`）、日本語 / 英語（`hass.language`）に自動で追従します。
+
+Home Assistant 2026.6 以降では、ダッシュボード編集時に先にエンティティを選ぶと、対応する Liquid Glass カードが「Community」の候補に表示されます。同じエンティティに複数のカードが適合する場合（たとえば明るさ対応ライトの Light / Switch / Slider）は、利用可能な候補をすべて表示します。
 
 ## 幅への追従
 
@@ -31,6 +37,18 @@ Lit + TypeScript で書かれ、単一ファイル `dist/liquid-glass-cards.js` 
 - ブラー・彩度・ティント・リムハイライト・内側グロー・影: すべてのモダンブラウザで動作
 - エッジ屈折（`feDisplacementMap` を使った `backdrop-filter: url(#lg-card)`）: Chromium 系ブラウザのみ。Safari / Firefox では自動的に通常のブラー表示にフォールバックします
 - 背景がカラフルなほど効果が映えます。ダッシュボードのテーマで `background` にグラデーション画像を設定することを推奨します
+
+## アニメーション
+
+状態が外から届いたとき、カードは値をいきなり差し替えずに補間します。エアコンのモードを切り替えると、リングの長さ・リングの色・ノブの位置・アイコンの色・バッジの色がそれぞれ 0.42〜0.45 秒かけて次の状態へ移ります。
+
+運転モードのボタンでは、選択中を示す白いピルが次のボタンへ滑って移動します。背景を一方から消して他方に出すと瞬きに見えるため、動く要素は1つだけにしています。
+
+補間しないのは、指の動きに追従する部分だけです。ドラッグ中のノブと弧はポインタに正確に追従します。遅れて追いつく動きは、そのまま操作の遅延として感じられるためです。
+
+指を離したあとは、確定した値をエンティティが返してくるまで保持します。保持しないと、離した瞬間にダイヤルが変更前の値へ戻り、そこから設定値へ animate してしまうためです。エンティティが応答しない場合は 4 秒で保持をやめ、エンティティの値に戻ります。
+
+OS で「視差効果を減らす」（`prefers-reduced-motion: reduce`）を有効にしている場合、すべてのトランジションとアニメーションは無効になり、最終状態が即座に表示されます。
 
 ## インストール
 
@@ -66,14 +84,14 @@ Home Assistant はリソースを強くキャッシュします。ファイル�
 読み込まれているビルドはブラウザのコンソールで確認できます。起動時に次のような行が出ます。
 
 ```text
- LIQUID-GLASS-CARDS  v0.4.0 · 10 cards · built 2026-09-03 15:45
+ LIQUID-GLASS-CARDS  v0.6.0 · 13 cards · built 2026-09-04 09:06
 ```
 
 カード枚数とビルド時刻が、コピーしたファイルのものと一致していれば正しく読み込まれています。一致しない場合はまだ古いファイルです。
 
 ## 設定例
 
-10種類すべてビジュアルエディタに対応しています。ダッシュボードでカードを追加すると、エンティティや表示項目をフォームから設定できます。YAML を直接書く必要はありません。以下は同じ設定を YAML で表したものです。
+13種類すべてビジュアルエディタに対応しています。ダッシュボードでカードを追加すると、エンティティや表示項目をフォームから設定できます。YAML を直接書く必要はありません。以下は同じ設定を YAML で表したものです。
 
 すべてのカードに共通するオプション:
 
@@ -282,6 +300,97 @@ entity: weather.tokyo
 layout: row
 ```
 
+### Button
+
+シーン、スクリプト、オートメーション、ボタンを1行で実行します。
+
+```yaml
+type: custom:liquid-glass-button-card
+entity: scene.good_night
+accent: "#5E5CE6"    # アイコンの色
+subtitle: 就寝前の一括操作   # 省略時は種類と前回の実行時刻
+service: script.custom      # 省略時はドメインごとの既定
+service_data: { minutes: 10 }
+```
+
+押すとアイコンがチェックに変わり、説明文が「実行しました · たった今」になります。2.6秒で元に戻ります。
+
+説明文は省略すると「シーン · 前回 8時間前」のようになります。12時間以内は経過時間、それ以前は時刻で表示します。
+
+### Scenes
+
+複数のシーンをまとめて並べます。デザインの Button Grid、Scene Chips、Scene Chips Row の3つに対応します。
+
+```yaml
+type: custom:liquid-glass-scene-card
+title: シーン
+style: tiles        # tiles | chips
+columns: 3
+show_count: false
+scenes:
+  - entity: scene.morning
+    icon: mdi:weather-sunset-up
+  - entity: scene.night
+    icon: mdi:weather-night
+  - entity: scene.away
+    name: 外出
+    accent: "#0A7EA4"
+  - service: script.run_vent      # entity の代わりにサービスでも可
+    name: 換気
+    service_data: { minutes: 10 }
+```
+
+`style: chips` にするとアイコンのない文字だけのピルになります。`columns: 4` と組み合わせるとデザインの Scene Chips Row になります。
+
+アイコンの色を指定しなければ、デザインのパレット6色を順番に使います。押したタイルは短く光って反応を返します。
+
+### Camera
+
+```yaml
+type: custom:liquid-glass-camera-card
+entity: camera.front_door
+motion_entity: binary_sensor.front_door_motion   # 動体検知のチップ
+show_actions: true       # 下部の操作列
+show_mic: false
+mic_service: script.talk_to_door
+snapshot_service: ""     # 省略時は静止画を新しいタブで開く
+refresh_interval: 10     # 静止画の更新間隔（秒）
+aspect_ratio: 1.777      # 16 / 9
+```
+
+映像は `entity_picture` の静止画を一定間隔で取り直します。Home Assistant のライブ配信は内部コンポーネントで提供されており、カスタムカードからは利用できないためです。拡大ボタンは詳細ダイアログを開くので、そちらでライブ映像を見られます。
+
+エンティティの状態が `streaming` なら「ライブ」、それ以外は「静止画」のバッジになります。`unavailable` のときは映像を消し、オフライン表示に切り替えます。
+
+`show_actions: false` で下部の操作列を省き、映像だけのカードになります。
+
+### Group
+
+```yaml
+type: custom:liquid-glass-group-card
+title: セキュリティ
+icon: mdi:shield-home
+subtitle: ""          # 省略時は「3台 · 2台が稼働中」を自動生成
+collapsible: true     # ヘッダーのタップで開閉
+collapsed: false      # 初期状態
+summary: true         # 折りたたみ時に状態チップを表示
+cards:
+  - type: custom:liquid-glass-lock-card
+    entity: lock.front_door
+  - type: custom:liquid-glass-binary-sensor-card
+    entity: binary_sensor.front_door
+  - type: custom:liquid-glass-switch-card
+    entity: switch.porch_light
+```
+
+カードをカテゴリごとにまとめるコンテナです。パネル自体はガラスではありません。Apple のガイドラインでは Liquid Glass を重ねないこととされているため、容器は淡く色を敷いた面にとどめ、ガラスは中のカードだけが持ちます。
+
+`cards` には Liquid Glass 以外の任意の Lovelace カードも入れられます。子カードは Home Assistant の `loadCardHelpers()` で生成されるためです。
+
+`theme` `refraction` `language` は、子カードが自分で指定していない場合にかぎり引き継がれます。グループをダークに固定すると中のカードもダークになります。
+
+折りたたむと、子カードのエンティティごとに状態チップが並びます。照明は明るさ、カバーは開度、エアコンは設定温度というように、閉じたままでも各機器の状態が読めます。`summary: false` でチップを省き、ヘッダーだけにできます。
+
 ## テーマによるカスタマイズ
 
 デザイントークンはすべて CSS カスタムプロパティとして公開されており、HA テーマから上書きできます。
@@ -294,7 +403,7 @@ liquid_glass:
   lg-font-jp: '"Noto Sans JP", sans-serif'
 ```
 
-主なトークン: `--lg-text-primary` `--lg-text-secondary` `--lg-glass-tint`（RGB 三成分）`--lg-glass-tint-alpha` `--lg-glass-stroke` `--lg-track-bg` `--lg-shadow-glass` `--lg-segment-selected` `--lg-accent` `--lg-heat` `--lg-cool` `--lg-radius` `--lg-blur` `--lg-saturation`。定義は `src/styles/tokens.ts` を参照してください。
+主なトークン: `--lg-text-primary` `--lg-text-secondary` `--lg-glass-tint`（RGB 三成分）`--lg-glass-tint-alpha` `--lg-glass-stroke` `--lg-track-bg` `--lg-shadow-glass` `--lg-segment-selected` `--lg-accent` `--lg-heat` `--lg-cool` `--lg-radius` `--lg-blur` `--lg-saturation` `--lg-group-panel`。定義は `src/styles/tokens.ts` を参照してください。
 
 ## 開発
 

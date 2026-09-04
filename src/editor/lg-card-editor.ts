@@ -40,9 +40,16 @@ export class LiquidGlassCardEditor extends LitElement {
     data.theme = theme ?? "auto";
     // "full" is the weather card's default layout; show it rather than an empty dropdown.
     if (cardKind(config.type) === "weather") data.layout = (rest.layout as string | undefined) ?? "full";
+    // The original climate dial remains the default; make that explicit in the selector.
+    if (cardKind(config.type) === "climate") {
+      const design = rest.design as string | undefined;
+      data.design = design === "a" ? "compact" : design ?? "classic";
+    }
 
-    for (const name of fieldNames(schemaFor(config.type, this.t, rest))) {
-      if (DEFAULT_ON.has(name)) data[name] = rest[name] !== false;
+    for (const name of fieldNames(schemaFor(config.type, this.t, data))) {
+      if (!DEFAULT_ON.has(name)) continue;
+      const compactFan = cardKind(config.type) === "climate" && data.design === "compact" && name === "show_fan_mode";
+      data[name] = compactFan ? rest[name] === true : rest[name] !== false;
     }
 
     if (cardKind(config.type) === "light") {
@@ -55,11 +62,21 @@ export class LiquidGlassCardEditor extends LitElement {
   /** Form values → config, dropping the keys that carry no meaning. */
   private fromForm(data: FormData): BaseCardConfig {
     const out: FormData = { ...data };
+    const compactClimate = cardKind(out.type as string | undefined) === "climate" && (out.design === "compact" || out.design === "a");
+    const current = this.config as (BaseCardConfig & { design?: string; show_fan_mode?: boolean }) | undefined;
+    const currentCompact = current?.design === "compact" || current?.design === "a";
+    // ha-form includes the old design's seeded checkbox value in the same event as a
+    // design change. Do not mistake that seed for an explicit fan-control choice.
+    if (current && compactClimate !== currentCompact && current.show_fan_mode === undefined) delete out.show_fan_mode;
 
     // A toggle sitting at the card's own default carries no information. This runs before
     // refraction becomes a boolean, since there both true and false are real choices.
     for (const [key, value] of Object.entries(out)) {
       if (typeof value !== "boolean") continue;
+      if (compactClimate && key === "show_fan_mode") {
+        if (value === false) delete out[key];
+        continue;
+      }
       if (value === DEFAULT_ON.has(key)) delete out[key];
     }
 
@@ -68,6 +85,7 @@ export class LiquidGlassCardEditor extends LitElement {
     else delete out.refraction;
     if (out.theme === "auto") delete out.theme;
     if (out.layout === "full") delete out.layout;
+    if (out.design === "classic") delete out.design;
     // Same for the swatches: the editor seeds them so the list is visible, but an
     // untouched list is what the card shows anyway.
     const favorites = out.favorites;

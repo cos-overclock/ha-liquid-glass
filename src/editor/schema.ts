@@ -1,5 +1,6 @@
 import type { Translator } from "../i18n";
 import { SLIDER_DOMAINS } from "../cards/slider-card";
+import { BUTTON_DOMAINS } from "../cards/button-card";
 
 /**
  * Schema entries consumed by Home Assistant's `<ha-form>`.
@@ -98,7 +99,13 @@ export function schemaFor(type: string | undefined, t: Translator, data?: Record
     case "climate":
       return [
         ...head("climate"),
-        grid([bool("show_fan_mode"), bool("show_preset_mode"), bool("show_swing_mode")]),
+        select("design", [
+          { value: "classic", label: t("ed_design_classic") },
+          { value: "compact", label: t("ed_design_compact") },
+        ]),
+        ...(data?.design === "compact" || data?.design === "a"
+          ? [bool("show_fan_mode")]
+          : [grid([bool("show_fan_mode"), bool("show_preset_mode"), bool("show_swing_mode")])]),
         select(
           "hvac_modes",
           HVAC_MODES.map((m) => ({ value: m, label: t(`mode_${m}`) })),
@@ -194,6 +201,60 @@ export function schemaFor(type: string | undefined, t: Translator, data?: Record
       ];
     }
 
+    case "button":
+      return [
+        ...head(Object.keys(BUTTON_DOMAINS)),
+        text("subtitle"),
+        text("accent"),
+        {
+          name: "",
+          type: "expandable",
+          title: t("ed_custom_entity"),
+          icon: "mdi:code-braces",
+          schema: [text("service"), object("service_data")],
+        },
+        advanced(t),
+      ];
+
+    case "scene":
+      return [
+        grid([
+          select("style", [
+            { value: "tiles", label: t("ed_style_tiles") },
+            { value: "chips", label: t("ed_style_chips") },
+          ]),
+          number("columns", 1, 6),
+        ]),
+        grid([text("title"), bool("show_count")]),
+        object("scenes"),
+        advanced(t),
+      ];
+
+    case "group":
+      return [
+        grid([text("title"), icon("icon")]),
+        text("subtitle"),
+        grid([bool("collapsible"), bool("collapsed"), bool("summary")]),
+        object("cards"),
+        advanced(t),
+      ];
+
+    case "camera":
+      return [
+        ...head("camera"),
+        entity("motion_entity", "binary_sensor"),
+        grid([bool("show_actions"), bool("show_mic")]),
+        grid([number("refresh_interval", 1, 300), number("aspect_ratio", 0.5, 3, 0.01)]),
+        {
+          name: "",
+          type: "expandable",
+          title: t("ed_custom_entity"),
+          icon: "mdi:code-braces",
+          schema: [text("snapshot_service"), text("mic_service")],
+        },
+        advanced(t),
+      ];
+
     default:
       return [entity("entity", [], true), grid([text("name"), icon("icon")]), advanced(t)];
   }
@@ -219,6 +280,9 @@ export const DEFAULT_ON = new Set([
   "show_hourly",
   "show_daily",
   "show_metrics",
+  "show_actions",
+  "collapsible",
+  "summary",
 ]);
 
 /** Every field name in a schema, flattened out of its grids and expandables. */
@@ -248,7 +312,11 @@ export const HELPERS: Record<string, string> = {
   service: "ed_help_service",
   service_key: "ed_help_service_key",
   subtitle: "ed_help_subtitle",
+  scenes: "ed_help_scenes",
+  snapshot_service: "ed_help_snapshot_service",
+  motion_entity: "ed_help_motion_entity",
   style: "ed_help_style",
   layout: "ed_help_layout",
   hvac_modes: "ed_help_hvac_modes",
+  cards: "ed_help_cards",
 };

@@ -227,6 +227,11 @@
         "fan.bedroom": { entity_id: "fan.bedroom", state: "on", last_changed: new Date().toISOString(), last_updated: new Date().toISOString(), attributes: { friendly_name: "寝室 サーキュレーター", percentage: 60, percentage_step: 20 } },
         "input_number.hot_water": { entity_id: "input_number.hot_water", state: "42", last_changed: new Date().toISOString(), last_updated: new Date().toISOString(), attributes: { friendly_name: "給湯温度", min: 30, max: 60, step: 1, unit_of_measurement: "°C" } },
         "weather.tokyo": { entity_id: "weather.tokyo", state: "partlycloudy", last_changed: new Date().toISOString(), last_updated: new Date().toISOString(), attributes: { friendly_name: "東京", temperature: 24, temperature_unit: "°C", humidity: 52, wind_speed: 3.2, wind_speed_unit: "m/s" } },
+        "scene.night": { entity_id: "scene.night", state: new Date(Date.now() - 3600e3).toISOString(), last_changed: new Date().toISOString(), last_updated: new Date().toISOString(), attributes: { friendly_name: "おやすみモード" } },
+        "scene.morning": { entity_id: "scene.morning", state: "unknown", last_changed: new Date().toISOString(), last_updated: new Date().toISOString(), attributes: { friendly_name: "おはよう" } },
+        "script.vent": { entity_id: "script.vent", state: "off", last_changed: new Date().toISOString(), last_updated: new Date().toISOString(), attributes: { friendly_name: "換気", last_triggered: new Date(Date.now() - 120e3).toISOString() } },
+        "camera.front": { entity_id: "camera.front", state: "streaming", last_changed: new Date().toISOString(), last_updated: new Date().toISOString(), attributes: { friendly_name: "玄関 カメラ", entity_picture: "/api/camera_proxy/camera.front?token=abc" } },
+        "binary_sensor.motion": { entity_id: "binary_sensor.motion", state: "on", last_changed: new Date(Date.now() - 120e3).toISOString(), last_updated: new Date().toISOString(), attributes: { friendly_name: "動体", device_class: "motion" } },
         "sun.sun": { entity_id: "sun.sun", state: "above_horizon", last_changed: new Date().toISOString(), last_updated: new Date().toISOString(), attributes: {} },
         "media_player.living": { entity_id: "media_player.living", state: "playing", last_changed: new Date().toISOString(), last_updated: new Date().toISOString(), attributes: { friendly_name: "リビング HomePod", media_title: "Midnight City", media_artist: "M83", media_duration: 243, media_position: 102, volume_level: 0.62, supported_features: 0x1fffff } },
       };
@@ -259,7 +264,9 @@
         async callApi() { return [[]]; },
       };
 
-      const TYPES = ["light", "climate", "switch", "sensor", "binary-sensor", "lock", "cover", "media", "slider", "weather"];
+      const TYPES = ["light", "climate", "switch", "sensor", "binary-sensor", "lock", "cover", "media", "slider", "weather", "button", "scene", "camera", "group"];
+      // These cards hold a list rather than a single entity; the value names the list key.
+      const ENTITYLESS = new Map([["scene", "scenes"], ["group", "cards"]]);
       const kindSel = document.getElementById("kind");
       for (const k of TYPES) kindSel.append(new Option(k, k));
 
@@ -318,7 +325,12 @@
         const tag = `liquid-glass-${kind}-card`;
         const Card = customElements.get(tag);
         const stub = Card.getStubConfig(hass, Object.keys(states), Object.keys(states));
-        check(`${kind}: stub picks a live entity`, Boolean(states[stub.entity]), stub.entity);
+        if (ENTITYLESS.has(kind)) {
+          const key = ENTITYLESS.get(kind);
+          check(`${kind}: stub provides a ${key} list`, Array.isArray(stub[key]) && stub[key].length > 0, JSON.stringify(stub));
+        } else {
+          check(`${kind}: stub picks a live entity`, Boolean(states[stub.entity]), stub.entity);
+        }
 
         const editor = await Card.getConfigElement();
         editor.hass = hass;
@@ -332,7 +344,8 @@
         if (!form) continue;
 
         const fields = flatten(form._schema);
-        check(`${kind}: entity + advanced options present`, ["entity", "name", "icon", "theme", "refraction"].every(f => fields.has(f)), [...fields].join(", "));
+        const required = ENTITYLESS.has(kind) ? ["theme", "refraction"] : ["entity", "name", "icon", "theme", "refraction"];
+        check(`${kind}: entity + advanced options present`, required.every(f => fields.has(f)), [...fields].join(", "));
 
         const apply = (patch) =>
           new Promise((resolve) => {
@@ -777,6 +790,470 @@
         check("weather row: much shorter than the full card", h(row) < h(full) / 3, `${h(row)}px vs ${h(full)}px`);
 
         for (const el of [full, compact, night, rain, row, sw]) el.remove();
+      }
+
+      // ---- button card: presses the right service and confirms with a tick ----
+      {
+        const mount = (tag, cfg, h = hass) => {
+          const el = document.createElement(tag);
+          el.setConfig({ type: `custom:${tag}`, ...cfg });
+          el.hass = h;
+          el.style.cssText = "position:absolute;left:-9999px;width:380px";
+          document.body.append(el);
+          return el;
+        };
+        const calls = [];
+        const recording = { ...hass, async callService(d, s, data) { calls.push({ call: `${d}.${s}`, data }); } };
+
+        const scene = mount("liquid-glass-button-card", { entity: "scene.night" }, recording);
+        await scene.updateComplete;
+        const r = scene.shadowRoot;
+        check("button: single row", r.querySelector(".card").classList.contains("row"));
+        check("button: the subtitle names the kind", r.querySelector(".state").textContent.startsWith("シーン"), r.querySelector(".state").textContent.trim());
+        check("button: shows the play action", r.querySelector(".action lg-icon").icon === "mdi:play");
+
+        r.querySelector(".card").click();
+        await scene.updateComplete;
+        check("button: pressing calls scene.turn_on", calls[0]?.call === "scene.turn_on" && calls[0]?.data?.entity_id === "scene.night", JSON.stringify(calls[0]));
+        check("button: the action becomes a tick", r.querySelector(".action").classList.contains("done") && r.querySelector(".action lg-icon").icon === "mdi:check");
+        check("button: the subtitle confirms", r.querySelector(".state").textContent.includes("実行しました"), r.querySelector(".state").textContent.trim());
+
+        calls.length = 0;
+        const script = mount("liquid-glass-button-card", { entity: "script.vent" }, recording);
+        await script.updateComplete;
+        script.shadowRoot.querySelector(".card").click();
+        check("button: a script gets script.turn_on", calls[0]?.call === "script.turn_on", calls[0]?.call);
+
+        calls.length = 0;
+        const custom = mount("liquid-glass-button-card", { entity: "scene.night", service: "script.custom", service_data: { x: 1 } }, recording);
+        await custom.updateComplete;
+        custom.shadowRoot.querySelector(".card").click();
+        check("button: a configured service wins", calls[0]?.call === "script.custom" && calls[0]?.data?.x === 1, JSON.stringify(calls[0]));
+
+        for (const el of [scene, script, custom]) el.remove();
+      }
+
+      // ---- scene card: tiles, chips, columns and activation ----
+      {
+        const calls = [];
+        const recording = { ...hass, async callService(d, s, data) { calls.push({ call: `${d}.${s}`, data }); } };
+        const scenes = [{ entity: "scene.morning" }, { entity: "scene.night" }, { entity: "scene.morning", name: "三番目" }];
+        const mk = (cfg) => {
+          const el = document.createElement("liquid-glass-scene-card");
+          el.setConfig({ type: "custom:liquid-glass-scene-card", scenes, ...cfg });
+          el.hass = recording;
+          el.style.cssText = "position:absolute;left:-9999px;width:380px";
+          document.body.append(el);
+          return el;
+        };
+
+        const tiles = mk({ title: "シーン" });
+        const chips = mk({ style: "chips", show_count: true, columns: 2 });
+        await Promise.all([tiles.updateComplete, chips.updateComplete]);
+
+        check("scene tiles: one tile per entry", tiles.shadowRoot.querySelectorAll("button.tile").length === 3);
+        check("scene tiles: each tile carries an icon well", tiles.shadowRoot.querySelectorAll(".tile .well lg-icon").length === 3);
+        check("scene tiles: labels come from the entities", [...tiles.shadowRoot.querySelectorAll(".tile .label")].map((e) => e.textContent.trim()).join() === "おはよう,おやすみモード,三番目");
+        check("scene tiles: heading is shown", tiles.shadowRoot.querySelector(".head .heading").textContent.trim() === "シーン");
+        check("scene tiles: three columns by default", tiles.shadowRoot.querySelector(".grid").style.getPropertyValue("--cols") === "3");
+        // Neighbouring tiles must not share a colour, or the grid reads as one block.
+        const wells = [...tiles.shadowRoot.querySelectorAll(".tile")].map((e) => e.style.getPropertyValue("--to"));
+        check("scene tiles: the palette varies down the grid", new Set(wells).size === 3, wells.join(" "));
+
+        check("scene chips: no icon wells", chips.shadowRoot.querySelector(".well") === null && chips.shadowRoot.querySelectorAll("button.chip").length === 3);
+        check("scene chips: the count is shown", chips.shadowRoot.querySelector(".head .count").textContent.trim() === "3件", chips.shadowRoot.querySelector(".head .count").textContent.trim());
+        check("scene chips: columns are respected", chips.shadowRoot.querySelector(".grid").style.getPropertyValue("--cols") === "2");
+
+        calls.length = 0;
+        tiles.shadowRoot.querySelectorAll("button.tile")[1].click();
+        await tiles.updateComplete;
+        check("scene: tapping a tile activates that entity", calls[0]?.call === "scene.turn_on" && calls[0]?.data?.entity_id === "scene.night", JSON.stringify(calls[0]));
+        check("scene: only the pressed tile lights up", tiles.shadowRoot.querySelectorAll("button.on").length === 1 && tiles.shadowRoot.querySelectorAll("button")[1].classList.contains("on"));
+
+        tiles.remove();
+        chips.remove();
+      }
+
+      // ---- camera card: badge, motion chip and the offline state ----
+      {
+        const mkCam = async (cfg, state = "streaming") => {
+          const el = document.createElement("liquid-glass-camera-card");
+          el.setConfig({ type: "custom:liquid-glass-camera-card", entity: "camera.front", ...cfg });
+          el.hass = { ...hass, states: { ...states, "camera.front": { ...states["camera.front"], state } } };
+          el.style.cssText = "position:absolute;left:-9999px;width:380px";
+          document.body.append(el);
+          await el.updateComplete;
+          return el;
+        };
+
+        const live = await mkCam({ motion_entity: "binary_sensor.motion" });
+        const lr = live.shadowRoot;
+        check("camera: the still is used as the feed", lr.querySelector(".feed").style.backgroundImage.includes("/api/camera_proxy/camera.front"), lr.querySelector(".feed").style.backgroundImage);
+        check("camera: streaming reads as live", lr.querySelector(".live").textContent.trim() === "ライブ");
+        check("camera: the name and controls sit on the feed", lr.querySelector(".name .who").textContent.trim() === "玄関 カメラ" && lr.querySelectorAll(".float").length >= 3);
+        check("camera: no mic button unless asked for", lr.querySelector('lg-icon[icon="mdi:microphone-off"]') === null);
+        check("camera: the motion chip reports the sensor", lr.querySelector(".motion").textContent.includes("動体検知"), lr.querySelector(".motion").textContent.trim());
+
+        const still = await mkCam({}, "idle");
+        check("camera: idle reads as a still", still.shadowRoot.querySelector(".live").textContent.trim() === "静止画");
+        check("camera: no motion chip without a sensor", still.shadowRoot.querySelector(".motion") === null);
+
+        const off = await mkCam({}, "unavailable");
+        const or_ = off.shadowRoot;
+        check("camera offline: the no-signal message shows", or_.querySelector(".nosignal") !== null);
+        check("camera offline: the feed image is dropped", or_.querySelector(".feed").style.backgroundImage === "");
+        check("camera offline: the chip says offline", or_.querySelector(".motion").textContent.trim() === "オフライン");
+        check("camera offline: controls are dimmed", or_.querySelector(".trail").classList.contains("dimmed"));
+
+        const minimal = await mkCam({ show_actions: false });
+        check("camera: show_actions false drops the row", minimal.shadowRoot.querySelector(".actions") === null);
+        const h = (el) => Math.round(el.shadowRoot.querySelector(".card").getBoundingClientRect().height);
+        check("camera: the minimal card is shorter", h(minimal) < h(live), `${h(minimal)}px vs ${h(live)}px`);
+
+        const mic = await mkCam({ show_mic: true, mic_service: "script.talk" });
+        check("camera: the mic button appears when configured", mic.shadowRoot.querySelector('lg-icon[icon="mdi:microphone-off"]') !== null);
+
+        for (const el of [live, still, off, minimal, mic]) el.remove();
+      }
+
+      // ---- compact climate: slider design and editor switch ----
+      {
+        const editor = await customElements.get("liquid-glass-climate-card").getConfigElement();
+        editor.hass = hass;
+        editor.setConfig({ type: "custom:liquid-glass-climate-card", entity: "climate.living_room" });
+        editor.style.cssText = "position:absolute;left:-9999px";
+        document.body.append(editor);
+        await editor.updateComplete;
+
+        let form = editor.shadowRoot.querySelector("ha-form");
+        check("climate editor: classic design is shown as the default", form._data.design === "classic", String(form._data.design));
+        const changed = new Promise((resolve) => editor.addEventListener("config-changed", (e) => resolve(e.detail.config), { once: true }));
+        form.dispatchEvent(new CustomEvent("value-changed", { detail: { value: { ...form._data, design: "compact" } }, bubbles: true, composed: true }));
+        const compactConfig = await changed;
+        check("climate editor: compact slider is written to config", compactConfig.design === "compact", JSON.stringify(compactConfig));
+
+        editor.setConfig(compactConfig);
+        await editor.updateComplete;
+        form = editor.shadowRoot.querySelector("ha-form");
+        const compactFields = flatten(form._schema);
+        check("climate editor: compact slider offers fan control only", compactFields.has("show_fan_mode") && !compactFields.has("show_preset_mode") && !compactFields.has("show_swing_mode"), [...compactFields].join(", "));
+        check("climate editor: compact fan control is off by default", form._data.show_fan_mode === false, String(form._data.show_fan_mode));
+        const fanChanged = new Promise((resolve) => editor.addEventListener("config-changed", (e) => resolve(e.detail.config), { once: true }));
+        form.dispatchEvent(new CustomEvent("value-changed", { detail: { value: { ...form._data, show_fan_mode: true } }, bubbles: true, composed: true }));
+        const fanConfig = await fanChanged;
+        check("climate editor: enabling compact fan control writes true", fanConfig.show_fan_mode === true, JSON.stringify(fanConfig));
+
+        editor.setConfig(fanConfig);
+        await editor.updateComplete;
+        form = editor.shadowRoot.querySelector("ha-form");
+        const restored = new Promise((resolve) => editor.addEventListener("config-changed", (e) => resolve(e.detail.config), { once: true }));
+        form.dispatchEvent(new CustomEvent("value-changed", { detail: { value: { ...form._data, design: "classic" } }, bubbles: true, composed: true }));
+        const classicConfig = await restored;
+        check("climate editor: selecting the original design drops the default key", !("design" in classicConfig), JSON.stringify(classicConfig));
+        editor.remove();
+
+        const calls = [];
+        const base = states["climate.living_room"];
+        const card = document.createElement("liquid-glass-climate-card");
+        card.setConfig({ type: "custom:liquid-glass-climate-card", entity: "climate.living_room", design: "compact" });
+        card.hass = { ...hass, callService: (domain, service, data) => calls.push({ domain, service, data }) };
+        card.style.cssText = "position:absolute;left:-9999px;width:380px";
+        document.body.append(card);
+        await card.updateComplete;
+
+        const root = card.shadowRoot;
+        check("compact climate: renders the slider instead of the dial", root.querySelector(".climate-compact") !== null && root.querySelector(".dial") === null);
+        check("compact climate: room temperature is moved out of the subtitle", !root.querySelector(".state").textContent.includes("室温") && root.querySelector(".tile-room .value").textContent.trim() === "21.5°", root.querySelector(".state").textContent);
+        check("compact climate: the setpoint uses the split large readout", root.querySelector(".tile-target .number").textContent.trim() === "22" && root.querySelector(".tile-target .fraction").textContent.trim() === ".0°");
+        check("compact climate: mode buttons are icon-only", [...root.querySelectorAll(".tile-modes button")].every((button) => button.textContent.trim() === ""));
+        check("compact climate: fan control is hidden by default", root.querySelector(".detail") === null);
+        const trackHeight = Math.round(root.querySelector(".tile-track").getBoundingClientRect().height);
+        const thumbHeight = Math.round(root.querySelector(".tile-thumb").getBoundingClientRect().height);
+        check("compact climate: the slider uses the thinner 40px treatment", trackHeight === 40 && thumbHeight === 32, `${trackHeight}px / ${thumbHeight}px`);
+
+        card.setConfig({ type: "custom:liquid-glass-climate-card", entity: "climate.living_room", design: "compact", show_fan_mode: true });
+        await card.updateComplete;
+        check("compact climate: fan control can be enabled", root.querySelector(".detail .dv")?.textContent.trim() === "自動", root.querySelector(".detail")?.textContent.trim());
+
+        const track = root.querySelector(".tile-track");
+        track.setPointerCapture = () => {};
+        const rect = track.getBoundingClientRect();
+        const point = { clientX: rect.left + rect.width * 0.8, clientY: rect.top + rect.height / 2 };
+        track.dispatchEvent(new PointerEvent("pointerdown", { ...point, button: 0, bubbles: true, pointerId: 1 }));
+        track.dispatchEvent(new PointerEvent("pointerup", { ...point, button: 0, bubbles: true, pointerId: 1 }));
+        await card.updateComplete;
+        check("compact climate: dragging the bar sends the setpoint", calls[0]?.service === "set_temperature" && calls[0]?.data.temperature === 26, JSON.stringify(calls[0]));
+        check("compact climate: the released setpoint is held while HA catches up", root.querySelector(".tile-target .number").textContent.trim() === "26", root.querySelector(".tile-target .number").textContent);
+
+        root.querySelector('.tile-modes button[title="冷房"]').click();
+        check("compact climate: mode buttons call set_hvac_mode", calls[1]?.service === "set_hvac_mode" && calls[1]?.data.hvac_mode === "cool", JSON.stringify(calls[1]));
+
+        const off = document.createElement("liquid-glass-climate-card");
+        off.setConfig({ type: "custom:liquid-glass-climate-card", entity: "climate.off", design: "compact" });
+        off.hass = hass;
+        off.style.cssText = "position:absolute;left:-9999px;width:380px";
+        document.body.append(off);
+        await off.updateComplete;
+        check("compact climate: off state removes the room marker", off.shadowRoot.querySelector(".room-marker") === null);
+        off.remove();
+        card.remove();
+      }
+
+      // ---- motion: what animates when a mode arrives from elsewhere ----
+      {
+        const mkClimate = async (state, attrs = {}) => {
+          const base = states["climate.living_room"];
+          const el = document.createElement("liquid-glass-climate-card");
+          el.setConfig({ type: "custom:liquid-glass-climate-card", entity: "climate.living_room" });
+          el.hass = {
+            ...hass,
+            states: { ...states, "climate.living_room": { ...base, state, attributes: { ...base.attributes, ...attrs } } },
+          };
+          el.style.cssText = "position:absolute;left:-9999px;width:380px";
+          document.body.append(el);
+          await el.updateComplete;
+          return el;
+        };
+
+        const heat = await mkClimate("heat", { temperature: 22 });
+        const hr = heat.shadowRoot;
+        const fill = hr.querySelector(".ring-fill");
+        const dash = (el) => el.style.strokeDasharray.split(" ").map(parseFloat);
+
+        // The arc is drawn once at full length and revealed by the dash pattern, so its
+        // length can interpolate instead of the path being rebuilt on every change.
+        check("motion: the ring fill spans the whole sweep", fill.getAttribute("d") === hr.querySelector(".ring-track").getAttribute("d"));
+        check("motion: the dash is measured in fractions", fill.getAttribute("pathLength") === "1");
+        check("motion: the visible length matches the setpoint", Math.abs(dash(fill)[0] - (22 - 10) / (30 - 10)) < 0.02, fill.style.strokeDasharray);
+        check("motion: the arc animates its length", getComputedStyle(fill).transitionProperty.includes("stroke-dasharray"), getComputedStyle(fill).transitionProperty);
+
+        const warmer = await mkClimate("heat", { temperature: 28 });
+        check("motion: a higher setpoint lengthens the same arc", dash(warmer.shadowRoot.querySelector(".ring-fill"))[0] > dash(fill)[0]);
+
+        // A gradient pinned to the arc ends would swing about while the arc animates.
+        const grad = hr.querySelector("#ring-grad");
+        check("motion: the gradient is pinned across the dial", grad.getAttribute("x1") === "0" && grad.getAttribute("y2") === "0");
+        check("motion: the stops read animatable properties", [...grad.querySelectorAll("stop")].every((st) => st.getAttribute("stop-color").startsWith("var(--lg-ring-")));
+
+        const cool = await mkClimate("cool", { temperature: 22 });
+        const ringOf = (el) => getComputedStyle(el.shadowRoot.querySelector(".dial svg")).getPropertyValue("--lg-ring-0").trim();
+        check("motion: the ring colour changes with the mode", ringOf(cool) !== ringOf(heat), `${ringOf(cool)} vs ${ringOf(heat)}`);
+        const svgCs = getComputedStyle(hr.querySelector(".dial svg"));
+        check(
+          "motion: every ring stop resolves to a colour",
+          [0, 1, 2].every((i) => /^(#|rgb)/.test(svgCs.getPropertyValue(`--lg-ring-${i}`).trim())),
+          [0, 1, 2].map((i) => svgCs.getPropertyValue(`--lg-ring-${i}`).trim()).join(" / "),
+        );
+
+        // An unregistered custom property is a plain token: it would keep a nonsense value
+        // and, more to the point, jump rather than interpolate. A registered one rejects
+        // the nonsense and falls back to the initial value declared in motion.ts.
+        const probe = document.createElement("div");
+        probe.style.cssText = "--well-from: not-a-colour; --lg-ring-0: not-a-colour";
+        document.body.append(probe);
+        const probeCs = getComputedStyle(probe);
+        check("motion: the well colour is registered as a colour", probeCs.getPropertyValue("--well-from").trim() === "rgb(255, 211, 107)", probeCs.getPropertyValue("--well-from"));
+        check("motion: the ring colour is registered as a colour", probeCs.getPropertyValue("--lg-ring-0").trim() === "rgb(255, 179, 107)", probeCs.getPropertyValue("--lg-ring-0"));
+        probe.remove();
+        check("motion: the ring colour animates", getComputedStyle(hr.querySelector(".dial svg")).transitionProperty.includes("--lg-ring-0"));
+
+        const off = await mkClimate("off");
+        check("motion: off fades the arc rather than removing it", off.shadowRoot.querySelector(".ring-fill").style.opacity === "0");
+
+        check("motion: the knob eases to its new angle", getComputedStyle(hr.querySelector(".dial-knob")).transitionProperty.includes("left"));
+        check("motion: the icon well interpolates its gradient colours", getComputedStyle(hr.querySelector(".icon-well")).transitionProperty.includes("--well-from"));
+
+        // Easing towards the finger would read as lag, so a drag in flight turns it off.
+        hr.querySelector(".dial").classList.add("dragging");
+        check("motion: a drag is not eased", getComputedStyle(hr.querySelector(".ring-fill")).transitionProperty === "none" && !getComputedStyle(hr.querySelector(".dial-knob")).transitionProperty.includes("left"));
+        hr.querySelector(".dial").classList.remove("dragging");
+
+        // The mode pill: one element that travels, rather than a background handed from
+        // one button to the next.
+        const pillOf = (el) => el.shadowRoot.querySelector(".seg-pill");
+        const onSelected = (el) => {
+          const pill = pillOf(el).getBoundingClientRect();
+          const btn = el.shadowRoot.querySelector(".segment.modes > button.selected")?.getBoundingClientRect();
+          return btn && Math.abs(pill.left - btn.left) < 1 && Math.abs(pill.width - btn.width) < 1;
+        };
+        check("motion: the mode pill sits on the selected mode", onSelected(heat) && onSelected(cool) && onSelected(off));
+        check("motion: the pill moves with the mode", Math.abs(pillOf(heat).getBoundingClientRect().left - pillOf(cool).getBoundingClientRect().left) > 1);
+        check("motion: the pill slides rather than jumps", getComputedStyle(pillOf(heat)).transitionProperty.includes("left"));
+        check(
+          "motion: the button no longer paints the selection itself",
+          getComputedStyle(hr.querySelector(".segment.modes > button.selected")).backgroundColor === "rgba(0, 0, 0, 0)",
+          getComputedStyle(hr.querySelector(".segment.modes > button.selected")).backgroundColor,
+        );
+
+        // Releasing a drag: the dial must hold what it sent, not fall back to the entity's
+        // old value and then animate to the new one once Home Assistant answers.
+        {
+          const calls = [];
+          const el = document.createElement("liquid-glass-climate-card");
+          el.setConfig({ type: "custom:liquid-glass-climate-card", entity: "climate.living_room" });
+          const base = states["climate.living_room"];
+          const at = (temperature) => ({
+            ...hass,
+            states: { ...states, "climate.living_room": { ...base, state: "heat", attributes: { ...base.attributes, temperature } } },
+            callService: (d, srv, data) => calls.push([d, srv, data]),
+          });
+          el.hass = at(22);
+          el.style.cssText = "position:absolute;left:-9999px;width:380px";
+          document.body.append(el);
+          await el.updateComplete;
+
+          const sr = el.shadowRoot;
+          const dial = sr.querySelector(".dial");
+          dial.setPointerCapture = () => {};
+          dial.releasePointerCapture = () => {};
+          const r = dial.getBoundingClientRect();
+          // 26° of a 10–30 range is 80% along a 270° sweep that starts at 135°.
+          const deg = ((135 + 0.8 * 270) * Math.PI) / 180;
+          const pt = {
+            clientX: r.left + r.width / 2 + (r.width * 0.452) * Math.cos(deg),
+            clientY: r.top + r.height / 2 + (r.height * 0.452) * Math.sin(deg),
+          };
+          const send = (type) => dial.dispatchEvent(new PointerEvent(type, { ...pt, button: 0, bubbles: true, pointerId: 1 }));
+          send("pointerdown");
+          await el.updateComplete;
+          const midDrag = sr.querySelector(".target").textContent;
+          send("pointerup");
+          await el.updateComplete;
+
+          check("motion: the release sends the dragged setpoint", calls.length === 1 && calls[0][1] === "set_temperature" && calls[0][2].temperature === 26, JSON.stringify(calls));
+          check("motion: the dial follows the finger during the drag", midDrag === "26", midDrag);
+          // The entity still says 22 here; the dial must not show it.
+          check("motion: the released value survives a stale entity", sr.querySelector(".target").textContent === "26", sr.querySelector(".target").textContent);
+          check("motion: the arc stays where it was released", Math.abs(parseFloat(sr.querySelector(".ring-fill").style.strokeDasharray) - 0.8) < 0.02, sr.querySelector(".ring-fill").style.strokeDasharray);
+
+          const before = sr.querySelector(".dial-knob").style.left;
+          el.hass = at(26);
+          await el.updateComplete;
+          check("motion: the confirmation moves nothing", sr.querySelector(".dial-knob").style.left === before, `${before} then ${sr.querySelector(".dial-knob").style.left}`);
+          check("motion: the hold is released once confirmed", el.pending === undefined);
+          el.remove();
+
+          // heat_cool: the knobs cannot cross, so the low end is clamped before it is sent.
+          // What is held has to be the clamped value, or the dial would bounce back to it.
+          const rCalls = [];
+          const range = document.createElement("liquid-glass-climate-card");
+          range.setConfig({ type: "custom:liquid-glass-climate-card", entity: "climate.living_room" });
+          range.hass = {
+            ...hass,
+            states: {
+              ...states,
+              "climate.living_room": {
+                ...base,
+                state: "heat_cool",
+                attributes: { ...base.attributes, target_temp_low: 20, target_temp_high: 26, target_temp_step: 0.5 },
+              },
+            },
+            callService: (d, srv, data) => rCalls.push([d, srv, data]),
+          };
+          range.style.cssText = "position:absolute;left:-9999px;width:380px";
+          document.body.append(range);
+          await range.updateComplete;
+
+          const rsr = range.shadowRoot;
+          const rd = rsr.querySelector(".dial");
+          rd.setPointerCapture = () => {};
+          const rr = rd.getBoundingClientRect();
+          const ptAt = (ratio) => {
+            const rad = ((135 + ratio * 270) * Math.PI) / 180;
+            return {
+              clientX: rr.left + rr.width / 2 + rr.width * 0.452 * Math.cos(rad),
+              clientY: rr.top + rr.height / 2 + rr.height * 0.452 * Math.sin(rad),
+            };
+          };
+          const rsend = (type, ratio) => rd.dispatchEvent(new PointerEvent(type, { ...ptAt(ratio), button: 0, bubbles: true, pointerId: 1 }));
+          rsend("pointerdown", 0.5); // nearest to the low knob at 20°
+          rsend("pointermove", 0.9); // dragged past the high knob at 26°
+          rsend("pointerup", 0.9);
+          await range.updateComplete;
+
+          check("motion: the low end is clamped below the high one", rCalls.length === 1 && rCalls[0][2].target_temp_low === 25.5, JSON.stringify(rCalls));
+          check(
+            "motion: the arc holds the clamped value",
+            Math.abs(parseFloat(rsr.querySelector(".ring-fill").style.strokeDashoffset) + 0.775) < 0.02,
+            rsr.querySelector(".ring-fill").style.strokeDashoffset,
+          );
+          range.remove();
+        }
+
+        const oneMode = await mkClimate("off", { hvac_modes: ["off"] });
+        check("motion: a single mode still lines up", onSelected(oneMode));
+
+        // Nothing is selected, so there is nowhere for the pill to be.
+        const unlisted = await mkClimate("dry", { hvac_modes: ["auto", "cool", "off"] });
+        check("motion: an unlisted mode hides the pill", pillOf(unlisted).style.opacity === "0");
+
+        for (const el of [heat, warmer, cool, off, oneMode, unlisted]) el.remove();
+      }
+
+      // ---- group card: nesting, collapsing and the summary chips ----
+      {
+        const cards = [
+          { type: "custom:liquid-glass-lock-card", entity: "lock.front_door" },
+          { type: "custom:liquid-glass-switch-card", entity: "switch.desk" },
+        ];
+        const mkGroup = async (cfg) => {
+          const el = document.createElement("liquid-glass-group-card");
+          el.setConfig({ type: "custom:liquid-glass-group-card", title: "セキュリティ", cards, ...cfg });
+          el.hass = hass;
+          el.style.cssText = "position:absolute;left:-9999px;width:380px";
+          document.body.append(el);
+          await el.updateComplete;
+          // The children are built from an awaited helper lookup, so let that settle.
+          await new Promise((r) => setTimeout(r, 0));
+          await el.updateComplete;
+          return el;
+        };
+
+        const open = await mkGroup({});
+        const kids = open.shadowRoot.querySelectorAll(".cards > *");
+        check("group: one child per config", kids.length === 2, `${kids.length}`);
+        check("group: children are the configured cards", kids[0]?.localName === "liquid-glass-lock-card" && kids[1]?.localName === "liquid-glass-switch-card");
+        check("group: hass reaches the children", kids[0]?.hass === hass);
+        check("group: the panel is not glass", !open.shadowRoot.querySelector(".panel").classList.contains("glass"));
+        check("group: no summary chips while open", !open.shadowRoot.querySelector(".summary"));
+        check("group: the heading is shown", open.shadowRoot.querySelector(".heading").textContent.trim() === "セキュリティ");
+        check("group: the subtitle counts the cards", open.shadowRoot.querySelector(".sub").textContent.includes("2台"), open.shadowRoot.querySelector(".sub").textContent);
+
+        // Tapping the header folds it away and leaves the chips behind.
+        open.shadowRoot.querySelector(".head").click();
+        await open.updateComplete;
+        check("group: tapping the header collapses it", !open.shadowRoot.querySelector(".cards"));
+        const chips = open.shadowRoot.querySelectorAll(".summary .sum");
+        check("group: a chip per entity", chips.length === 2, `${chips.length}`);
+        check("group: the lock chip reads locked", chips[0].textContent.includes("施錠"), chips[0].textContent);
+        check("group: the locked chip is toned", chips[0].classList.contains("good"));
+        check("group: the switch chip reads on", chips[1].textContent.includes("オン"), chips[1].textContent);
+        check("group: the collapsed subtitle invites a tap", open.shadowRoot.querySelector(".sub").textContent.includes("タップで展開"));
+        check("group: collapsed reports one row", open.getCardSize() === 1);
+
+        open.shadowRoot.querySelector(".head").click();
+        await open.updateComplete;
+        check("group: tapping again expands it", Boolean(open.shadowRoot.querySelector(".cards")));
+
+        const collapsed = await mkGroup({ collapsed: true });
+        check("group: collapsed config starts folded", !collapsed.shadowRoot.querySelector(".cards"));
+
+        const quiet = await mkGroup({ collapsed: true, summary: false });
+        check("group: summary false drops the chips", !quiet.shadowRoot.querySelector(".summary"));
+
+        const fixed = await mkGroup({ collapsible: false });
+        check("group: collapsible false hides the chevron", !fixed.shadowRoot.querySelector(".chevron"));
+        fixed.shadowRoot.querySelector(".head").click();
+        await fixed.updateComplete;
+        check("group: a fixed group ignores the tap", Boolean(fixed.shadowRoot.querySelector(".cards")));
+
+        const dark = await mkGroup({ theme: "dark" });
+        check("group: the theme reaches the children", dark.shadowRoot.querySelector(".cards > *").hasAttribute("dark"));
+
+        const empty = await mkGroup({ cards: [] });
+        check("group: an empty group says so", Boolean(empty.shadowRoot.querySelector(".empty")));
+
+        for (const el of [open, collapsed, quiet, fixed, dark, empty]) el.remove();
       }
 
       const failed = results.filter((r) => !r.pass);

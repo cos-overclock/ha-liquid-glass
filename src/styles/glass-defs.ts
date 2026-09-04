@@ -3,67 +3,143 @@ import { html, svg } from "lit";
 /**
  * SVG filter port of pen/liquid-glass.glsl for use in `backdrop-filter: url(#id)`.
  *
- * The shader displaces the backdrop *inward* within an edge band (u_edge), with a smooth
- * lens profile, then blurs (u_blur) and boosts saturation (u_saturation).
- * Here the displacement map is built from two gradient images (X in the red channel,
- * Y in the green channel) that are stretched to the element's bounding box.
+ * The shader samples the pixels behind the surface, and `backdrop-filter` is the only
+ * browser primitive with access to those, so the whole effect is expressed as filter
+ * primitives rather than as GLSL. The graph mirrors the shader step for step:
  *
- * Only Chromium renders SVG filters inside backdrop-filter; other browsers fall back to
- * the plain blur()/saturate() declared in glass.ts.
+ *   blur + saturate      → feGaussianBlur, feColorMatrix       (sampleBg, u_saturation)
+ *   Snell refraction     → feDisplacementMap driven by feImage  (refractDisp, u_refraction)
+ *   chromatic dispersion → three displacement passes recombined (u_chroma)
+ *
+ * The specular, fresnel and hairline terms are not here: Chromium runs neither
+ * feSpecularLighting nor a partly transparent feImage inside backdrop-filter, so glass.ts
+ * paints them from the same equations instead — which also gets them into Safari and
+ * Firefox, where this filter never runs.
  */
 
-function displacementMap(axis: "x" | "y", band: number): string {
-  // Neutral is 128. Left/top edge pushes samples towards +, right/bottom towards -.
-  // Stops follow bulge = smoothstep(t)^2 from the shader (0 → 1 at the edge).
-  const stops = (from: number, to: number) => {
-    const mid = Math.round(from + (to - from) * 0.25);
-    return `<stop offset="0" stop-color="rgb(${from},${from},${from})"/>` +
-      `<stop offset="0.5" stop-color="rgb(${mid},${mid},${mid})"/>` +
-      `<stop offset="1" stop-color="rgb(128,128,128)"/>`;
-  };
+import { SHADER, inwardShift } from "./shader-profile";
+
+/** Sampled densely near the rim, where the Snell curve turns over sharply. */
+const PROFILE = [0, 0.01, 0.02, 0.04, 0.07, 0.1, 0.15, 0.22, 0.3, 0.4, 0.55, 0.7, 0.85, 1];
+
+/**
+ * Largest inward pull the map can express. The shader's curve runs away to hundreds of
+ * pixels in the last fraction of a pixel before the edge, which the border radius clips
+ * anyway, so it is capped here and the map saturates.
+ */
+const MAX_SHIFT = 40;
+
+function dataUri(body: string): string {
+  const src = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1" preserveAspectRatio="none">${body}</svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(src)}`;
+}
+
+/** Rects covering the two bands of one axis, plus the gradients they are painted with. */
+function bands(axis: "x" | "y", band: number) {
   const horizontal = axis === "x";
-  const g1 = horizontal ? `x1="0" y1="0" x2="1" y2="0"` : `x1="0" y1="0" x2="0" y2="1"`;
-  const g2 = horizontal ? `x1="1" y1="0" x2="0" y2="0"` : `x1="0" y1="1" x2="0" y2="0"`;
-  const b = band.toFixed(3);
-  const rectA = horizontal ? `x="0" y="0" width="${b}" height="1"` : `x="0" y="0" width="1" height="${b}"`;
-  const rectB = horizontal
-    ? `x="${(1 - band).toFixed(3)}" y="0" width="${b}" height="1"`
-    : `x="0" y="${(1 - band).toFixed(3)}" width="1" height="${b}"`;
-  const svgSrc =
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1" preserveAspectRatio="none">` +
-    `<defs><linearGradient id="a" ${g1}>${stops(255, 128)}</linearGradient>` +
-    `<linearGradient id="b" ${g2}>${stops(0, 128)}</linearGradient></defs>` +
-    `<rect width="1" height="1" fill="rgb(128,128,128)"/>` +
-    `<rect ${rectA} fill="url(#a)"/><rect ${rectB} fill="url(#b)"/></svg>`;
-  return `data:image/svg+xml;utf8,${encodeURIComponent(svgSrc)}`;
+  const b = band.toFixed(4);
+  const far = (1 - band).toFixed(4);
+  return {
+    gradA: horizontal ? `x1="0" y1="0" x2="1" y2="0"` : `x1="0" y1="0" x2="0" y2="1"`,
+    gradB: horizontal ? `x1="1" y1="0" x2="0" y2="0"` : `x1="0" y1="1" x2="0" y2="0"`,
+    rectA: horizontal ? `x="0" y="0" width="${b}" height="1"` : `x="0" y="0" width="1" height="${b}"`,
+    rectB: horizontal ? `x="${far}" y="0" width="${b}" height="1"` : `x="0" y="${far}" width="1" height="${b}"`,
+  };
+}
+
+/**
+ * Displacement map for one axis, following the shader's refracted profile.
+ *
+ * Each axis writes to its own channel — x to red, y to green — because the two maps are
+ * summed into one. Greyscale maps would put both ramps into both channels, and the top and
+ * bottom bands would then shove the backdrop sideways as well as inward.
+ */
+function displacementMap(axis: "x" | "y", band: number, edge: number, refraction: number): string {
+  const { gradA, gradB, rectA, rectB } = bands(axis, band);
+  const paint = (v: number) => (axis === "x" ? `rgb(${v},128,128)` : `rgb(128,${v},128)`);
+  const stops = (sign: 1 | -1) =>
+    PROFILE.map((t) => {
+      const shift = Math.min(inwardShift(t, edge, refraction), MAX_SHIFT) / MAX_SHIFT;
+      return `<stop offset="${t}" stop-color="${paint(Math.round(128 + sign * 127 * shift))}"/>`;
+    }).join("");
+  return dataUri(
+    `<defs><linearGradient id="a" ${gradA}>${stops(1)}</linearGradient>` +
+      `<linearGradient id="b" ${gradB}>${stops(-1)}</linearGradient></defs>` +
+      `<rect width="1" height="1" fill="rgb(128,128,128)"/>` +
+      `<rect ${rectA} fill="url(#a)"/><rect ${rectB} fill="url(#b)"/>`,
+  );
 }
 
 interface FilterSpec {
   id: string;
+  /**
+   * The band as a fraction of the box. u_edge is a pixel width, but the map is stretched to
+   * whatever the element measures, so this is the fraction it works out to on a typical
+   * card of this kind.
+   */
   band: number;
-  scale: number;
+  /** u_edge in pixels. */
+  edge: number;
+  /** u_refraction, which the shader turns into an index of refraction. */
+  refraction: number;
   blur: number;
   saturation: number;
+  /** u_chroma: how much further red bends than blue. */
+  chroma: number;
 }
 
 const specs: FilterSpec[] = [
-  // Card: u_edge 28px on a ~380px card ≈ 8% band, u_refraction 22, u_blur 7
-  { id: "lg-card", band: 0.08, scale: 22, blur: 5, saturation: 1.35 },
-  // Knob / thumb: u_edge 14 on a 32px circle ≈ 45% band, u_refraction 14, u_blur 3
-  { id: "lg-knob", band: 0.45, scale: 14, blur: 2.2, saturation: 1.35 },
+  // 28px of edge on a card around 310px across its shorter run.
+  { id: "lg-card", band: 0.09, edge: SHADER.edge, refraction: SHADER.refraction, blur: 5, saturation: SHADER.saturation, chroma: SHADER.chroma },
+  // Knobs and thumbs use a tighter edge and less blur, as set on those nodes in the design.
+  { id: "lg-knob", band: 0.4, edge: 14, refraction: 16, blur: 2.2, saturation: SHADER.saturation, chroma: SHADER.chroma },
 ];
 
+/** feColorMatrix that keeps one channel and leaves alpha opaque, ready to be summed. */
+const CHANNEL = {
+  r: "1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0",
+  g: "0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0",
+  b: "0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0",
+};
+
+/**
+ * Red and blue take a different index of refraction, so they land at slightly different
+ * displacements. One map serves all three passes; the ratio is measured mid-band, where
+ * the curve is smooth enough for a single scale factor to stand in for it.
+ */
+function chromaScale(spec: FilterSpec, sign: 1 | -1): number {
+  const mid = 0.15;
+  const base = inwardShift(mid, spec.edge, spec.refraction);
+  const shifted = inwardShift(mid, spec.edge, spec.refraction, sign * spec.chroma * 0.12);
+  return base > 0 ? shifted / base : 1;
+}
+
 function filter(spec: FilterSpec) {
-  const mapX = displacementMap("x", spec.band);
-  const mapY = displacementMap("y", spec.band);
+  const mapX = displacementMap("x", spec.band, spec.edge, spec.refraction);
+  const mapY = displacementMap("y", spec.band, spec.edge, spec.refraction);
+  // The map stores the pull normalised to MAX_SHIFT, and a channel spans ±0.5 of `scale`.
+  const scale = MAX_SHIFT * 2;
+
   return svg`
     <filter id=${spec.id} x="0" y="0" width="1" height="1" color-interpolation-filters="sRGB">
-      <feImage href=${mapX} preserveAspectRatio="none" x="0" y="0" width="1" height="1" result="mx" />
-      <feImage href=${mapY} preserveAspectRatio="none" x="0" y="0" width="1" height="1" result="my" />
+      <!-- No x/y/width/height: those are user-space units, and pinning them to 1 makes
+           Chromium clip the whole result to a one-unit box. Left out, each image stretches
+           to the filter region, which is the element. -->
+      <feImage href=${mapX} preserveAspectRatio="none" result="mx" />
+      <feImage href=${mapY} preserveAspectRatio="none" result="my" />
       <feComposite in="mx" in2="my" operator="arithmetic" k1="0" k2="1" k3="1" k4="-0.5" result="map" />
+
       <feGaussianBlur in="SourceGraphic" stdDeviation=${spec.blur} result="blurred" />
       <feColorMatrix in="blurred" type="saturate" values=${String(spec.saturation)} result="sat" />
-      <feDisplacementMap in="sat" in2="map" scale=${spec.scale} xChannelSelector="R" yChannelSelector="G" />
+
+      <feDisplacementMap in="sat" in2="map" scale=${scale * chromaScale(spec, -1)} xChannelSelector="R" yChannelSelector="G" result="dr" />
+      <feDisplacementMap in="sat" in2="map" scale=${scale} xChannelSelector="R" yChannelSelector="G" result="dg" />
+      <feDisplacementMap in="sat" in2="map" scale=${scale * chromaScale(spec, 1)} xChannelSelector="R" yChannelSelector="G" result="db" />
+      <feColorMatrix in="dr" type="matrix" values=${CHANNEL.r} result="cr" />
+      <feColorMatrix in="dg" type="matrix" values=${CHANNEL.g} result="cg" />
+      <feColorMatrix in="db" type="matrix" values=${CHANNEL.b} result="cb" />
+      <feComposite in="cr" in2="cg" operator="arithmetic" k2="1" k3="1" result="crg" />
+      <feComposite in="crg" in2="cb" operator="arithmetic" k2="1" k3="1" />
     </filter>`;
 }
 

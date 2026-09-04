@@ -152,6 +152,16 @@
         "fan.bedroom": { entity_id: "fan.bedroom", state: "on", last_changed: ago(30), last_updated: ago(3), attributes: { friendly_name: "寝室 サーキュレーター", percentage: 60, percentage_step: 20 } },
         "fan.bedroom_off": { entity_id: "fan.bedroom_off", state: "off", last_changed: ago(30), last_updated: ago(3), attributes: { friendly_name: "寝室 サーキュレーター", percentage: 0, percentage_step: 20 } },
         "weather.tokyo": { entity_id: "weather.tokyo", state: "partlycloudy", last_changed: ago(20), last_updated: ago(20), attributes: { friendly_name: "東京", temperature: 24, temperature_unit: "°C", humidity: 52, wind_speed: 3.2, wind_speed_unit: "m/s" } },
+        "scene.morning": { entity_id: "scene.morning", state: new Date(Date.now()-8*3600e3).toISOString(), last_changed: ago(480), last_updated: ago(480), attributes: { friendly_name: "おはよう" } },
+        "scene.night": { entity_id: "scene.night", state: new Date(Date.now()-13*3600e3).toISOString(), last_changed: ago(780), last_updated: ago(780), attributes: { friendly_name: "おやすみモード" } },
+        "scene.movie": { entity_id: "scene.movie", state: "unknown", last_changed: ago(900), last_updated: ago(900), attributes: { friendly_name: "映画鑑賞" } },
+        "scene.away": { entity_id: "scene.away", state: "unknown", last_changed: ago(900), last_updated: ago(900), attributes: { friendly_name: "外出" } },
+        "scene.home": { entity_id: "scene.home", state: "unknown", last_changed: ago(900), last_updated: ago(900), attributes: { friendly_name: "帰宅" } },
+        "scene.focus": { entity_id: "scene.focus", state: "unknown", last_changed: ago(900), last_updated: ago(900), attributes: { friendly_name: "集中" } },
+        "script.vent": { entity_id: "script.vent", state: "off", last_changed: ago(60), last_updated: ago(60), attributes: { friendly_name: "換気を10分実行", last_triggered: ago(35) } },
+        "camera.front_door": { entity_id: "camera.front_door", state: "streaming", last_changed: ago(30), last_updated: ago(0.2), attributes: { friendly_name: "玄関 カメラ", entity_picture: "https://images.unsplash.com/photo-1587396111574-e54c8378cb8d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=800&q=70" } },
+        "camera.offline": { entity_id: "camera.offline", state: "unavailable", last_changed: ago(30), last_updated: ago(30), attributes: { friendly_name: "裏口 カメラ" } },
+        "binary_sensor.drive_motion": { entity_id: "binary_sensor.drive_motion", state: "on", last_changed: ago(2), last_updated: ago(2), attributes: { friendly_name: "動体", device_class: "motion" } },
         "sun.sun": { entity_id: "sun.sun", state: "above_horizon", last_changed: ago(300), last_updated: ago(300), attributes: {} },
         "input_number.hot_water": { entity_id: "input_number.hot_water", state: "42", last_changed: ago(30), last_updated: ago(3), attributes: { friendly_name: "給湯温度", min: 30, max: 60, step: 1, unit_of_measurement: "°C" } },
       };
@@ -243,6 +253,7 @@
         ["liquid-glass-light-card", { entity: "light.bedroom" }],
         ["liquid-glass-light-card", { entity: "light.living_off", presets: [{ name: "読書", icon: "mdi:book-open-variant", brightness: 100 }, { name: "おやすみ", icon: "mdi:weather-night", brightness: 10 }] }],
         ["liquid-glass-climate-card", { entity: "climate.living_room" }],
+        ["liquid-glass-climate-card", { entity: "climate.living_room", design: "compact" }],
         ["liquid-glass-climate-card", { entity: "climate.bedroom" }],
         ["liquid-glass-climate-card", { entity: "climate.off" }],
         ["liquid-glass-switch-card", { entity: "switch.desk", power_entity: "sensor.desk_power" }],
@@ -273,6 +284,43 @@
         ["liquid-glass-weather-card", { entity: "weather.tokyo" }],
         ["liquid-glass-weather-card", { entity: "weather.tokyo", show_daily: false, show_metrics: false }],
         ["liquid-glass-weather-card", { entity: "weather.tokyo", layout: "row" }],
+        ["liquid-glass-button-card", { entity: "scene.night" }],
+        ["liquid-glass-button-card", { entity: "script.vent", accent: "#5E5CE6" }],
+        ["liquid-glass-scene-card", { title: "シーン", scenes: [
+          { entity: "scene.morning", icon: "mdi:weather-sunset-up" },
+          { entity: "scene.night", icon: "mdi:weather-night" },
+          { entity: "scene.movie", icon: "mdi:movie-open" },
+          { entity: "scene.away", icon: "mdi:door-open" },
+          { entity: "scene.home", icon: "mdi:home" },
+          { entity: "scene.focus", icon: "mdi:target" },
+        ] }],
+        ["liquid-glass-scene-card", { title: "シーン", show_count: true, style: "chips", scenes: [
+          { entity: "scene.morning" }, { entity: "scene.night" }, { entity: "scene.movie" },
+          { entity: "scene.away" }, { entity: "scene.home" }, { entity: "scene.focus", name: "集中モード" },
+        ] }],
+        ["liquid-glass-scene-card", { title: "クイックシーン", style: "chips", columns: 4, scenes: [
+          { entity: "scene.morning" }, { entity: "scene.night" }, { entity: "scene.away" }, { entity: "scene.home" },
+        ] }],
+        ["liquid-glass-camera-card", { entity: "camera.front_door", motion_entity: "binary_sensor.drive_motion" }],
+        ["liquid-glass-camera-card", { entity: "camera.front_door", show_actions: false }],
+        ["liquid-glass-camera-card", { entity: "camera.offline" }],
+        ["liquid-glass-group-card", { title: "セキュリティ", icon: "mdi:shield-home", cards: [
+          { type: "custom:liquid-glass-lock-card", entity: "lock.front_door" },
+          { type: "custom:liquid-glass-binary-sensor-card", entity: "binary_sensor.front_door_closed" },
+          { type: "custom:liquid-glass-switch-card", entity: "switch.desk" },
+        ] }],
+        ["liquid-glass-group-card", { title: "セキュリティ", icon: "mdi:shield-home", collapsed: true, cards: [
+          { type: "custom:liquid-glass-lock-card", entity: "lock.front_door" },
+          { type: "custom:liquid-glass-binary-sensor-card", entity: "binary_sensor.front_door_closed" },
+          { type: "custom:liquid-glass-switch-card", entity: "switch.desk" },
+        ] }],
+        ["liquid-glass-group-card", { title: "リビング", icon: "mdi:sofa", collapsed: true, cards: [
+          { type: "custom:liquid-glass-light-card", entity: "light.living_room" },
+          { type: "custom:liquid-glass-cover-card", entity: "cover.living_blind" },
+          { type: "custom:liquid-glass-climate-card", entity: "climate.living_room" },
+          { type: "custom:liquid-glass-media-card", entity: "media_player.living" },
+          { type: "custom:liquid-glass-switch-card", entity: "switch.desk_off" },
+        ] }],
       ];
 
       const main = document.getElementById("main");
