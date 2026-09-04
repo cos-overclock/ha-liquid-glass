@@ -100,37 +100,62 @@ const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}${glassS
       --lg-ring-1 0.42s ease,
       --lg-ring-2 0.42s ease;
   }
-  .dial-knob {
+  .dial-knob,
+  .dial-knob-cap {
     position: absolute;
     width: var(--lg-knob, 30px);
     height: var(--lg-knob, 30px);
+    border-radius: 999px;
     transform: translate(-50%, -50%);
-    cursor: grab;
+    pointer-events: none;
     transition: left 0.45s cubic-bezier(0.3, 0.8, 0.3, 1), top 0.45s cubic-bezier(0.3, 0.8, 0.3, 1), transform 0.12s ease;
   }
-  /* The knob sits on the ring it is dragging, so it blurs the real dial below it. */
+  /* Elevation lives on the glass knob, so the cap on top of it stays flat. */
   .dial-knob {
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.14);
-    -webkit-backdrop-filter: blur(3px) saturate(1.35);
-    backdrop-filter: blur(3px) saturate(1.35);
-    box-shadow:
-      0 3px 8px rgba(0, 0, 0, 0.3),
-      inset 0 0 0 2px rgba(255, 255, 255, 0.9),
-      inset 0 6px 10px -4px rgba(255, 255, 255, 0.9),
-      inset 0 -4px 8px -4px rgba(0, 0, 0, 0.12);
+    box-shadow: var(--lg-knob-shadow);
+    transition:
+      left 0.45s cubic-bezier(0.3, 0.8, 0.3, 1),
+      top 0.45s cubic-bezier(0.3, 0.8, 0.3, 1),
+      transform 0.12s ease,
+      box-shadow 200ms ease;
+  }
+  /*
+   * Same rule as every other slider: opaque at rest, glass only while a knob is being
+   * dragged. The glass knob stays mounted underneath so its filter is already warm.
+   */
+  .dial-knob-cap {
+    background: var(--lg-knob-solid);
+    box-shadow: inset 0 0 0 1px var(--lg-knob-solid-rim);
+    transition:
+      left 0.45s cubic-bezier(0.3, 0.8, 0.3, 1),
+      top 0.45s cubic-bezier(0.3, 0.8, 0.3, 1),
+      transform 0.12s ease,
+      opacity 220ms ease;
   }
   /* Anything that eased towards the finger would feel like lag, so while a drag is in
-     flight the knob and the arc track the pointer exactly. */
-  .dial.dragging .dial-knob {
+     flight the knob and the arc track the pointer exactly. Only the knob under the
+     finger turns to glass; the other end of a heat_cool range stays solid. */
+  .dial.dragging .dial-knob,
+  .dial.dragging .dial-knob-cap {
     transition: transform 0.12s ease;
   }
   .dial.dragging .ring-fill {
     transition: none;
   }
-  .dial-knob:active {
-    cursor: grabbing;
+  .dial.dragging .dial-knob-cap.moving {
+    opacity: 0;
+    transition-duration: 0.12s;
+  }
+  .dial.dragging .dial-knob.moving {
+    box-shadow: var(--lg-knob-shadow-active);
+  }
+  .dial.dragging .dial-knob.moving,
+  .dial.dragging .dial-knob-cap.moving {
     transform: translate(-50%, -50%) scale(1.08);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .dial-knob,
+    .dial-knob-cap { transition-duration: 0.01ms !important; }
   }
   .center {
     position: absolute;
@@ -195,12 +220,15 @@ const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}${glassS
   .card.climate-compact {
     --lg-gap: 16px;
   }
-  /* Same geometry as every other slider in the app: a thin capsule, a round knob. */
+  /*
+   * Same geometry as every other slider in the app: a thin capsule, a round knob. The
+   * fill colour comes from the mode (set as --lg-slider-fill on the card), the same
+   * identity the dial's ring carries — not a fixed rainbow across the whole range.
+   */
   .card.climate-compact .lg-react-slider {
     --lg-slider-height: var(--lg-tile-row-h, 44px);
     --lg-slider-bar-height: var(--lg-tile-bar-h, 12px);
     --lg-slider-knob-size: var(--lg-tile-knob, 32px);
-    --lg-slider-fill: linear-gradient(90deg, #5ac8fa 0%, #ffd9a0 35%, #ff9f0a 62%, #ff2d55 100%);
   }
   .tile-readout {
     min-width: 0;
@@ -738,7 +766,14 @@ function ClimateCard({ config, hass, host }: ReactCardProps<ClimateCardConfig>) 
         refraction={refraction}
         variant={config.glass_variant}
         sourceAccent={theme.selectedColor}
-        style={{ display: "flex", position: "relative" }}
+        style={{
+          display: "flex",
+          position: "relative",
+          // The bar is a flat mode colour, the same identity the dial's ring carries.
+          "--lg-slider-fill": theme.selectedColor,
+          "--fill-from": theme.selectedColor,
+          "--fill-to": theme.selectedColor,
+        } as CSSProperties}
       >
         {header}
 
@@ -832,7 +867,13 @@ function ClimateCard({ config, hass, host }: ReactCardProps<ClimateCardConfig>) 
   const fillFrom = isRange ? ratio(low) : 0;
   const fillTo = ratio(isRange ? high : single);
   const [c0, c1, c2] = theme.ring;
-  const knobs = isRange ? [low, high] : [single];
+  // The dial's ring is a gradient itself, so the knob's glass echoes its two ends
+  // rather than the single flat colour a linear slider bar would give it.
+  const dialSourceBackground = `linear-gradient(90deg, ${c0}, ${c2}) center / 100% 38% no-repeat,
+    radial-gradient(circle at 30% 18%, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.28))`;
+  const knobs: Array<{ which: Which; value: number }> = isRange
+    ? [{ which: "low", value: low }, { which: "high", value: high }]
+    : [{ which: "single", value: single }];
   const shown = isRange
     ? `${formatNumber(hass, low, 0)}–${formatNumber(hass, high, 0)}`
     : formatNumber(hass, Math.floor(single), 0);
@@ -905,14 +946,32 @@ function ClimateCard({ config, hass, host }: ReactCardProps<ClimateCardConfig>) 
             />
           </svg>
 
-          {!off && knobs.map((value, index) => {
+          {!off && knobs.map(({ which, value }) => {
             const [x, y] = polar(START_ANGLE + ratio(value) * SWEEP);
+            // Glass sizes itself to its content when it has no refraction source, so the
+            // knob has to state its own size where the library cannot overrule it.
+            const knobStyle: CSSProperties = {
+              display: "block",
+              position: "absolute",
+              width: "var(--lg-knob, 30px)",
+              height: "var(--lg-knob, 30px)",
+              left: `${((x / DIAL) * 100).toFixed(3)}%`,
+              top: `${((y / DIAL) * 100).toFixed(3)}%`,
+            };
+            // Only the knob under the finger lifts and turns to glass.
+            const moving = drag ? drag.which === which : !isRange || which === "low";
             return (
-              <div
-                key={index}
-                className="dial-knob"
-                style={{ left: `${((x / DIAL) * 100).toFixed(3)}%`, top: `${((y / DIAL) * 100).toFixed(3)}%` }}
-              />
+              <div key={which}>
+                <LiquidGlassSurface
+                  className={`dial-knob${moving ? " moving" : ""}`}
+                  refraction={refraction}
+                  variant={config.glass_variant}
+                  surface="control"
+                  sourceBackground={dialSourceBackground}
+                  style={knobStyle}
+                />
+                <div className={`dial-knob-cap${moving ? " moving" : ""}`} style={knobStyle} aria-hidden="true" />
+              </div>
             );
           })}
 

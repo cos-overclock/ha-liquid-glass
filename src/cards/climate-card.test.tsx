@@ -85,6 +85,12 @@ describe("liquid-glass-climate-card", () => {
     expect(root.querySelector(".target")?.textContent).toBe("22");
     expect(root.querySelector(".fraction")?.textContent).toBe(".0°");
     expect(root.querySelectorAll(".dial-knob")).toHaveLength(1);
+    // The dial knob is opaque at rest and only turns to glass while dragged, same as
+    // every other slider's thumb.
+    expect(root.querySelectorAll(".dial-knob-cap")).toHaveLength(1);
+    // The cap only fades once the parent ".dial" gets the "dragging" class, so
+    // sitting on "moving" by default at rest is harmless.
+    expect(root.querySelector(".dial")?.classList.contains("dragging")).toBe(false);
     expect(root.querySelectorAll(".segment.modes > button")).toHaveLength(4);
     expect(element.getCardSize()).toBe(6);
 
@@ -141,6 +147,8 @@ describe("liquid-glass-climate-card", () => {
     // The compact design uses the same slider component as every other card.
     expect(root.querySelector(".climate-compact .slider-track")).toBeTruthy();
     expect(root.querySelectorAll(".climate-compact .slider-knob-cap")).toHaveLength(1);
+    // The bar is a flat colour for the active mode, not the old fixed rainbow gradient.
+    expect(root.querySelector<HTMLElement>(".climate-compact")?.style.getPropertyValue("--lg-slider-fill")).toBe("var(--lg-heat)");
 
     await act(async () => root.querySelector<HTMLElement>(".tile-step.increase")?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
     expect(callService).toHaveBeenCalledWith("climate", "set_temperature", {
@@ -172,6 +180,8 @@ describe("liquid-glass-climate-card", () => {
     // Drag the handle nearest 100 on a 10..30 range, i.e. the high end.
     const track = mockRect(root.querySelector<HTMLElement>(".climate-compact .slider-track")!, { width: 200, height: 44 });
     await act(async () => track.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, button: 0, clientX: 190 })));
+    // Only the handle under the finger turns to glass; the low end stays solid.
+    expect(root.querySelectorAll(".climate-compact .slider-knob-cap.moving")).toHaveLength(1);
     await act(async () => track.dispatchEvent(new MouseEvent("pointerup", { bubbles: true, button: 0, clientX: 190 })));
     expect(callService).toHaveBeenCalledWith("climate", "set_temperature", {
       entity_id: target.entity_id,
