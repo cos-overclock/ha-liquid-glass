@@ -1,7 +1,7 @@
 # Liquid Glass Cards for Home Assistant
 
 `pen/design.pen` の Liquid Glass デザインを、Home Assistant のダッシュボードに追加できるカスタムカード群として実装したものです。
-Vite + React + TypeScript への段階的な移行を進めており、Home Assistant 向けには単一ファイル `dist/liquid-glass-cards.js` にバンドルされます。Separator / Lock Card は React と `@samasante/liquid-glass`、その他の既存カードは移行期間中の Lit 実装です。
+Vite + React + TypeScript への段階的な移行を進めており、Home Assistant 向けには単一ファイル `dist/liquid-glass-cards.js` にバンドルされます。Separator / Lock / Slider Card は React と `@samasante/liquid-glass`、その他の既存カードは移行期間中の Lit 実装です。
 
 | カード | type | 対応ドメイン |
 | --- | --- | --- |
@@ -421,6 +421,7 @@ npm run demo      # http://localhost:5173/ でモック hass を使ったデモ�
 ```
 
 デモは `?theme=dark` `?lang=en` `?refraction=off` `?width=210` のクエリで表示を切り替えられます。画面上部のスライダーでカード幅を変えられるので、狭い列での見え方を確認できます。
+Slider Cardだけを確認する場合は `http://localhost:5173/demo/index.html?focus=slider` を使用できます。
 
 `http://localhost:5173/demo/editor.html` はビジュアルエディタの確認用ページです。`?kind=cover` のようにカード種別を指定できます。Home Assistant の `ha-form` を最小限に再現したシムの上で動くため見た目は簡素ですが、スキーマ・ラベル・書き出される設定・カードへの反映を確認できます。ページ上部の Self test が全カードのエディタを自動で操作して結果を検証します。
 

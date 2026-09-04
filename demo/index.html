@@ -329,6 +329,8 @@
         ? cards.filter(([type, cfg]) => type === "liquid-glass-climate-card" && cfg.design === "compact")
         : params.get("focus") === "separator"
           ? cards.filter(([type]) => type === "liquid-glass-separator-card")
+        : params.get("focus") === "slider"
+          ? cards.filter(([type]) => type === "liquid-glass-slider-card")
         : cards;
 
       const main = document.getElementById("main");
