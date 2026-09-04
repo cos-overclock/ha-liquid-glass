@@ -4,8 +4,8 @@ import { createTranslator } from "../i18n";
 import { defineReactCard, type ReactCardProps } from "../react/define-react-card";
 import { glassSurfaceStyles, Icon, LiquidGlassSurface } from "../react/glass-primitives";
 import { GlassSlider, glassSliderStyles } from "../react/glass-slider";
+import { reactCardStyles } from "../react/card-styles";
 import { useCardHost } from "../react/use-card-host";
-import { glassStyles } from "../styles/glass";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HassEntity, HomeAssistant } from "../types";
 import { clamp, darken, formatNumber, friendlyName, isUnavailable, lighten, moreInfo, pickEntity, withAlpha } from "../utils";
@@ -162,7 +162,7 @@ export function resolveSliderSpec(entity: HassEntity, config: SliderCardConfig):
   };
 }
 
-const styles = `${tokens.cssText}${glassStyles.cssText}${glassSurfaceStyles}${glassSliderStyles}
+const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}${glassSliderStyles}
   .card {
     gap: 16px;
     width: 100%;

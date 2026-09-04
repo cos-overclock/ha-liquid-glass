@@ -3,8 +3,8 @@ import { loadHaFormComponents } from "../editor/load";
 import { clockTime, createTranslator, relativeTime, type Translator } from "../i18n";
 import { defineReactCard, type ReactCardProps } from "../react/define-react-card";
 import { glassSurfaceStyles, Icon, LiquidGlassSurface } from "../react/glass-primitives";
+import { reactCardStyles } from "../react/card-styles";
 import { useCardHost } from "../react/use-card-host";
-import { glassStyles } from "../styles/glass";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HassEntity, HomeAssistant } from "../types";
 import { clamp, friendlyName, isUnavailable, moreInfo, pickEntity } from "../utils";
@@ -36,7 +36,7 @@ interface LockVisual {
 const THUMB = 64;
 const PAD = 0;
 
-const styles = `${tokens.cssText}${glassStyles.cssText}${glassSurfaceStyles}
+const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}
   .card {
     gap: 16px;
     width: 100%;
@@ -99,7 +99,7 @@ const styles = `${tokens.cssText}${glassStyles.cssText}${glassSurfaceStyles}
     transition: none;
     cursor: grabbing;
   }
-  .thumb > lg-icon {
+  .thumb lg-icon {
     position: relative;
     z-index: 1;
   }

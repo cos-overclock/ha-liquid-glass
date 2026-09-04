@@ -80,6 +80,13 @@ describe("liquid-glass-lock-card", () => {
     expect(element.shadowRoot?.querySelector(".name")?.textContent).toBe("玄関ドア");
     expect(element.shadowRoot?.querySelector(".badge")?.textContent).toContain("施錠");
     expect(element.shadowRoot?.querySelectorAll("[data-lg-refraction-source='copy']").length).toBeGreaterThanOrEqual(3);
+    const card = element.shadowRoot?.querySelector<HTMLElement>(".card[data-liquid-glass='']");
+    const contentLayer = card?.firstElementChild;
+    expect(contentLayer?.querySelector(".header")).toBeTruthy();
+    expect(contentLayer?.querySelector(".slide")).toBeTruthy();
+    const css = element.shadowRoot?.querySelector("style")?.textContent ?? "";
+    expect(css).toContain('.lg-liquid-card[data-liquid-glass=""] > :first-child');
+    expect(css).not.toContain(".card > *");
     expect(element.getCardSize()).toBe(2);
     expect(LiquidGlassLockCard.getStubConfig?.(element.hass)).toEqual({ entity: "lock.front_door" });
 

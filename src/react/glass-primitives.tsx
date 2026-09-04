@@ -5,18 +5,18 @@ type GlassVariant = "regular" | "clear";
 type GlassSurface = "card" | "compact" | "control";
 
 const regularCardOptics: Partial<GlassOptics> = {
-  strength: 0.075,
-  depth: 0.72,
-  curvature: 0.4,
-  dispersion: 0.38,
-  bend: 0.62,
+  strength: 0.035,
+  depth: 0.28,
+  curvature: 0.14,
+  dispersion: 0.18,
+  bend: 0.38,
   bendWidth: 0.12,
   frost: 7,
   saturate: 1.3,
-  sheen: 0.58,
+  sheen: 0.42,
   sheenWidth: 2.5,
   sheenFalloff: 1.6,
-  glow: 0.18,
+  glow: 0.12,
   glowSpread: 0.55,
   glowFalloff: 0.7,
   specular: 1.18,
@@ -25,15 +25,15 @@ const regularCardOptics: Partial<GlassOptics> = {
 
 const clearCardOptics: Partial<GlassOptics> = {
   ...regularCardOptics,
-  strength: 0.095,
-  depth: 0.82,
-  curvature: 0.48,
-  dispersion: 0.44,
-  bend: 0.68,
+  strength: 0.05,
+  depth: 0.36,
+  curvature: 0.2,
+  dispersion: 0.24,
+  bend: 0.48,
   bendWidth: 0.1,
   frost: 3,
   saturate: 1.4,
-  sheen: 0.68,
+  sheen: 0.52,
   glow: 0.12,
   specular: 1.28,
   brightness: 0,
@@ -112,6 +112,38 @@ export const glassSurfaceStyles = `
   }
   :host([dark]) .lg-liquid-control {
     background: rgba(255, 255, 255, 0.18);
+  }
+  /*
+   * The DOM refraction route inserts a crisp-content wrapper before its optical
+   * layers. Recreate the surface layout on that wrapper and keep it above the
+   * refracted background. Without this, a card becomes one blank flex item and
+   * the later SVG layer paints over its contents.
+   */
+  .lg-liquid-surface[data-liquid-glass=""] > :first-child {
+    position: relative;
+    z-index: 2;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+  .lg-liquid-card[data-liquid-glass=""] > :first-child {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: inherit;
+  }
+  .lg-liquid-compact[data-liquid-glass=""] > :first-child {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: inherit;
+  }
+  .lg-liquid-control[data-liquid-glass=""] > :first-child {
+    width: 100%;
+    height: 100%;
+    display: grid;
+    place-items: center;
   }
   .lg-refraction-source {
     width: 100%;
