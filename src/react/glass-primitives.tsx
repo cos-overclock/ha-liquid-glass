@@ -111,6 +111,15 @@ export const glassSurfaceStyles = `
   .lg-liquid-card {
     box-shadow: 0 10px 26px -8px var(--lg-shadow-glass);
   }
+  /* A card that is its own switch reads brighter while the entity is on. */
+  .lg-liquid-surface.active {
+    background: rgba(var(--lg-glass-tint-active), var(--lg-glass-tint-active-alpha));
+  }
+  .lg-liquid-card.active {
+    box-shadow:
+      0 10px 26px -8px var(--lg-shadow-glass),
+      inset 0 0 0 1px var(--lg-glass-stroke-active);
+  }
   .lg-liquid-compact {
     box-shadow: 0 3px 10px -3px var(--lg-shadow-glass);
   }
@@ -138,6 +147,11 @@ export const glassSurfaceStyles = `
     display: flex;
     flex-direction: column;
     gap: inherit;
+  }
+  /* A row card lays its header out along the wrapper, not down it. */
+  .lg-liquid-card.row[data-liquid-glass=""] > :first-child {
+    flex-direction: row;
+    align-items: center;
   }
   .lg-liquid-compact[data-liquid-glass=""] > :first-child {
     width: 100%;
