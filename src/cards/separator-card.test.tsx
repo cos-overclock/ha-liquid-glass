@@ -42,6 +42,8 @@ describe("liquid-glass-separator-card", () => {
     expect(element.shadowRoot?.querySelector(".pill-title")?.textContent).toBe("照明");
     expect(element.shadowRoot?.querySelector(".pill-count")?.textContent).toBe("4");
     expect((element.shadowRoot?.querySelector(".pill") as HTMLElement).style.display).toBe("flex");
+    expect(element.shadowRoot?.querySelector(".pill")?.getAttribute("data-liquid-glass")).toBe("");
+    expect(element.shadowRoot?.querySelector(".pill [data-lg-refraction-source='copy']")).toBeTruthy();
     expect(element.getCardSize()).toBe(1);
 
     await act(async () => {
@@ -54,6 +56,17 @@ describe("liquid-glass-separator-card", () => {
       };
     });
     expect(element.hasAttribute("dark")).toBe(true);
+
+    await act(async () => {
+      element.setConfig({
+        type: "custom:liquid-glass-separator-card",
+        title: "空調",
+        style: "pill",
+        refraction: false,
+      });
+    });
+    expect(element.shadowRoot?.querySelector(".pill")?.getAttribute("data-liquid-glass")).toBe("material");
+    expect(element.shadowRoot?.querySelector("[data-lg-refraction-source='copy']")).toBeNull();
 
     await act(async () => {
       element.setConfig({

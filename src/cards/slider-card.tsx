@@ -1,9 +1,8 @@
-import { Glass } from "@samasante/liquid-glass";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { loadHaFormComponents } from "../editor/load";
 import { createTranslator } from "../i18n";
 import { defineReactCard, type ReactCardProps } from "../react/define-react-card";
-import { Icon, opticsFor } from "../react/glass-primitives";
+import { glassSurfaceStyles, Icon, LiquidGlassSurface } from "../react/glass-primitives";
 import { GlassSlider, glassSliderStyles } from "../react/glass-slider";
 import { useCardHost } from "../react/use-card-host";
 import { glassStyles } from "../styles/glass";
@@ -163,15 +162,10 @@ export function resolveSliderSpec(entity: HassEntity, config: SliderCardConfig):
   };
 }
 
-const styles = `${tokens.cssText}${glassStyles.cssText}${glassSliderStyles}
+const styles = `${tokens.cssText}${glassStyles.cssText}${glassSurfaceStyles}${glassSliderStyles}
   .card {
     gap: 16px;
     width: 100%;
-    background: rgba(var(--lg-glass-tint), var(--lg-glass-tint-alpha));
-    box-shadow:
-      0 14px 36px -4px var(--lg-shadow-glass),
-      0 1px 1px var(--lg-glass-inner),
-      inset 0 0 0 1px var(--lg-glass-stroke);
   }
   .value {
     flex: none;
@@ -239,7 +233,6 @@ function SliderCard({ config, hass, host }: ReactCardProps<SliderCardConfig>) {
   const language = config.language ?? hass?.locale?.language ?? hass?.language;
   const t = createTranslator(language);
   const entity = config.entity ? hass?.states[config.entity] : undefined;
-  const optics = opticsFor(refraction);
 
   useEffect(() => () => window.clearTimeout(pendingTimer.current), []);
 
@@ -257,7 +250,13 @@ function SliderCard({ config, hass, host }: ReactCardProps<SliderCardConfig>) {
     const name = config.name ?? friendlyName(entity, config.entity ?? "");
     return <>
       <style>{styles}</style>
-      <Glass className="card" optics={optics} style={{ display: "flex", position: "relative" }}>
+      <LiquidGlassSurface
+        className="card"
+        refraction={refraction}
+        variant={config.glass_variant}
+        sourceAccent="var(--lg-slider-accent)"
+        style={{ display: "flex", position: "relative" }}
+      >
         <div className="header">
           <div className="icon-well idle" onClick={() => moreInfo(host, config.entity)} role="button">
             <Icon icon={config.icon ?? "mdi:help-circle-outline"} />
@@ -267,7 +266,7 @@ function SliderCard({ config, hass, host }: ReactCardProps<SliderCardConfig>) {
             <div className="state">{t("unavailable")}</div>
           </div>
         </div>
-      </Glass>
+      </LiquidGlassSurface>
     </>;
   }
 
@@ -313,7 +312,13 @@ function SliderCard({ config, hass, host }: ReactCardProps<SliderCardConfig>) {
 
   return <>
     <style>{styles}</style>
-    <Glass className="card" optics={optics} style={cardStyle}>
+    <LiquidGlassSurface
+      className="card"
+      refraction={refraction}
+      variant={config.glass_variant}
+      sourceAccent={fillTo}
+      style={cardStyle}
+    >
       <div className="header">
         <div
           className={`icon-well${zero ? " idle" : ""}`}
@@ -345,6 +350,7 @@ function SliderCard({ config, hass, host }: ReactCardProps<SliderCardConfig>) {
           step={spec.step}
           disabled={!spec.call}
           refraction={refraction}
+          glassVariant={config.glass_variant}
           showFill={!zero}
           label={config.name ?? friendlyName(entity, config.entity ?? "")}
           onInput={setPreview}
@@ -359,7 +365,7 @@ function SliderCard({ config, hass, host }: ReactCardProps<SliderCardConfig>) {
         <span>{format(spec.min)}{spec.unit}</span>
         <span>{format(spec.max)}{spec.unit}</span>
       </div>}
-    </Glass>
+    </LiquidGlassSurface>
   </>;
 }
 

@@ -3,6 +3,8 @@
 `pen/design.pen` の Liquid Glass デザインを、Home Assistant のダッシュボードに追加できるカスタムカード群として実装したものです。
 Vite + React + TypeScript への段階的な移行を進めており、Home Assistant 向けには単一ファイル `dist/liquid-glass-cards.js` にバンドルされます。Separator / Lock / Slider Card は React と `@samasante/liquid-glass`、その他の既存カードは移行期間中の Lit 実装です。
 
+React版カードは屈折対象となる背景レイヤーもReactで所有し、`Glass`の`refract`へ複製して渡します。これにより`backdrop-filter: url()`へ依存せず、Chromium / Safari / Firefoxで共通のSVG `filter: url()`経路を使用します。任意のHA壁紙そのものではなく、カード内の光学背景を屈折する方式です。
+
 | カード | type | 対応ドメイン |
 | --- | --- | --- |
 | Light | `custom:liquid-glass-light-card` | `light`（明るさ / 色温度 / 色相・彩度 / お気に入り / プリセット） |
@@ -421,7 +423,7 @@ npm run demo      # http://localhost:5173/ でモック hass を使ったデモ�
 ```
 
 デモは `?theme=dark` `?lang=en` `?refraction=off` `?width=210` のクエリで表示を切り替えられます。画面上部のスライダーでカード幅を変えられるので、狭い列での見え方を確認できます。
-Slider Cardだけを確認する場合は `http://localhost:5173/demo/index.html?focus=slider` を使用できます。
+React版カードを個別に確認する場合は`?focus=separator`、`?focus=lock`、`?focus=slider`を使用できます。
 
 `http://localhost:5173/demo/editor.html` はビジュアルエディタの確認用ページです。`?kind=cover` のようにカード種別を指定できます。Home Assistant の `ha-form` を最小限に再現したシムの上で動くため見た目は簡素ですが、スキーマ・ラベル・書き出される設定・カードへの反映を確認できます。ページ上部の Self test が全カードのエディタを自動で操作して結果を検証します。
 

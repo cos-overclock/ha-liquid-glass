@@ -1,9 +1,8 @@
-import { Glass } from "@samasante/liquid-glass";
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { loadHaFormComponents } from "../editor/load";
 import { clockTime, createTranslator, relativeTime, type Translator } from "../i18n";
 import { defineReactCard, type ReactCardProps } from "../react/define-react-card";
-import { Icon, opticsFor } from "../react/glass-primitives";
+import { glassSurfaceStyles, Icon, LiquidGlassSurface } from "../react/glass-primitives";
 import { useCardHost } from "../react/use-card-host";
 import { glassStyles } from "../styles/glass";
 import { tokens } from "../styles/tokens";
@@ -37,15 +36,10 @@ interface LockVisual {
 const THUMB = 64;
 const PAD = 0;
 
-const styles = `${tokens.cssText}${glassStyles.cssText}
+const styles = `${tokens.cssText}${glassStyles.cssText}${glassSurfaceStyles}
   .card {
     gap: 16px;
     width: 100%;
-    background: rgba(var(--lg-glass-tint), var(--lg-glass-tint-alpha));
-    box-shadow:
-      0 14px 36px -4px var(--lg-shadow-glass),
-      0 1px 1px var(--lg-glass-inner),
-      inset 0 0 0 1px var(--lg-glass-stroke);
   }
   .slide {
     --thumb: ${THUMB}px;
@@ -98,11 +92,6 @@ const styles = `${tokens.cssText}${glassStyles.cssText}
     place-items: center;
     cursor: grab;
     color: var(--thumb-color);
-    background: rgba(255, 255, 255, 0.56);
-    box-shadow:
-      0 5px 14px rgba(0, 0, 0, 0.6),
-      0 1px 3px rgba(255, 255, 255, 0.4),
-      inset 0 0 0 1.5px #fff;
     transition: left 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
     --mdc-icon-size: calc(var(--thumb) * 0.43);
   }
@@ -217,7 +206,6 @@ function LockCard({ config, hass, host }: ReactCardProps<LockCardConfig>) {
   const language = config.language ?? hass?.locale?.language ?? hass?.language;
   const t = createTranslator(language);
   const entity = config.entity ? hass?.states[config.entity] : undefined;
-  const optics = opticsFor(refraction);
 
   useEffect(() => () => window.clearTimeout(pendingTimer.current), []);
 
@@ -225,7 +213,13 @@ function LockCard({ config, hass, host }: ReactCardProps<LockCardConfig>) {
     const name = config.name ?? friendlyName(entity, config.entity ?? "");
     return <>
       <style>{styles}</style>
-      <Glass className="card" optics={optics} style={{ display: "flex", position: "relative" }}>
+      <LiquidGlassSurface
+        className="card"
+        refraction={refraction}
+        variant={config.glass_variant}
+        sourceAccent="var(--lg-warn)"
+        style={{ display: "flex", position: "relative" }}
+      >
         <div className="header">
           <div className="icon-well idle" onClick={() => moreInfo(host, config.entity)} role="button">
             <Icon icon={config.icon ?? "mdi:help-circle-outline"} />
@@ -235,7 +229,7 @@ function LockCard({ config, hass, host }: ReactCardProps<LockCardConfig>) {
             <div className="state">{t("unavailable")}</div>
           </div>
         </div>
-      </Glass>
+      </LiquidGlassSurface>
     </>;
   }
 
@@ -303,7 +297,13 @@ function LockCard({ config, hass, host }: ReactCardProps<LockCardConfig>) {
 
   return <>
     <style>{styles}</style>
-    <Glass className="card" optics={optics} style={{ display: "flex", position: "relative" }}>
+    <LiquidGlassSurface
+      className="card"
+      refraction={refraction}
+      variant={config.glass_variant}
+      sourceAccent={visual.thumbColor}
+      style={{ display: "flex", position: "relative" }}
+    >
       <div className="header">
         <div
           className="icon-well"
@@ -347,31 +347,37 @@ function LockCard({ config, hass, host }: ReactCardProps<LockCardConfig>) {
           <span>{visual.hint}</span>
           {locked && !jammed && <Icon icon="mdi:chevron-double-right" />}
         </div>
-        <Glass
+        <LiquidGlassSurface
           className={`thumb${dragging ? " dragging" : ""}`}
-          optics={optics}
+          refraction={refraction}
+          variant={config.glass_variant}
+          surface="control"
+          sourceBackground={`linear-gradient(90deg, var(--lg-track-bg), color-mix(in srgb, ${visual.thumbColor} 72%, transparent))`}
           style={thumbStyle}
         >
           <Icon icon={visual.icon} />
-        </Glass>
+        </LiquidGlassSurface>
       </div>
 
       {config.buttons?.length ? <div className="chips">
         {config.buttons.map((button, index) => (
-          <Glass
+          <LiquidGlassSurface
             className="chip"
             key={`${button.service}:${button.name}:${index}`}
-            optics={optics}
+            refraction={refraction}
+            variant={config.glass_variant}
+            surface="compact"
+            sourceAccent={visual.thumbColor}
             style={{ display: "flex", position: "relative" }}
           >
             <button className="chip-button" onClick={() => runButton(button)}>
               {button.icon && <Icon icon={button.icon} />}
               <span>{button.name}</span>
             </button>
-          </Glass>
+          </LiquidGlassSurface>
         ))}
       </div> : null}
-    </Glass>
+    </LiquidGlassSurface>
   </>;
 }
 

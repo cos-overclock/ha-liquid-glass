@@ -1,7 +1,6 @@
-import { Glass } from "@samasante/liquid-glass";
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from "react";
 import { clamp } from "../utils";
-import { opticsFor } from "./glass-primitives";
+import { LiquidGlassSurface } from "./glass-primitives";
 
 export interface GlassSliderProps {
   value: number;
@@ -10,6 +9,7 @@ export interface GlassSliderProps {
   step: number;
   disabled?: boolean;
   refraction: boolean;
+  glassVariant?: "regular" | "clear";
   showFill?: boolean;
   label: string;
   onInput(value: number): void;
@@ -54,11 +54,6 @@ export const glassSliderStyles = `
     height: var(--lg-effective-slider-height);
     border-radius: 50%;
     pointer-events: none;
-    background: rgba(255, 255, 255, 0.56);
-    box-shadow:
-      0 5px 14px rgba(0, 0, 0, 0.6),
-      0 1px 3px rgba(255, 255, 255, 0.4),
-      inset 0 0 0 1.5px #fff;
     transform: scaleX(calc(1 - var(--lg-wobble, 0) * 0.1)) scaleY(calc(1 + var(--lg-wobble, 0) * 0.2));
     transition:
       left 80ms linear,
@@ -80,6 +75,7 @@ export function GlassSlider({
   step,
   disabled = false,
   refraction,
+  glassVariant = "regular",
   showFill = true,
   label,
   onInput,
@@ -187,6 +183,11 @@ export function GlassSlider({
     position: "absolute",
     left: `calc(${travel} * ${ratio})`,
   };
+  const sourceBackground = !showFill || ratio <= 0
+    ? "var(--lg-slider-track, var(--lg-track-bg))"
+    : ratio >= 1
+      ? "linear-gradient(90deg, var(--fill-from), var(--fill-to))"
+      : "linear-gradient(90deg, var(--fill-from) 0%, var(--fill-to) 48%, rgba(var(--lg-glass-tint), 0.18) 52%, var(--lg-slider-track, var(--lg-track-bg)) 100%)";
 
   return (
     <div className={`lg-react-slider${dragValue !== undefined ? " dragging" : ""}${disabled ? " disabled" : ""}`}>
@@ -207,7 +208,14 @@ export function GlassSlider({
         onKeyDown={onKeyDown}
       >
         {showFill && <div className="slider-fill" style={fillStyle} />}
-        <Glass className="slider-knob" optics={opticsFor(refraction)} style={knobStyle} />
+        <LiquidGlassSurface
+          className="slider-knob"
+          refraction={refraction}
+          variant={glassVariant}
+          surface="control"
+          sourceBackground={sourceBackground}
+          style={knobStyle}
+        />
       </div>
     </div>
   );

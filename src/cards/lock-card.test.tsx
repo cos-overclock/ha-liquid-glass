@@ -79,6 +79,7 @@ describe("liquid-glass-lock-card", () => {
     await act(async () => document.body.append(element));
     expect(element.shadowRoot?.querySelector(".name")?.textContent).toBe("玄関ドア");
     expect(element.shadowRoot?.querySelector(".badge")?.textContent).toContain("施錠");
+    expect(element.shadowRoot?.querySelectorAll("[data-lg-refraction-source='copy']").length).toBeGreaterThanOrEqual(3);
     expect(element.getCardSize()).toBe(2);
     expect(LiquidGlassLockCard.getStubConfig?.(element.hass)).toEqual({ entity: "lock.front_door" });
 

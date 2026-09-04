@@ -331,6 +331,8 @@
           ? cards.filter(([type]) => type === "liquid-glass-separator-card")
         : params.get("focus") === "slider"
           ? cards.filter(([type]) => type === "liquid-glass-slider-card")
+        : params.get("focus") === "lock"
+          ? cards.filter(([type]) => type === "liquid-glass-lock-card")
         : cards;
 
       const main = document.getElementById("main");

@@ -105,6 +105,7 @@ describe("liquid-glass-slider-card", () => {
     await act(async () => document.body.append(element));
     expect(element.shadowRoot?.querySelector(".num")?.textContent).toBe("60");
     expect(element.shadowRoot?.querySelectorAll(".marks span")).toHaveLength(5);
+    expect(element.shadowRoot?.querySelectorAll("[data-lg-refraction-source='copy']").length).toBeGreaterThanOrEqual(2);
     expect(element.getCardSize()).toBe(2);
     expect(LiquidGlassSliderCard.getStubConfig?.(element.hass)).toEqual({ entity: fan.entity_id });
 

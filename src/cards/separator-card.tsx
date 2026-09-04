@@ -1,8 +1,7 @@
-import { Glass } from "@samasante/liquid-glass";
 import { loadHaFormComponents } from "../editor/load";
 import { createTranslator } from "../i18n";
 import { defineReactCard, type ReactCardProps } from "../react/define-react-card";
-import { Icon, opticsFor } from "../react/glass-primitives";
+import { glassSurfaceStyles, Icon, LiquidGlassSurface } from "../react/glass-primitives";
 import { useCardHost } from "../react/use-card-host";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig } from "../types";
@@ -21,7 +20,7 @@ export interface SeparatorCardConfig extends BaseCardConfig {
   subtitle?: string;
 }
 
-const styles = `${tokens.cssText}
+const styles = `${tokens.cssText}${glassSurfaceStyles}
   * { box-sizing: border-box; }
   :host {
     display: block;
@@ -91,11 +90,6 @@ const styles = `${tokens.cssText}
     padding: 8px 14px;
     border-radius: 20px;
     color: var(--lg-text-primary);
-    background: rgba(var(--lg-glass-tint), var(--lg-glass-tint-alpha));
-    box-shadow:
-      0 4px 14px -2px var(--lg-shadow-glass),
-      0 1px 1px var(--lg-glass-inner),
-      inset 0 0 0 1px var(--lg-glass-stroke);
   }
   .pill > lg-icon {
     --mdc-icon-size: 15px;
@@ -138,10 +132,6 @@ const styles = `${tokens.cssText}
     display: grid;
     place-items: center;
     color: var(--lg-text-primary);
-    background: rgba(var(--lg-glass-tint), var(--lg-glass-tint-alpha));
-    box-shadow:
-      0 1px 1px var(--lg-glass-inner),
-      inset 0 0 0 1px var(--lg-glass-stroke);
   }
   .header-well > lg-icon {
     --mdc-icon-size: 15px;
@@ -210,7 +200,6 @@ function SeparatorCard({ config, hass, host }: ReactCardProps<SeparatorCardConfi
   const heading = config.title ?? config.name ?? t("sep_title");
   const icon = config.icon ?? "mdi:lightbulb-outline";
   const hasCount = config.count !== undefined && config.count !== null && config.count !== "";
-  const optics = opticsFor(refraction);
 
   let content;
   switch (config.style) {
@@ -227,9 +216,16 @@ function SeparatorCard({ config, hass, host }: ReactCardProps<SeparatorCardConfi
     case "header":
       content = (
         <div className="separator header-row">
-          <Glass className="header-well" optics={optics} style={{ display: "grid" }}>
+          <LiquidGlassSurface
+            className="header-well"
+            refraction={refraction}
+            variant={config.glass_variant}
+            surface="compact"
+            sourceAccent="var(--lg-accent)"
+            style={{ display: "grid" }}
+          >
             <Icon icon={icon} />
-          </Glass>
+          </LiquidGlassSurface>
           <span className="header-text">
             <span className="header-title">{heading}</span>
             {config.subtitle && <span className="header-subtitle">{config.subtitle}</span>}
@@ -241,11 +237,18 @@ function SeparatorCard({ config, hass, host }: ReactCardProps<SeparatorCardConfi
     default:
       content = (
         <div className="separator pill-row">
-          <Glass className="pill" optics={optics} style={{ display: "flex" }}>
+          <LiquidGlassSurface
+            className="pill"
+            refraction={refraction}
+            variant={config.glass_variant}
+            surface="compact"
+            sourceAccent="var(--lg-accent)"
+            style={{ display: "flex" }}
+          >
             <Icon icon={icon} />
             <span className="pill-title">{heading}</span>
             {hasCount && <span className="pill-count">{config.count}</span>}
-          </Glass>
+          </LiquidGlassSurface>
           <span className="line" aria-hidden="true" />
         </div>
       );

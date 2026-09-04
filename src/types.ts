@@ -42,7 +42,7 @@ export interface BaseCardConfig {
   entity?: string;
   name?: string;
   icon?: string;
-  /** "auto" | true | false: use SVG refraction backdrop filter (Chromium only). */
+  /** "auto" | true | false: enable refraction (cross-browser on React cards). */
   refraction?: "auto" | boolean;
   /** Force theme: "auto" | "light" | "dark". */
   theme?: "auto" | "light" | "dark";
