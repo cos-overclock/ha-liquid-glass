@@ -115,6 +115,7 @@ export function schemaFor(type: string | undefined, t: Translator, data?: Record
           HVAC_MODES.map((m) => ({ value: m, label: t(`mode_${m}`) })),
           true,
         ),
+        grid([number("min_temp", -50, 100, 0.5), number("max_temp", -50, 100, 0.5)]),
         advanced(t),
       ];
 

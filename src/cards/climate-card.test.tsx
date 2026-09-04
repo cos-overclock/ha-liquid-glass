@@ -129,7 +129,7 @@ describe("liquid-glass-climate-card", () => {
     });
   });
 
-  it("steps the target from the compact design", async () => {
+  it("renders the compact slider with no step buttons and drags to set the temperature", async () => {
     const callService = vi.fn<HomeAssistant["callService"]>(async () => undefined);
     const target = thermostat("heat");
     const element = document.createElement("liquid-glass-climate-card") as CardElement;
@@ -149,11 +149,44 @@ describe("liquid-glass-climate-card", () => {
     expect(root.querySelectorAll(".climate-compact .slider-knob-cap")).toHaveLength(1);
     // The bar is a flat colour for the active mode, not the old fixed rainbow gradient.
     expect(root.querySelector<HTMLElement>(".climate-compact")?.style.getPropertyValue("--lg-slider-fill")).toBe("var(--lg-heat)");
+    // The +/- step buttons are gone; dragging the bar is the only way to change the target.
+    expect(root.querySelector(".tile-step-controls")).toBeNull();
 
-    await act(async () => root.querySelector<HTMLElement>(".tile-step.increase")?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    const track = mockRect(root.querySelector<HTMLElement>(".climate-compact .slider-track")!, { width: 200, height: 44 });
+    await act(async () => track.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, button: 0, clientX: 190 })));
+    await act(async () => track.dispatchEvent(new MouseEvent("pointerup", { bubbles: true, button: 0, clientX: 190 })));
     expect(callService).toHaveBeenCalledWith("climate", "set_temperature", {
       entity_id: target.entity_id,
-      temperature: 23,
+      temperature: 30,
+    });
+  });
+
+  it("honours a configured min_temp / max_temp range", async () => {
+    const callService = vi.fn<HomeAssistant["callService"]>(async () => undefined);
+    const target = thermostat("heat");
+    const element = document.createElement("liquid-glass-climate-card") as CardElement;
+    element.setConfig({
+      type: "custom:liquid-glass-climate-card",
+      entity: target.entity_id,
+      min_temp: 10,
+      max_temp: 20,
+    });
+    element.hass = createHass(target, callService);
+
+    await act(async () => document.body.append(element));
+    const root = element.shadowRoot!;
+    const [lo, hi] = root.querySelectorAll(".minmax span");
+    expect(lo.textContent).toBe("10°");
+    expect(hi.textContent).toBe("20°");
+
+    const dial = mockRect(root.querySelector<HTMLElement>(".dial")!, { width: 200, height: 200 });
+    await act(async () => dial.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, button: 0, clientX: 100, clientY: 0 })));
+    await act(async () => dial.dispatchEvent(new MouseEvent("pointerup", { bubbles: true, button: 0, clientX: 100, clientY: 0 })));
+    // Straight up is the midpoint of the sweep, i.e. the middle of the configured 10..20
+    // range rather than the entity's own 10..30 (which would put it at 20).
+    expect(callService).toHaveBeenCalledWith("climate", "set_temperature", {
+      entity_id: target.entity_id,
+      temperature: 15,
     });
   });
 

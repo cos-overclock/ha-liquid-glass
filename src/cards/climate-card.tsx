@@ -19,6 +19,9 @@ export interface ClimateCardConfig extends BaseCardConfig {
   show_preset_mode?: boolean;
   show_swing_mode?: boolean;
   hvac_modes?: string[];
+  /** Override the dial/slider range. Defaults to the entity's own min_temp / max_temp. */
+  min_temp?: number;
+  max_temp?: number;
 }
 
 interface ModeTheme {
@@ -287,39 +290,6 @@ const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}${glassS
     font-weight: 600;
     letter-spacing: -0.2px;
     font-variant-numeric: tabular-nums;
-  }
-  .tile-step-controls {
-    height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .tile-step {
-    width: 48px;
-    height: 40px;
-    display: grid;
-    place-items: center;
-    padding: 0 0 2px;
-    border: 0;
-    border-radius: 20px;
-    background: var(--lg-track-bg);
-    box-shadow:
-      0 2px 5px rgba(0, 0, 0, 0.12),
-      inset 0 0 0 1px var(--lg-glass-stroke);
-    color: var(--lg-text-primary);
-    font-family: var(--lg-font-ui);
-    font-size: 20px;
-    font-weight: 600;
-    line-height: 1;
-    cursor: pointer;
-    transition: transform 0.1s ease, opacity 0.2s ease;
-  }
-  .tile-step:active:not(:disabled) {
-    transform: scale(0.94);
-  }
-  .tile-step:disabled {
-    opacity: 0.4;
-    cursor: default;
   }
   .tile-modes {
     position: relative;
@@ -631,8 +601,8 @@ function ClimateCard({ config, hass, host }: ReactCardProps<ClimateCardConfig>) 
   const mode = entity.state;
   const off = mode === "off";
   const range: [number, number] = [
-    (attributes.min_temp as number | undefined) ?? 7,
-    (attributes.max_temp as number | undefined) ?? 35,
+    config.min_temp ?? (attributes.min_temp as number | undefined) ?? 7,
+    config.max_temp ?? (attributes.max_temp as number | undefined) ?? 35,
   ];
   const [min, max] = range;
   const isRange = mode === "heat_cool" && attributes.target_temp_low !== undefined;
@@ -693,23 +663,6 @@ function ClimateCard({ config, hass, host }: ReactCardProps<ClimateCardConfig>) 
     if (!drag) return;
     setDrag(undefined);
     commit(drag.which, drag.value);
-  };
-
-  /** The Climate A buttons move the target by one whole degree per press. */
-  const stepTemperature = (delta: -1 | 1) => {
-    if (off) return;
-    if (isRange) {
-      const applied = clamp(delta, min - low, max - high);
-      if (applied === 0) return;
-      call("set_temperature", { target_temp_low: low + applied, target_temp_high: high + applied });
-      hold("low", low + applied);
-      hold("high", high + applied);
-      return;
-    }
-    const next = clamp(single + delta, min, max);
-    if (next === single) return;
-    call("set_temperature", { temperature: next });
-    hold("single", next);
   };
 
   const action = attributes.hvac_action as string | undefined;
@@ -810,23 +763,6 @@ function ClimateCard({ config, hass, host }: ReactCardProps<ClimateCardConfig>) 
             commit(which, next);
           }}
         />
-
-        <div className="tile-step-controls">
-          <button
-            className="tile-step decrease"
-            aria-label={t("decrease_temp")}
-            title={t("decrease_temp")}
-            disabled={off || (isRange ? low <= min : single <= min)}
-            onClick={() => stepTemperature(-1)}
-          >−</button>
-          <button
-            className="tile-step increase"
-            aria-label={t("increase_temp")}
-            title={t("increase_temp")}
-            disabled={off || (isRange ? high >= max : single >= max)}
-            onClick={() => stepTemperature(1)}
-          >＋</button>
-        </div>
 
         {modes.length > 0 && <div
           className="tile-modes"

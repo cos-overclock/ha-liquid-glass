@@ -143,6 +143,8 @@ hvac_modes: [auto, cool, heat, fan_only, off]   # 省略時はエンティティ
 show_fan_mode: true
 show_preset_mode: true
 show_swing_mode: false
+min_temp: 10   # 省略時はエンティティの min_temp
+max_temp: 30   # 省略時はエンティティの max_temp
 ```
 
 `heat_cool` モードでは 2 つのノブで設定範囲を操作できます。ダイヤル上をドラッグすると温度が変わります。
