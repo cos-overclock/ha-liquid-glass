@@ -1,7 +1,7 @@
 # Liquid Glass Cards for Home Assistant
 
 `pen/design.pen` の Liquid Glass デザインを、Home Assistant のダッシュボードに追加できるカスタムカード群として実装したものです。
-Lit + TypeScript で書かれ、単一ファイル `dist/liquid-glass-cards.js` にバンドルされます。
+Vite + React + TypeScript への段階的な移行を進めており、Home Assistant 向けには単一ファイル `dist/liquid-glass-cards.js` にバンドルされます。Separator Card は React と `@samasante/liquid-glass`、既存カードは移行期間中の Lit 実装です。
 
 | カード | type | 対応ドメイン |
 | --- | --- | --- |
@@ -416,6 +416,7 @@ liquid_glass:
 npm install
 npm run build     # 型チェック + dist/liquid-glass-cards.js を生成
 npm run watch     # 変更を監視してビルド
+npm test          # React/Custom Element 境界の単体テスト
 npm run demo      # http://localhost:5173/ でモック hass を使ったデモを表示
 ```
 
@@ -426,7 +427,9 @@ npm run demo      # http://localhost:5173/ でモック hass を使ったデモ�
 ```text
 src/
   index.ts                    カード登録 / customCards への追加
-  base-card.ts                共通処理（hass / config / テーマ / i18n / ヘッダー・バッジ・トグル）
+  react/define-react-card.tsx React と HA Custom Element 契約のアダプター
+  react/use-card-host.ts      hass / config をホスト属性へ同期する React Hook
+  base-card.ts                移行前カードの Lit 共通処理
   i18n.ts                     日本語 / 英語の文言
   styles/tokens.ts            デザイントークン（design.pen の variables）
   styles/glass.ts             ガラス表面の共通スタイル
@@ -436,7 +439,7 @@ src/
   editor/lg-card-editor.ts    全カード共通のビジュアルエディタ
   editor/schema.ts            カード種別ごとの ha-form スキーマ
   editor/load.ts              ha-form の遅延読み込み
-  cards/*.ts                  各カード
+  cards/*.ts(x)               各カード（React へ順次移行）
 ```
 
 主なトークンに加えて、スライダーカードは `--lg-slider-accent` `--lg-slider-accent-deep` `--lg-slider-accent-light` `--lg-slider-fill-light` を使います。

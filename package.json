@@ -9,6 +9,7 @@
     "build": "npm run typecheck && vite build",
     "watch": "vite build --watch --mode development",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "demo": "vite --host 0.0.0.0"
   },
   "dependencies": {
@@ -22,7 +23,9 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
+    "jsdom": "^30.0.1",
     "typescript": "^5.7.3",
-    "vite": "^8.2.2"
+    "vite": "^8.2.2",
+    "vitest": "^5.0.0"
   }
 }
