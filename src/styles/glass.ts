@@ -121,6 +121,23 @@ export const glassStyles = css`
     position: relative;
     z-index: 1;
   }
+  .card > .lg-card-shader,
+  .lg-control-shader {
+    position: absolute;
+    z-index: 0;
+  }
+  .glass:has(> .lg-card-shader) {
+    background: transparent;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  :host([refraction]) .glass:has(> .lg-card-shader) {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .glass:has(> .lg-card-shader)::before {
+    background: none;
+  }
 
   /* Small glass surface used for knobs / play button / slide thumb */
   .knob {
@@ -139,6 +156,16 @@ export const glassStyles = css`
   :host([refraction]) .knob {
     -webkit-backdrop-filter: url(#lg-knob);
     backdrop-filter: url(#lg-knob);
+  }
+  .knob:has(> .lg-control-shader) {
+    background: transparent;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+  }
+  :host([refraction]) .knob:has(> .lg-control-shader) {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
 
   /* Header block: icon well + title + trailing slot */
@@ -268,6 +295,8 @@ export const glassStyles = css`
     background: var(--toggle-color, var(--lg-accent));
   }
   .toggle .knob-dot {
+    position: relative;
+    overflow: hidden;
     width: 27px;
     height: 27px;
     border-radius: 50%;
@@ -275,6 +304,9 @@ export const glassStyles = css`
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
     transform: translateX(0);
     transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .toggle .knob-dot:has(> .lg-control-shader) {
+    background: transparent;
   }
   .toggle.on .knob-dot {
     transform: translateX(20px);
@@ -330,6 +362,9 @@ export const glassStyles = css`
     box-shadow: inset 0 0 0 1px var(--lg-glass-stroke);
   }
   .segment > button {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
     flex: 1;
     min-width: 0;
     height: 30px;
@@ -349,6 +384,9 @@ export const glassStyles = css`
     padding: 0;
     transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
   }
+  .segment > button:has(> .lg-control-shader) {
+    background: transparent;
+  }
   .segment > button.selected {
     background: var(--lg-segment-selected);
     color: var(--lg-text-primary);
@@ -363,6 +401,9 @@ export const glassStyles = css`
     gap: 8px;
   }
   .chip {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -378,6 +419,11 @@ export const glassStyles = css`
     cursor: pointer;
     min-width: 0;
     max-width: 100%;
+  }
+  .chip > :not(.lg-control-shader),
+  .segment > button > :not(.lg-control-shader) {
+    position: relative;
+    z-index: 1;
   }
   .chip > span {
     overflow: hidden;

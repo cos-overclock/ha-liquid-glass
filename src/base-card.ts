@@ -10,6 +10,7 @@ import { loadHaFormComponents } from "./editor/load";
 import { registerAnimatableColors } from "./styles/motion";
 import "./components/lg-icon";
 import "./components/lg-slider";
+import "./components/lg-glass-surface";
 
 // Every card imports this module, so registering here covers all of them.
 registerAnimatableColors();
@@ -105,6 +106,40 @@ export abstract class LiquidGlassBaseCard<C extends BaseCardConfig = BaseCardCon
     return this.refraction ? glassDefs : nothing;
   }
 
+  /** GPU-rendered card underlay. Text, icons and interaction remain normal accessible DOM. */
+  protected renderCardSurface(): TemplateResult {
+    const palette = this.isDark
+      ? ["#151619", "#222327", "#292a2f", "#17181b"]
+      : ["#fafafa", "#f1f1f2", "#e8e9eb", "#f8f8f9"];
+    return html`<lg-glass-surface
+      class="lg-card-shader"
+      shape="roundrect"
+      .palette=${palette}
+      .radius=${32}
+      .edge=${28}
+      .refraction=${this.refraction ? 22 : 0}
+      .blurRadius=${7}
+      .highlight=${0.85}
+      .tintAlpha=${this.isDark ? 0.18 : 0.24}
+      .tint=${this.isDark ? "#1c1c1e" : "#ffffff"}
+    ></lg-glass-surface>`;
+  }
+
+  /** GPU-rendered overlay for knobs and floating controls. */
+  protected renderControlSurface(palette?: string[], shape: "circle" | "pill" | "roundrect" = "circle"): TemplateResult {
+    return html`<lg-glass-surface
+      class="lg-control-shader"
+      .shape=${shape}
+      .palette=${palette ?? (this.isDark ? ["#242529", "#45474d"] : ["#ffffff", "#d8d9dc"])}
+      .radius=${shape === "circle" ? 999 : 22}
+      .edge=${14}
+      .refraction=${this.refraction ? 16 : 0}
+      .blurRadius=${3}
+      .highlight=${1.25}
+      .tintAlpha=${this.isDark ? 0.12 : 0.24}
+    ></lg-glass-surface>`;
+  }
+
   /**
    * `onClick` defaults to opening more-info. Pass `null` when an ancestor already handles
    * the click, so the well stays inert and the event reaches it exactly once.
@@ -155,13 +190,14 @@ export abstract class LiquidGlassBaseCard<C extends BaseCardConfig = BaseCardCon
         }
       }}
     >
-      <div class="knob-dot"></div>
+      <div class="knob-dot">${this.renderControlSurface()}</div>
     </div>`;
   }
 
   protected renderUnavailable(): TemplateResult {
     return html`${this.renderDefs()}
       <div class="glass card">
+        ${this.renderCardSurface()}
         <div class="header">
           ${this.renderIconWell(this.config?.icon ?? "mdi:help-circle-outline", undefined)}
           ${this.renderTitle(this.entityName, this.t("unavailable"))}

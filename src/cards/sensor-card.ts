@@ -360,6 +360,7 @@ export class LiquidGlassSensorCard extends LiquidGlassBaseCard<SensorCardConfig>
 
     return html`${this.renderDefs()}
       <div class=${classMap({ glass: true, card: true, row: asRow })} style=${styleMap({ "--accent": accent })}>
+        ${this.renderCardSurface()}
         ${asRow ? head : html`<div class="header">${head}</div>`}
 
         ${inCaption

@@ -2,16 +2,16 @@ import { LitElement, html, css, nothing } from "lit";
 import { property, state } from "lit/decorators.js";
 import { styleMap } from "lit/directives/style-map.js";
 import { clamp } from "../utils";
-import { knobDefs } from "../styles/glass-defs";
+import "./lg-glass-surface";
 
 export type SliderVariant = "bar" | "thumb" | "thin";
 
 /**
  * Pointer driven slider shared by all cards.
  *
- *   bar   – 64px tall track with a soft fill (brightness)
- *   thumb – 40px gradient track with a liquid-glass thumb (color temp, hue, tilt)
- *   thin  – 7–10px progress bar (media progress / volume)
+ *   bar   – 64px tall track with a soft fill and full-height thumb (brightness)
+ *   thumb – 40px pill track with a full-height thumb (color temp, hue, tilt)
+ *   thin  – 7px progress bar, optionally enlarged to 20px with a thumb (volume)
  *
  * Emits `lg-input` continuously while dragging and `lg-change` on release.
  * Value is normalised to 0..1; the host maps it to entity units.
@@ -28,6 +28,10 @@ export class LgSlider extends LitElement {
   @property({ type: Number }) fillFrom: number | undefined = undefined;
   @property({ type: Boolean }) showFill = true;
   @property({ type: Boolean }) hideFillWhenZero = false;
+  /** Add a full-height thumb to a thin track (used by the media volume control). */
+  @property({ type: Boolean }) showThumb = false;
+  /** Backdrop colors sampled by the shared WebGL glass shader under the thumb. */
+  @property({ attribute: false }) shaderPalette: string[] = [];
 
   @state() private dragging = false;
   @state() private dragValue = 0;
@@ -51,23 +55,22 @@ export class LgSlider extends LitElement {
       cursor: pointer;
     }
     .track.bar {
-      height: var(--lg-slider-height, 64px);
+      --lg-effective-slider-height: var(--lg-slider-height, 64px);
+      height: var(--lg-effective-slider-height);
       border-radius: var(--lg-slider-radius, 20px);
     }
-    /*
-     * The thumb variant is driven entirely by the track height: the knob is inset 4px on
-     * every side, so its diameter is height - 8 and its travel is width - height. Setting
-     * --lg-slider-height is enough to resize the whole control.
-     */
+    /* Thumb geometry is driven entirely by the track height. */
     .track.thumb {
-      height: var(--lg-slider-height, 40px);
+      --lg-effective-slider-height: var(--lg-slider-height, 40px);
+      height: var(--lg-effective-slider-height);
       border-radius: 999px;
       box-shadow:
         0 2px 4px rgba(0, 0, 0, 0.14),
         inset 0 0 0 1px var(--lg-glass-stroke);
     }
     .track.thin {
-      height: var(--lg-slider-height, 7px);
+      --lg-effective-slider-height: var(--lg-slider-height, 7px);
+      height: var(--lg-effective-slider-height);
       border-radius: 999px;
       box-shadow: none;
     }
@@ -111,24 +114,35 @@ export class LgSlider extends LitElement {
     }
     .knob {
       position: absolute;
-      top: 4px;
-      width: calc(var(--lg-slider-height, 40px) - 8px);
-      height: calc(var(--lg-slider-height, 40px) - 8px);
+      top: 0;
+      width: var(--lg-effective-slider-height);
+      height: var(--lg-effective-slider-height);
       border-radius: 50%;
-      background: rgba(255, 255, 255, 0.22);
-      -webkit-backdrop-filter: blur(3px) saturate(1.35);
-      backdrop-filter: blur(3px) saturate(1.35);
+      background: rgba(255, 255, 255, 0.56);
+      -webkit-backdrop-filter: blur(12px) saturate(1.35);
+      backdrop-filter: blur(12px) saturate(1.35);
       box-shadow:
-        0 3px 8px rgba(0, 0, 0, 0.3),
-        inset 0 0 0 2px rgba(255, 255, 255, 0.9),
-        inset 0 6px 10px -4px rgba(255, 255, 255, 0.9),
-        inset 0 -4px 8px -4px rgba(0, 0, 0, 0.12);
+        0 5px 14px rgba(0, 0, 0, 0.6),
+        0 1px 3px rgba(255, 255, 255, 0.4),
+        inset 0 0 0 1.5px #fff;
       pointer-events: none;
       transition: transform 0.08s ease;
     }
+    .track.thin .knob {
+      box-shadow:
+        0 2px 6px rgba(0, 0, 0, 0.5),
+        0 1px 2px rgba(255, 255, 255, 0.4),
+        inset 0 0 0 1.5px #fff;
+    }
     .knob.refraction {
-      -webkit-backdrop-filter: url(#lg-knob);
-      backdrop-filter: url(#lg-knob);
+      -webkit-backdrop-filter: url(#lg-slider-knob);
+      backdrop-filter: url(#lg-slider-knob);
+    }
+    .knob:has(> lg-glass-surface) {
+      background: transparent;
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+      box-shadow: 0 5px 14px rgba(0, 0, 0, 0.38);
     }
     :host([dragging]) .knob {
       transform: scale(1.08);
@@ -146,7 +160,8 @@ export class LgSlider extends LitElement {
     if (!track) return this.value;
     const rect = track.getBoundingClientRect();
     // The knob centre can only reach half a track-height in from either end.
-    const pad = this.variant === "thumb" ? rect.height / 2 : 0;
+    const hasKnob = this.variant === "thumb" || this.variant === "bar" || this.showThumb;
+    const pad = hasKnob ? rect.height / 2 : 0;
     const usable = Math.max(1, rect.width - pad * 2);
     const ratio = clamp((e.clientX - rect.left - pad) / usable, 0, 1);
     let v = this.min + ratio * (this.max - this.min);
@@ -199,9 +214,10 @@ export class LgSlider extends LitElement {
   override render() {
     const ratio = this.ratio;
     const isThumb = this.variant === "thumb";
+    const hasKnob = isThumb || this.variant === "bar" || this.showThumb;
     const showFill = this.showFill && !(this.hideFillWhenZero && ratio <= 0);
     // Track height in CSS, so the knob geometry follows --lg-slider-height.
-    const h = "var(--lg-slider-height, 40px)";
+    const h = "var(--lg-effective-slider-height)";
     const travel = `(100% - ${h})`;
     let fillStyle: Record<string, string> = { width: `${ratio * 100}%` };
     if (isThumb && this.fillFrom !== undefined) {
@@ -209,14 +225,13 @@ export class LgSlider extends LitElement {
       const a = Math.min(from, ratio);
       const b = Math.max(from, ratio);
       fillStyle = { left: `calc(${h} / 2 + ${travel} * ${a})`, width: `calc(${travel} * ${b - a})` };
-    } else if (isThumb) {
-      // The knob only travels between the two half-height insets, so a fill measured as a
-      // plain percentage of the track drifts away from it and only agrees at the midpoint.
+    } else if (hasKnob) {
+      // A full-height knob travels between the two half-height insets, so a fill measured
+      // as a plain percentage of the track would only meet its centre at the midpoint.
       // Ending the fill at the knob's centre keeps the two together at every value.
       fillStyle = { width: `calc(${h} / 2 + ${travel} * ${ratio})` };
     }
     return html`
-      ${isThumb && this.refraction ? knobDefs : nothing}
       <div
         class="track ${this.variant}"
         role="slider"
@@ -236,8 +251,23 @@ export class LgSlider extends LitElement {
           ? html`<div class="center-mark" style=${styleMap({ left: `calc(${h} / 2 + ${travel} * ${clamp(this.fillFrom, 0, 1)})` })}></div>`
           : nothing}
         <div class="overlay"><slot name="start"></slot><slot name="end"></slot></div>
-        ${isThumb
-          ? html`<div class="knob ${this.refraction ? "refraction" : ""}" style=${styleMap({ left: `calc(4px + ${travel} * ${ratio})` })}></div>`
+        ${hasKnob
+          ? html`<div class="knob" style=${styleMap({ left: `calc(${travel} * ${ratio})` })}>
+              <lg-glass-surface
+                shape="circle"
+                .palette=${this.shaderPalette}
+                .stops=${[0, 0.44, 0.56, 1]}
+                .radius=${999}
+                .edge=${20}
+                .refraction=${this.refraction ? 10 : 0}
+                .blurRadius=${12}
+                .highQualityBlur=${true}
+                .renderScale=${1.5}
+                .pixelRatioLimit=${3}
+                .highlight=${1.25}
+                .tintAlpha=${this.refraction ? 0.28 : 0.18}
+              ></lg-glass-surface>
+            </div>`
           : nothing}
       </div>
     `;

@@ -335,6 +335,7 @@ export class LiquidGlassCoverCard extends LiquidGlassBaseCard<CoverCardConfig> {
 
     return html`${this.renderDefs()}
       <div class="glass card">
+        ${this.renderCardSurface()}
         <div class="header">
           ${this.renderIconWell(icon, well)}
           ${this.renderTitle(this.entityName, this.stateText())}
@@ -371,6 +372,7 @@ export class LiquidGlassCoverCard extends LiquidGlassBaseCard<CoverCardConfig> {
               <lg-slider
                 variant="thumb"
                 .refraction=${this.refraction}
+                .shaderPalette=${["#72d4ef", "#dce5ec", "#79d6e8", "#33515b"]}
                 .value=${tilt}
                 min="0"
                 max="100"

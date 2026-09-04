@@ -91,8 +91,10 @@ interface FilterSpec {
 const specs: FilterSpec[] = [
   // 28px of edge on a card around 310px across its shorter run.
   { id: "lg-card", band: 0.09, edge: SHADER.edge, refraction: SHADER.refraction, blur: 5, saturation: SHADER.saturation, chroma: SHADER.chroma },
-  // Knobs and thumbs use a tighter edge and less blur, as set on those nodes in the design.
+  // Dial knobs and play buttons keep the lighter treatment used by those design nodes.
   { id: "lg-knob", band: 0.4, edge: 14, refraction: 16, blur: 2.2, saturation: SHADER.saturation, chroma: SHADER.chroma },
+  // Slider thumbs use the stronger full-height frost treatment from the slider designs.
+  { id: "lg-slider-knob", band: 0.4, edge: 20, refraction: 10, blur: 12, saturation: SHADER.saturation, chroma: SHADER.chroma },
 ];
 
 /** feColorMatrix that keeps one channel and leaves alpha opaque, ready to be summed. */
@@ -152,15 +154,23 @@ export const knobDefs = html`<svg class="lg-defs" aria-hidden="true" focusable="
   <defs>${filter(specs[1])}</defs>
 </svg>`;
 
+/** Strong-frost slider defs for components that live in their own shadow root. */
+export const sliderKnobDefs = html`<svg class="lg-defs" aria-hidden="true" focusable="false" style="position:absolute;width:0;height:0">
+  <defs>${filter(specs[2])}</defs>
+</svg>`;
+
 let cachedSupport: boolean | undefined;
 
-/** Chromium is the only engine that applies SVG filters in backdrop-filter. */
+/** Chromium is the only engine that applies SVG filters in backdrop-filter reliably. */
 export function supportsRefraction(): boolean {
   if (cachedSupport !== undefined) return cachedSupport;
   const ua = navigator.userAgent;
   const isChromium = /Chrome\/|Chromium\/|CriOS\//.test(ua) || Boolean((navigator as unknown as { userAgentData?: unknown }).userAgentData);
   const isSafari = /Safari\//.test(ua) && !/Chrome\/|Chromium\/|CriOS\//.test(ua);
   const isFirefox = /Firefox\//.test(ua);
-  cachedSupport = isChromium && !isSafari && !isFirefox && CSS.supports("backdrop-filter", "blur(1px)");
+  // Android/HA WebViews can report CSS support while silently dropping SVG URL filters.
+  // Keep `auto` deterministic there; users can still explicitly opt in with refraction: true.
+  const isEmbeddedWebView = /\bwv\b|Home[ /]?Assistant/i.test(ua);
+  cachedSupport = isChromium && !isSafari && !isFirefox && !isEmbeddedWebView && CSS.supports("backdrop-filter", "blur(1px)");
   return cachedSupport;
 }

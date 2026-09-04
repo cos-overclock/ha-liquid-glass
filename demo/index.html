@@ -322,15 +322,20 @@
           { type: "custom:liquid-glass-switch-card", entity: "switch.desk_off" },
         ] }],
       ];
+      const visibleCards = params.get("focus") === "climate-a"
+        ? cards.filter(([type, cfg]) => type === "liquid-glass-climate-card" && cfg.design === "compact")
+        : cards;
 
       const main = document.getElementById("main");
       const els = [];
-      let refraction = params.get("refraction") === "off" ? false : "auto";
+      const initialRefraction = params.get("refraction");
+      let refraction = initialRefraction === "off" ? false : initialRefraction === "on" ? true : "auto";
       function mount() {
         main.innerHTML = "";
         els.length = 0;
-        for (const [type, cfg] of cards) {
+        for (const [type, cfg] of visibleCards) {
           const el = document.createElement(type);
+          if (type === "liquid-glass-climate-card" && cfg.design === "compact") el.id = "demo-climate-compact";
           el.setConfig({ ...cfg, refraction });
           el.hass = hass;
           main.appendChild(el);

@@ -155,6 +155,7 @@ export class LiquidGlassSwitchCard extends LiquidGlassBaseCard<SwitchCardConfig>
         @pointerleave=${() => this.cancelHold()}
         @contextmenu=${(e: Event) => e.preventDefault()}
       >
+        ${this.renderCardSurface()}
         ${this.renderIconWell(this.config.icon ?? entity.attributes.icon ?? this.defaultIcon(), well, null)}
         <div class="title">
           <div class="name">${this.entityName}</div>

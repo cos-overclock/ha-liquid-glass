@@ -347,6 +347,7 @@ export class LiquidGlassSliderCard extends LiquidGlassBaseCard<SliderCardConfig>
 
     return html`${this.renderDefs()}
       <div class="glass card" style=${styleMap({ "--fill-from": fillFrom, "--fill-to": fillTo })}>
+        ${this.renderCardSurface()}
         <div class="header">
           ${this.renderIconWell(spec.icon, well)}
           ${this.renderTitle(this.entityName, this.subtitleFor(spec, value))}
@@ -360,6 +361,7 @@ export class LiquidGlassSliderCard extends LiquidGlassBaseCard<SliderCardConfig>
           <lg-slider
             variant="thumb"
             .refraction=${this.refraction}
+            .shaderPalette=${[fillFrom, fillTo, this.isDark ? "#34343e" : "#dedde2", this.isDark ? "#34343e" : "#dedde2"]}
             .value=${value}
             .min=${spec.min}
             .max=${spec.max}

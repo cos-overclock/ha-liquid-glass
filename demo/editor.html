@@ -529,10 +529,12 @@
         check("slider thumb: uses the round thumb track", slider.variant === "thumb");
         const knob = slider.shadowRoot.querySelector(".knob");
         check("slider thumb: the knob is rendered", knob !== null);
-        check("slider thumb: the knob carries no glyph", knob.childElementCount === 0);
+        check("slider thumb: the knob carries no glyph", knob.querySelector("lg-icon") === null && knob.querySelector("lg-glass-surface") !== null);
+        const sliderGlass = knob.querySelector("lg-glass-surface");
+        check("slider thumb: uses high-quality diffusion", sliderGlass.highQualityBlur === true && sliderGlass.renderScale === 1.5);
         const trackH = Math.round(slider.shadowRoot.querySelector(".track").getBoundingClientRect().height);
         const knobH = Math.round(knob.getBoundingClientRect().height);
-        check("slider thumb: knob is inset 4px in a 56px track", trackH === 56 && knobH === 48, `track ${trackH}px knob ${knobH}px`);
+        check("slider thumb: knob fills the 56px track height", trackH === 56 && knobH === 56, `track ${trackH}px knob ${knobH}px`);
 
         check("slider hold: starts at the entity value", shown() === "20", shown());
         slider.dispatchEvent(new CustomEvent("lg-change", { detail: { value: 80 }, bubbles: true, composed: true }));
@@ -963,13 +965,42 @@
 
         const root = card.shadowRoot;
         check("compact climate: renders the slider instead of the dial", root.querySelector(".climate-compact") !== null && root.querySelector(".dial") === null);
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+        check("compact climate: card and thumb are shader-rendered", root.querySelector(".lg-card-shader")?.hasAttribute("shader-ready") && root.querySelector(".tile-thumb lg-glass-surface")?.hasAttribute("shader-ready"));
+        const climateGlass = root.querySelector(".tile-thumb lg-glass-surface");
+        check("compact climate: thumb uses high-quality diffusion", climateGlass.highQualityBlur === true && climateGlass.renderScale === 1.5);
         check("compact climate: room temperature is moved out of the subtitle", !root.querySelector(".state").textContent.includes("室温") && root.querySelector(".tile-room .value").textContent.trim() === "21.5°", root.querySelector(".state").textContent);
         check("compact climate: the setpoint uses the split large readout", root.querySelector(".tile-target .number").textContent.trim() === "22" && root.querySelector(".tile-target .fraction").textContent.trim() === ".0°");
         check("compact climate: mode buttons are icon-only", [...root.querySelectorAll(".tile-modes button")].every((button) => button.textContent.trim() === ""));
+        const modesHeight = Math.round(root.querySelector(".tile-modes").getBoundingClientRect().height);
+        const modeButtonHeight = Math.round(root.querySelector(".tile-modes button").getBoundingClientRect().height);
+        check("compact climate: mode control uses the compact 40px treatment", modesHeight === 40 && modeButtonHeight === 34, `${modesHeight}px / ${modeButtonHeight}px`);
         check("compact climate: fan control is hidden by default", root.querySelector(".detail") === null);
-        const trackHeight = Math.round(root.querySelector(".tile-track").getBoundingClientRect().height);
-        const thumbHeight = Math.round(root.querySelector(".tile-thumb").getBoundingClientRect().height);
-        check("compact climate: the slider uses the thinner 40px treatment", trackHeight === 40 && thumbHeight === 32, `${trackHeight}px / ${thumbHeight}px`);
+        check("compact climate: the room marker and range labels are removed", root.querySelector(".room-marker, .tile-ticks") === null);
+        check("compact climate: one-degree controls are shown", root.querySelectorAll(".tile-step-controls .tile-step").length === 2);
+        for (const [width, expected] of [[240, 40], [320, 47], [380, 56]]) {
+          card.style.width = `${width}px`;
+          const trackHeight = Math.round(root.querySelector(".tile-track").getBoundingClientRect().height);
+          const thumbHeight = Math.round(root.querySelector(".tile-thumb").getBoundingClientRect().height);
+          check(`compact climate: slider scales at ${width}px`, trackHeight === expected && thumbHeight === expected, `${trackHeight}px / ${thumbHeight}px`);
+        }
+        const thumb = root.querySelector(".tile-thumb");
+        const thumbColor = thumb.style.getPropertyValue("--tile-thumb-color");
+        check("compact climate: thumb receives a deterministic track color", /^rgba\(/.test(thumbColor), thumbColor);
+        check("compact climate: thumb draws its split fill and highlight layers", getComputedStyle(thumb, "::before").backgroundImage !== "none" && getComputedStyle(thumb, "::after").backgroundImage !== "none");
+        card.setConfig({ type: "custom:liquid-glass-climate-card", entity: "climate.living_room", design: "compact", refraction: false });
+        await card.updateComplete;
+        check("compact climate: refraction-off keeps shader drawing without displacement", !card.hasAttribute("refraction") && root.querySelector(".tile-thumb lg-glass-surface").refraction === 0);
+        card.setConfig({ type: "custom:liquid-glass-climate-card", entity: "climate.living_room", design: "compact", refraction: true });
+        await card.updateComplete;
+        check("compact climate: refraction-on enables shader displacement", card.hasAttribute("refraction") && root.querySelector(".tile-thumb lg-glass-surface").refraction === 10);
+        const stepButton = root.querySelector(".tile-step").getBoundingClientRect();
+        check("compact climate: step buttons use the smaller 48x40 treatment", Math.round(stepButton.width) === 48 && Math.round(stepButton.height) === 40, `${Math.round(stepButton.width)}px / ${Math.round(stepButton.height)}px`);
+
+        root.querySelector(".tile-step.increase").click();
+        await card.updateComplete;
+        check("compact climate: plus raises the target by one degree", calls[0]?.service === "set_temperature" && calls[0]?.data.temperature === 23, JSON.stringify(calls[0]));
+        check("compact climate: the stepped target is held while HA catches up", root.querySelector(".tile-target .number").textContent.trim() === "23", root.querySelector(".tile-target .number").textContent);
 
         card.setConfig({ type: "custom:liquid-glass-climate-card", entity: "climate.living_room", design: "compact", show_fan_mode: true });
         await card.updateComplete;
@@ -978,15 +1009,15 @@
         const track = root.querySelector(".tile-track");
         track.setPointerCapture = () => {};
         const rect = track.getBoundingClientRect();
-        const point = { clientX: rect.left + rect.width * 0.8, clientY: rect.top + rect.height / 2 };
+        const point = { clientX: rect.left + rect.height / 2 + (rect.width - rect.height) * 0.8, clientY: rect.top + rect.height / 2 };
         track.dispatchEvent(new PointerEvent("pointerdown", { ...point, button: 0, bubbles: true, pointerId: 1 }));
         track.dispatchEvent(new PointerEvent("pointerup", { ...point, button: 0, bubbles: true, pointerId: 1 }));
         await card.updateComplete;
-        check("compact climate: dragging the bar sends the setpoint", calls[0]?.service === "set_temperature" && calls[0]?.data.temperature === 26, JSON.stringify(calls[0]));
+        check("compact climate: dragging the bar sends the setpoint", calls[1]?.service === "set_temperature" && calls[1]?.data.temperature === 26, JSON.stringify(calls[1]));
         check("compact climate: the released setpoint is held while HA catches up", root.querySelector(".tile-target .number").textContent.trim() === "26", root.querySelector(".tile-target .number").textContent);
 
         root.querySelector('.tile-modes button[title="冷房"]').click();
-        check("compact climate: mode buttons call set_hvac_mode", calls[1]?.service === "set_hvac_mode" && calls[1]?.data.hvac_mode === "cool", JSON.stringify(calls[1]));
+        check("compact climate: mode buttons call set_hvac_mode", calls[2]?.service === "set_hvac_mode" && calls[2]?.data.hvac_mode === "cool", JSON.stringify(calls[2]));
 
         const off = document.createElement("liquid-glass-climate-card");
         off.setConfig({ type: "custom:liquid-glass-climate-card", entity: "climate.off", design: "compact" });
@@ -994,7 +1025,7 @@
         off.style.cssText = "position:absolute;left:-9999px;width:380px";
         document.body.append(off);
         await off.updateComplete;
-        check("compact climate: off state removes the room marker", off.shadowRoot.querySelector(".room-marker") === null);
+        check("compact climate: off state disables both step controls", [...off.shadowRoot.querySelectorAll(".tile-step")].every((button) => button.disabled));
         off.remove();
         card.remove();
       }

@@ -186,6 +186,18 @@ export class LiquidGlassMediaCard extends LiquidGlassBaseCard<MediaCardConfig> {
         -webkit-backdrop-filter: url(#lg-knob);
         backdrop-filter: url(#lg-knob);
       }
+      .play:has(> .lg-control-shader) {
+        position: relative;
+        overflow: hidden;
+        background: transparent;
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+      }
+      .play > lg-icon {
+        position: relative;
+        z-index: 1;
+      }
       .volume {
         display: flex;
         align-items: center;
@@ -195,7 +207,7 @@ export class LiquidGlassMediaCard extends LiquidGlassBaseCard<MediaCardConfig> {
       }
       .volume lg-slider {
         flex: 1;
-        --lg-slider-height: 10px;
+        --lg-slider-height: 20px;
       }
       .fade {
         opacity: 0.4;
@@ -286,6 +298,7 @@ export class LiquidGlassMediaCard extends LiquidGlassBaseCard<MediaCardConfig> {
 
     return html`${this.renderDefs()}
       <div class="glass card" style=${styleMap({ "--source-color": sourceColor })}>
+        ${this.renderCardSurface()}
         ${showDevice
           ? html`<div class="device" @click=${this.openMoreInfo}><lg-icon icon="mdi:speaker"></lg-icon><span>${this.entityName}</span></div>`
           : nothing}
@@ -330,6 +343,7 @@ export class LiquidGlassMediaCard extends LiquidGlassBaseCard<MediaCardConfig> {
             <lg-icon icon="mdi:skip-previous-outline"></lg-icon>
           </button>
           <button class=${classMap({ play: true })} @click=${this.playPause} title="Play / Pause" style=${idle ? "color: var(--lg-text-secondary)" : ""}>
+            ${this.renderControlSurface()}
             <lg-icon .icon=${ps === "playing" ? "mdi:pause" : "mdi:play-outline"}></lg-icon>
           </button>
           <button class=${classMap({ skip: true, fade: idle })} ?disabled=${!supportsFeature(entity, F.NEXT)} @click=${() => this.callService("media_player", "media_next_track")} title="Next">
@@ -345,6 +359,9 @@ export class LiquidGlassMediaCard extends LiquidGlassBaseCard<MediaCardConfig> {
               <lg-icon icon="mdi:volume-low"></lg-icon>
               <lg-slider
                 variant="thin"
+                .refraction=${this.refraction}
+                .shaderPalette=${["#f2f2f5", "#f2f2f5", this.isDark ? "#44424c" : "#d8d6dc", this.isDark ? "#44424c" : "#d8d6dc"]}
+                .showThumb=${true}
                 .value=${volume}
                 min="0"
                 max="1"

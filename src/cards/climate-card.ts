@@ -192,6 +192,11 @@ export class LiquidGlassClimateCard extends LiquidGlassBaseCard<ClimateCardConfi
       }
       .card.climate-compact {
         --lg-gap: 16px;
+        --lg-tile-slider-size: 56px;
+        --lg-tile-thumb-track: rgba(76, 76, 82, 0.18);
+      }
+      :host([dark]) .card.climate-compact {
+        --lg-tile-thumb-track: rgba(8, 8, 10, 0.42);
       }
       .tile-readout {
         min-width: 0;
@@ -254,9 +259,9 @@ export class LiquidGlassClimateCard extends LiquidGlassBaseCard<ClimateCardConfi
       .tile-track {
         position: relative;
         width: 100%;
-        height: 40px;
+        height: var(--lg-tile-slider-size);
         overflow: hidden;
-        border-radius: 20px;
+        border-radius: calc(var(--lg-tile-slider-size) / 2);
         background: var(--lg-track-bg);
         box-shadow:
           0 2px 4px rgba(0, 0, 0, 0.14),
@@ -281,46 +286,102 @@ export class LiquidGlassClimateCard extends LiquidGlassBaseCard<ClimateCardConfi
       .tile-track.dragging .tile-thumb {
         transition: none;
       }
-      .room-marker {
-        position: absolute;
-        top: 9px;
-        left: calc(var(--room) * 100%);
-        width: 3px;
-        height: 22px;
-        border-radius: 2px;
-        background: #fff;
-        transform: translateX(-50%);
-        pointer-events: none;
-      }
       .tile-thumb {
         position: absolute;
-        top: 4px;
-        left: calc(var(--value) * 100%);
-        width: 32px;
-        height: 32px;
+        top: 0;
+        left: calc(var(--lg-tile-slider-size) / 2 + (100% - var(--lg-tile-slider-size)) * var(--value));
+        width: var(--lg-tile-slider-size);
+        height: var(--lg-tile-slider-size);
+        overflow: hidden;
+        isolation: isolate;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.32);
+        -webkit-backdrop-filter: blur(3px) saturate(1.15);
+        backdrop-filter: blur(3px) saturate(1.15);
+        box-shadow:
+          0 5px 14px rgba(0, 0, 0, 0.42),
+          0 1px 3px rgba(255, 255, 255, 0.35);
         transform: translateX(-50%);
         transition: left 0.35s cubic-bezier(0.3, 0.8, 0.3, 1), transform 0.12s ease;
         pointer-events: none;
       }
+      .tile-thumb::before {
+        content: "";
+        position: absolute;
+        inset: 1px;
+        border-radius: inherit;
+        background: linear-gradient(90deg, var(--tile-thumb-color) 0 50%, var(--lg-tile-thumb-track) 50% 100%);
+        pointer-events: none;
+      }
+      .tile-thumb::after {
+        content: "";
+        position: absolute;
+        inset: 1px;
+        border-radius: inherit;
+        background: linear-gradient(160deg, rgba(255, 255, 255, 0.72) 0%, rgba(255, 255, 255, 0.16) 38%, transparent 62%);
+        box-shadow:
+          inset 0 0 0 1px rgba(255, 255, 255, 0.9),
+          inset 0 -5px 8px rgba(0, 0, 0, 0.08);
+        pointer-events: none;
+      }
+      :host([refraction]) .tile-thumb {
+        background: rgba(255, 255, 255, 0.48);
+        -webkit-backdrop-filter: url(#lg-slider-knob);
+        backdrop-filter: url(#lg-slider-knob);
+      }
+      .tile-thumb:has(> lg-glass-surface) {
+        background: transparent;
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+      }
+      .tile-thumb:has(> lg-glass-surface)::before,
+      .tile-thumb:has(> lg-glass-surface)::after {
+        display: none;
+      }
       .tile-track.dragging .tile-thumb {
         transform: translateX(-50%) scale(1.06);
       }
-      .tile-ticks {
+      .tile-step-controls {
+        height: 44px;
         display: flex;
+        align-items: center;
         justify-content: space-between;
-        padding: 0 6px;
-        color: var(--lg-text-secondary);
+      }
+      .tile-step {
+        width: 48px;
+        height: 40px;
+        display: grid;
+        place-items: center;
+        padding: 0 0 2px;
+        border: 0;
+        border-radius: 20px;
+        background: var(--lg-track-bg);
+        box-shadow:
+          0 2px 5px rgba(0, 0, 0, 0.12),
+          inset 0 0 0 1px var(--lg-glass-stroke);
+        color: var(--lg-text-primary);
         font-family: var(--lg-font-ui);
-        font-size: var(--lg-tick);
-        font-weight: 500;
-        letter-spacing: -0.2px;
+        font-size: 20px;
+        font-weight: 600;
+        line-height: 1;
+        cursor: pointer;
+        transition: transform 0.1s ease, opacity 0.2s ease;
+      }
+      .tile-step:active:not(:disabled) {
+        transform: scale(0.94);
+      }
+      .tile-step:disabled {
+        opacity: 0.4;
+        cursor: default;
       }
       .tile-modes {
         position: relative;
         display: flex;
+        height: 40px;
+        box-sizing: border-box;
         gap: 2px;
         padding: 3px;
-        border-radius: 25px;
+        border-radius: 20px;
         background: var(--lg-track-bg);
         box-shadow: inset 0 0 0 1px var(--lg-glass-stroke);
       }
@@ -331,31 +392,37 @@ export class LiquidGlassClimateCard extends LiquidGlassBaseCard<ClimateCardConfi
         bottom: 3px;
         left: calc(3px + var(--i) * (var(--seg-w) + 2px));
         width: var(--seg-w);
-        border-radius: 22px;
+        border-radius: 17px;
         background: var(--lg-segment-selected);
         box-shadow: 0 2px 6px rgba(0, 0, 0, 0.14);
         transition: left 0.32s cubic-bezier(0.3, 0.8, 0.3, 1), opacity 0.2s ease;
         pointer-events: none;
+      }
+      .tile-mode-pill:has(> .lg-control-shader),
+      .seg-pill:has(> .lg-control-shader) {
+        background: transparent;
+        box-shadow: none;
       }
       .tile-modes button {
         position: relative;
         z-index: 1;
         flex: 1;
         min-width: 0;
-        height: 44px;
+        min-height: 0;
+        height: 34px;
         display: grid;
         place-items: center;
         padding: 0;
         border: 0;
-        border-radius: 22px;
+        border-radius: 17px;
         color: var(--lg-text-secondary);
         background: transparent;
         cursor: pointer;
       }
       .tile-modes lg-icon {
-        --mdc-icon-size: 19px;
-        width: 19px;
-        height: 19px;
+        --mdc-icon-size: 17px;
+        width: 17px;
+        height: 17px;
         transition: color 0.32s ease;
       }
       .tile-modes button.selected lg-icon {
@@ -369,6 +436,7 @@ export class LiquidGlassClimateCard extends LiquidGlassBaseCard<ClimateCardConfi
           --lg-temp-fraction: clamp(15px, 5.8cqi, 22px);
         }
         .card.climate-compact {
+          --lg-tile-slider-size: clamp(40px, 14.7cqi, 56px);
           --lg-tile-temp: clamp(38px, 14.7cqi, 56px);
           --lg-tile-range: clamp(28px, 10.5cqi, 40px);
           --lg-tile-fraction: clamp(17px, 6.3cqi, 24px);
@@ -643,7 +711,8 @@ export class LiquidGlassClimateCard extends LiquidGlassBaseCard<ClimateCardConfi
     const track = this.shadowRoot?.querySelector(".tile-track") as HTMLElement | null;
     if (!track) return this.range[0];
     const rect = track.getBoundingClientRect();
-    const ratio = clamp((e.clientX - rect.left) / Math.max(rect.width, 1), 0, 1);
+    const pad = rect.height / 2;
+    const ratio = clamp((e.clientX - rect.left - pad) / Math.max(rect.width - pad * 2, 1), 0, 1);
     const [min, max] = this.range;
     return clamp(Math.round((min + ratio * (max - min)) / this.step) * this.step, min, max);
   }
@@ -703,6 +772,30 @@ export class LiquidGlassClimateCard extends LiquidGlassBaseCard<ClimateCardConfi
     this.drag = { which: "single", value: clamp(value, min, max) };
     this.onDialUp();
   };
+
+  /** The Climate A buttons move the target by one whole degree per press. */
+  private stepTileTemperature(delta: -1 | 1): void {
+    if (this.mode === "off") return;
+    const a = this.entity?.attributes ?? {};
+    const [min, max] = this.range;
+    if (this.isRange) {
+      const low = this.shownValue("low", a.target_temp_low as number | undefined, min);
+      const high = this.shownValue("high", a.target_temp_high as number | undefined, max);
+      const applied = clamp(delta, min - low, max - high);
+      if (applied === 0) return;
+      const nextLow = low + applied;
+      const nextHigh = high + applied;
+      this.callService("climate", "set_temperature", { target_temp_low: nextLow, target_temp_high: nextHigh });
+      this.hold("low", nextLow);
+      this.hold("high", nextHigh);
+      return;
+    }
+    const current = this.shownValue("single", a.temperature as number | undefined, min);
+    const next = clamp(current + delta, min, max);
+    if (next === current) return;
+    this.callService("climate", "set_temperature", { temperature: next });
+    this.hold("single", next);
+  }
 
   private onDialUp = () => {
     if (!this.drag) return;
@@ -836,7 +929,7 @@ export class LiquidGlassClimateCard extends LiquidGlassBaseCard<ClimateCardConfi
     return html`<div
       class="dial-knob knob"
       style=${styleMap({ left: `${((x / DIAL) * 100).toFixed(3)}%`, top: `${((y / DIAL) * 100).toFixed(3)}%` })}
-    ></div>`;
+    >${this.renderControlSurface()}</div>`;
   }
 
   private renderDetail(kind: "fan_mode" | "preset_mode" | "swing_mode", icon: string) {
@@ -889,6 +982,22 @@ export class LiquidGlassClimateCard extends LiquidGlassBaseCard<ClimateCardConfi
     };
   }
 
+  /** Matches the four-stop temperature track at the thumb's current position. */
+  private tileGradientColor(ratio: number): string {
+    const stops: Array<[number, [number, number, number]]> = [
+      [0, [90, 200, 250]],
+      [0.35, [255, 217, 160]],
+      [0.62, [255, 159, 10]],
+      [1, [255, 45, 85]],
+    ];
+    const index = Math.min(stops.findIndex(([position]) => ratio <= position), stops.length - 1);
+    const [toPosition, toColor] = stops[Math.max(index, 1)];
+    const [fromPosition, fromColor] = stops[Math.max(index - 1, 0)];
+    const mix = clamp((ratio - fromPosition) / Math.max(toPosition - fromPosition, 0.001), 0, 1);
+    const [red, green, blue] = fromColor.map((channel, i) => Math.round(channel + (toColor[i] - channel) * mix));
+    return `rgba(${red}, ${green}, ${blue}, 0.58)`;
+  }
+
   private renderCompact(theme: ModeTheme, modes: string[]) {
     const a = this.entity!.attributes;
     const off = this.mode === "off";
@@ -905,6 +1014,7 @@ export class LiquidGlassClimateCard extends LiquidGlassBaseCard<ClimateCardConfi
 
     return html`${this.renderDefs()}
       <div class="glass card climate-compact">
+        ${this.renderCardSurface()}
         <div class="header">
           ${this.renderIconWell(this.config.icon ?? theme.icon, theme.well)}
           ${this.renderTitle(this.entityName, this.tileStateText())}
@@ -927,9 +1037,8 @@ export class LiquidGlassClimateCard extends LiquidGlassBaseCard<ClimateCardConfi
         <div
           class=${classMap({ "tile-track": true, dragging: this.drag !== undefined, off })}
           style=${styleMap({
-            "--clip-left": `${from * 100}%`,
-            "--clip-right": `${(1 - to) * 100}%`,
-            "--room": String(current === undefined ? 0 : this.ratio(current)),
+            "--clip-left": from <= 0 ? "0px" : `calc(var(--lg-tile-slider-size) / 2 + (100% - var(--lg-tile-slider-size)) * ${from})`,
+            "--clip-right": to >= 1 ? "0px" : `calc(100% - var(--lg-tile-slider-size) / 2 - (100% - var(--lg-tile-slider-size)) * ${to})`,
           })}
           role="slider"
           tabindex=${off ? -1 : 0}
@@ -945,22 +1054,57 @@ export class LiquidGlassClimateCard extends LiquidGlassBaseCard<ClimateCardConfi
           @keydown=${this.onTileKeyDown}
         >
           <div class="tile-gradient" style=${styleMap({ opacity: off ? "0" : "1" })}></div>
-          ${off || current === undefined ? nothing : html`<div class="room-marker"></div>`}
           ${off
             ? nothing
             : (isRange ? [low, high] : [single]).map(
-                (value) => html`<div class="knob tile-thumb" style=${styleMap({ "--value": String(this.ratio(value)) })}></div>`,
+                (value) => {
+                  const thumbColor = this.tileGradientColor(this.ratio(value));
+                  return html`<div
+                    class="tile-thumb"
+                    style=${styleMap({ "--value": String(this.ratio(value)), "--tile-thumb-color": thumbColor })}
+                  >
+                    <lg-glass-surface
+                      shape="circle"
+                      .palette=${[thumbColor, thumbColor, this.isDark ? "#24242c" : "#dedde2", this.isDark ? "#24242c" : "#dedde2"]}
+                      .stops=${[0, 0.44, 0.56, 1]}
+                      .radius=${999}
+                      .edge=${20}
+                      .refraction=${this.refraction ? 10 : 0}
+                      .blurRadius=${12}
+                      .highQualityBlur=${true}
+                      .renderScale=${1.5}
+                      .pixelRatioLimit=${3}
+                      .highlight=${1.25}
+                      .tintAlpha=${this.refraction ? 0.28 : 0.18}
+                    ></lg-glass-surface>
+                  </div>`;
+                },
               )}
         </div>
 
-        <div class="tile-ticks"><span>${formatNumber(this.hass, min, 0)}°</span><span>${formatNumber(this.hass, max, 0)}°</span></div>
+        <div class="tile-step-controls">
+          <button
+            class="tile-step decrease"
+            aria-label=${this.t("decrease_temp")}
+            title=${this.t("decrease_temp")}
+            ?disabled=${off || (isRange ? low <= min : single <= min)}
+            @click=${() => this.stepTileTemperature(-1)}
+          >−</button>
+          <button
+            class="tile-step increase"
+            aria-label=${this.t("increase_temp")}
+            title=${this.t("increase_temp")}
+            ?disabled=${off || (isRange ? high >= max : single >= max)}
+            @click=${() => this.stepTileTemperature(1)}
+          >＋</button>
+        </div>
 
         ${modes.length
           ? html`<div
               class="tile-modes"
               style=${styleMap({ "--selected-color": selected, "--n": String(modes.length), "--i": String(Math.max(modes.indexOf(this.mode), 0)) })}
             >
-              <div class="tile-mode-pill" style=${styleMap({ opacity: modes.includes(this.mode) ? "1" : "0" })}></div>
+              <div class="tile-mode-pill" style=${styleMap({ opacity: modes.includes(this.mode) ? "1" : "0" })}>${this.renderControlSurface(undefined, "pill")}</div>
               ${modes.map((mode) => {
                 const meta = this.tileModeMeta(mode);
                 return html`<button
@@ -996,6 +1140,7 @@ export class LiquidGlassClimateCard extends LiquidGlassBaseCard<ClimateCardConfi
 
     return html`${this.renderDefs()}
       <div class="glass card">
+        ${this.renderCardSurface()}
         <div class="header">
           ${this.renderIconWell(this.config.icon ?? theme.icon, theme.well)}
           ${this.renderTitle(this.entityName, this.stateText())}
@@ -1015,7 +1160,7 @@ export class LiquidGlassClimateCard extends LiquidGlassBaseCard<ClimateCardConfi
                 single element can travel; two cross-fading ones read as a blink.
                 An unlisted mode leaves nothing selected, so the pill sits out.
               -->
-              <div class="seg-pill" style=${styleMap({ opacity: modes.includes(this.mode) ? "1" : "0" })}></div>
+              <div class="seg-pill" style=${styleMap({ opacity: modes.includes(this.mode) ? "1" : "0" })}>${this.renderControlSurface(undefined, "pill")}</div>
               ${modes.map((m) => {
                 const meta = this.modeMeta(m);
                 return html`<button class=${classMap({ selected: m === this.mode })} @click=${() => this.callService("climate", "set_hvac_mode", { hvac_mode: m })}>

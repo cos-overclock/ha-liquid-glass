@@ -119,6 +119,7 @@ export class LiquidGlassBinarySensorCard extends LiquidGlassBaseCard<BinarySenso
 
     return html`${this.renderDefs()}
       <div class="glass card row">
+        ${this.renderCardSurface()}
         ${this.renderIconWell(icon, well)}
         ${this.renderTitle(this.entityName, stateText)}
         ${this.renderBadge(on ? this.config.label_on ?? meta.badgeOn : this.config.label_off ?? meta.badgeOff, badge)}

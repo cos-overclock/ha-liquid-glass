@@ -95,6 +95,9 @@ export class LiquidGlassCameraCard extends LiquidGlassBaseCard<CameraCardConfig>
 
       /* Controls floating on the feed get their own dark glass. */
       .float {
+        position: relative;
+        isolation: isolate;
+        overflow: hidden;
         border: 0;
         padding: 0;
         color: #fff;
@@ -106,6 +109,15 @@ export class LiquidGlassCameraCard extends LiquidGlassBaseCard<CameraCardConfig>
       :host([refraction]) .float {
         -webkit-backdrop-filter: url(#lg-knob);
         backdrop-filter: url(#lg-knob);
+      }
+      .float:has(> .lg-control-shader) {
+        background: transparent;
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+      }
+      .float > :not(.lg-control-shader) {
+        position: relative;
+        z-index: 1;
       }
       .round {
         width: 32px;
@@ -324,6 +336,7 @@ export class LiquidGlassCameraCard extends LiquidGlassBaseCard<CameraCardConfig>
         class=${classMap({ glass: true, card: true, offline })}
         style=${styleMap({ "--lg-cam-ratio": String(this.config.aspect_ratio ?? 16 / 9) })}
       >
+        ${this.renderCardSurface()}
         <div class="feed" style=${still ? styleMap({ backgroundImage: `url("${still}")` }) : nothing}>
           <div class="scrim"></div>
 
@@ -337,15 +350,17 @@ export class LiquidGlassCameraCard extends LiquidGlassBaseCard<CameraCardConfig>
                       ? { "--dot": "#FF453A", "--dot-glow": "#FF453A" }
                       : { "--dot": "#8E8E93" },
                   )}
-                  ><span class="dot"></span>${t(this.streaming ? "cam_live" : "cam_still")}</span
+                  >${this.renderControlSurface(["#15151b", "#34343e"], "pill")}<span class="dot"></span><span class="live-label">${t(this.streaming ? "cam_live" : "cam_still")}</span></span
                 >`}
             <div class=${classMap({ trail: true, dimmed: offline })}>
               ${this.config.show_mic
                 ? html`<button class="round float" @click=${this.callMic} title=${t("cam_mic")}>
+                    ${this.renderControlSurface(["#15151b", "#34343e"])}
                     <lg-icon icon="mdi:microphone-off"></lg-icon>
                   </button>`
                 : nothing}
               <button class="round float" @click=${this.openMoreInfo} title=${t("cam_expand")}>
+                ${this.renderControlSurface(["#15151b", "#34343e"])}
                 <lg-icon icon="mdi:arrow-expand"></lg-icon>
               </button>
             </div>
@@ -363,6 +378,7 @@ export class LiquidGlassCameraCard extends LiquidGlassBaseCard<CameraCardConfig>
               <span class="when">${offline ? t("cam_offline_state") : relativeTime(entity.last_updated, t)}</span>
             </div>
             <button class=${classMap({ round: true, big: true, float: true, dimmed: offline })} @click=${this.openSnapshot} title=${t("cam_snapshot")}>
+              ${this.renderControlSurface(["#15151b", "#34343e"])}
               <lg-icon icon="mdi:camera"></lg-icon>
             </button>
           </div>

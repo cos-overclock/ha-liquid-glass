@@ -22,8 +22,8 @@ export interface LockCardConfig extends BaseCardConfig {
   buttons?: LockActionButton[];
 }
 
-const THUMB = 56;
-const PAD = 4;
+const THUMB = 64;
+const PAD = 0;
 
 /**
  * Lock card: slide-to-unlock / slide-to-lock control with a liquid-glass thumb.
@@ -99,20 +99,29 @@ export class LiquidGlassLockCard extends LiquidGlassBaseCard<LockCardConfig> {
         display: grid;
         place-items: center;
         cursor: grab;
-        background: rgba(255, 255, 255, 0.26);
-        -webkit-backdrop-filter: blur(4px) saturate(1.35);
-        backdrop-filter: blur(4px) saturate(1.35);
+        background: rgba(255, 255, 255, 0.56);
+        -webkit-backdrop-filter: blur(12px) saturate(1.35);
+        backdrop-filter: blur(12px) saturate(1.35);
         box-shadow:
-          0 4px 12px rgba(0, 0, 0, 0.3),
-          inset 0 0 0 1.5px rgba(255, 255, 255, 0.85),
-          inset 0 8px 12px -6px rgba(255, 255, 255, 0.9),
-          inset 0 -6px 10px -6px rgba(0, 0, 0, 0.12);
+          0 5px 14px rgba(0, 0, 0, 0.6),
+          0 1px 3px rgba(255, 255, 255, 0.4),
+          inset 0 0 0 1.5px #fff;
         transition: left 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
         --mdc-icon-size: calc(var(--thumb) * 0.43);
       }
       :host([refraction]) .thumb {
-        -webkit-backdrop-filter: url(#lg-knob);
-        backdrop-filter: url(#lg-knob);
+        -webkit-backdrop-filter: url(#lg-slider-knob);
+        backdrop-filter: url(#lg-slider-knob);
+      }
+      .thumb:has(> .lg-control-shader) {
+        background: transparent;
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+        box-shadow: 0 5px 14px rgba(0, 0, 0, 0.38);
+      }
+      .thumb > lg-icon {
+        position: relative;
+        z-index: 1;
       }
       .thumb.dragging {
         transition: none;
@@ -136,7 +145,7 @@ export class LiquidGlassLockCard extends LiquidGlassBaseCard<LockCardConfig> {
       }
       @supports (container-type: inline-size) {
         .slide {
-          --thumb: clamp(40px, 14.7cqi, ${THUMB}px);
+          --thumb: clamp(40px, 16.8cqi, ${THUMB}px);
         }
         .card {
           --lg-hint: clamp(11.5px, 3.7cqi, 14px);
@@ -260,6 +269,7 @@ export class LiquidGlassLockCard extends LiquidGlassBaseCard<LockCardConfig> {
 
     return html`${this.renderDefs()}
       <div class="glass card">
+        ${this.renderCardSurface()}
         <div class="header">
           ${this.renderIconWell(this.config.icon ?? v.icon, v.well)}
           ${this.renderTitle(this.entityName, v.state)}
@@ -285,6 +295,7 @@ export class LiquidGlassLockCard extends LiquidGlassBaseCard<LockCardConfig> {
               "--thumb-color": v.thumbColor,
             })}
           >
+            ${this.renderControlSurface()}
             <lg-icon .icon=${v.icon}></lg-icon>
           </div>
         </div>
@@ -293,6 +304,7 @@ export class LiquidGlassLockCard extends LiquidGlassBaseCard<LockCardConfig> {
           ? html`<div class="chips">
               ${buttons.map(
                 (b) => html`<button class="chip" @click=${() => this.runButton(b)}>
+                  ${this.renderControlSurface(undefined, "pill")}
                   ${b.icon ? html`<lg-icon .icon=${b.icon}></lg-icon>` : nothing}<span>${b.name}</span>
                 </button>`,
               )}

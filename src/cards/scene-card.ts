@@ -258,6 +258,7 @@ export class LiquidGlassSceneCard extends LiquidGlassBaseCard<SceneCardConfig> {
 
   private renderChip(item: SceneItem, index: number) {
     return html`<button class=${classMap({ chip: true, on: this.pressed === index })} @click=${() => this.activate(item, index)}>
+      ${this.renderControlSurface(undefined, "pill")}
       ${item.icon ? html`<lg-icon .icon=${item.icon}></lg-icon>` : nothing}<span>${this.label(item)}</span>
     </button>`;
   }
@@ -270,6 +271,7 @@ export class LiquidGlassSceneCard extends LiquidGlassBaseCard<SceneCardConfig> {
 
     return html`${this.renderDefs()}
       <div class=${classMap({ glass: true, card: true, chips })}>
+        ${this.renderCardSurface()}
         ${heading || this.config.show_count
           ? html`<div class="head">
               <span class="heading">${heading ?? ""}</span>

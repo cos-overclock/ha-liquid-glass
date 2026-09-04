@@ -291,6 +291,7 @@ export class LiquidGlassLightCard extends LiquidGlassBaseCard<LightCardConfig> {
 
     return html`${this.renderDefs()}
       <div class=${classMap({ glass: true, card: true })}>
+        ${this.renderCardSurface()}
         <div class="header">
           ${this.renderIconWell(this.config.icon ?? entity.attributes.icon ?? "mdi:lightbulb", this.wellStyle, this.toggle)}
           ${this.renderTitle(this.entityName, this.stateText())}
@@ -301,7 +302,8 @@ export class LiquidGlassLightCard extends LiquidGlassBaseCard<LightCardConfig> {
           ? html`<div class="segment">
               ${(["color", "color_temp"] as ColorUiMode[]).map(
                 (m) => html`<button class=${classMap({ selected: mode === m })} @click=${() => (this.uiMode = m)}>
-                  ${t(m === "color" ? "color" : "color_temp")}
+                  ${mode === m ? this.renderControlSurface(undefined, "pill") : nothing}
+                  <span>${t(m === "color" ? "color" : "color_temp")}</span>
                 </button>`,
               )}
             </div>`
@@ -312,6 +314,8 @@ export class LiquidGlassLightCard extends LiquidGlassBaseCard<LightCardConfig> {
               <div class="label-row"><span class="label">${t("brightness")}</span><span class="value">${this.brightnessPct}%</span></div>
               <lg-slider
                 variant="bar"
+                .refraction=${this.refraction}
+                .shaderPalette=${[fillFrom, fillTo, "#8e8994", "#d8d4dc"]}
                 .value=${this.brightnessPct}
                 min="0"
                 max="100"
@@ -333,6 +337,7 @@ export class LiquidGlassLightCard extends LiquidGlassBaseCard<LightCardConfig> {
                 class=${classMap({ dim: !on })}
                 variant="thumb"
                 .refraction=${this.refraction}
+                .shaderPalette=${["#ffb340", "#fff0d8", "#ffffff", "#b9dcff"]}
                 .value=${this.kelvin}
                 .min=${kMin}
                 .max=${kMax}
@@ -352,6 +357,7 @@ export class LiquidGlassLightCard extends LiquidGlassBaseCard<LightCardConfig> {
                   class=${classMap({ dim: !on })}
                   variant="thumb"
                   .refraction=${this.refraction}
+                  .shaderPalette=${["#ff3b30", "#ffcc00", "#30d158", "#af52de"]}
                   .value=${hue}
                   min="0"
                   max="360"
@@ -367,6 +373,7 @@ export class LiquidGlassLightCard extends LiquidGlassBaseCard<LightCardConfig> {
                   class=${classMap({ dim: !on })}
                   variant="thumb"
                   .refraction=${this.refraction}
+                  .shaderPalette=${["#ffffff", "#ffffff", rgbToHex(hsToRgb(hue, 100)), rgbToHex(hsToRgb(hue, 100))]}
                   .value=${sat}
                   min="0"
                   max="100"
@@ -399,6 +406,7 @@ export class LiquidGlassLightCard extends LiquidGlassBaseCard<LightCardConfig> {
           ? html`<div class=${classMap({ chips: true, muted: !on })}>
               ${presets.map(
                 (p) => html`<button class="chip" @click=${() => this.applyPreset(p)}>
+                  ${this.renderControlSurface(undefined, "pill")}
                   ${p.icon ? html`<lg-icon .icon=${p.icon}></lg-icon>` : nothing}<span>${p.name}</span>
                 </button>`,
               )}
