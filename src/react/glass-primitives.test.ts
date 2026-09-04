@@ -6,8 +6,15 @@ describe("Liquid Glass optical presets", () => {
     const regular = opticsFor(true, "regular", "card");
     const clear = opticsFor(true, "clear", "card");
     expect(clear.strength).toBeGreaterThan(regular.strength ?? 0);
-    expect(clear.dispersion).toBeGreaterThan(regular.dispersion ?? 0);
     expect(clear.frost).toBeLessThan(regular.frost ?? 0);
+  });
+
+  it("leaves dispersion off, which the copied-source filter would render as a dark veil", () => {
+    for (const variant of ["regular", "clear"] as const) {
+      for (const surface of ["card", "compact", "control"] as const) {
+        expect(opticsFor(true, variant, surface).dispersion).toBe(0);
+      }
+    }
   });
 
   it("uses a deeper lens for controls than full cards", () => {

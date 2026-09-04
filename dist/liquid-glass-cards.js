@@ -1669,7 +1669,7 @@ Yt = tn, Yt.styles = h`
 var nn, rn = class extends ze {
 	constructor(...e) {
 		super(...e), this.value = 0, this.min = 0, this.max = 1, this.step = 0, this.variant = "bar", this.disabled = !1, this.refraction = !1, this.fillFrom = void 0, this.showFill = !0, this.hideFillWhenZero = !1, this.showThumb = !1, this.shaderPalette = [], this.dragging = !1, this.dragValue = 0, this.lastPointerX = 0, this.lastPointerTime = 0, this.wobble = 0, this.wobbleTarget = 0, this.onPointerDown = (e) => {
-			this.disabled || e.button !== 0 || (e.preventDefault(), e.currentTarget.setPointerCapture(e.pointerId), this.dragging = !0, this.toggleAttribute("dragging", !0), this.dragValue = this.valueFromEvent(e), this.lastPointerX = e.clientX, this.lastPointerTime = e.timeStamp, this.dispatchEvent(new CustomEvent("lg-input", {
+			this.disabled || e.button !== 0 || (e.preventDefault(), e.currentTarget.setPointerCapture(e.pointerId), this.dragging = !0, this.toggleAttribute("dragging", !0), this.setActive(!0), this.dragValue = this.valueFromEvent(e), this.lastPointerX = e.clientX, this.lastPointerTime = e.timeStamp, this.dispatchEvent(new CustomEvent("lg-input", {
 				detail: { value: this.dragValue },
 				bubbles: !0,
 				composed: !0
@@ -1686,7 +1686,7 @@ var nn, rn = class extends ze {
 			})));
 		}, this.onPointerUp = (e) => {
 			if (!this.dragging) return;
-			this.dragging = !1, this.toggleAttribute("dragging", !1);
+			this.dragging = !1, this.toggleAttribute("dragging", !1), this.setActive(!1);
 			let t = this.valueFromEvent(e);
 			this.value = t, this.setWobbleTarget(0), this.dispatchEvent(new CustomEvent("lg-change", {
 				detail: { value: t },
@@ -1701,7 +1701,7 @@ var nn, rn = class extends ze {
 			else if (e.key === "Home") n = this.min;
 			else if (e.key === "End") n = this.max;
 			else return;
-			e.preventDefault(), this.value = R(n, this.min, this.max), this.dispatchEvent(new CustomEvent("lg-change", {
+			e.preventDefault(), this.value = R(n, this.min, this.max), this.setActive(!0, 320), this.dispatchEvent(new CustomEvent("lg-change", {
 				detail: { value: this.value },
 				bubbles: !0,
 				composed: !0
@@ -1718,6 +1718,9 @@ var nn, rn = class extends ze {
 		let n = t.getBoundingClientRect(), r = this.variant === "thumb" || this.variant === "bar" || this.showThumb ? n.height / 2 : 0, i = Math.max(1, n.width - r * 2), a = R((e.clientX - n.left - r) / i, 0, 1), o = this.min + a * (this.max - this.min);
 		return this.step > 0 && (o = Math.round(o / this.step) * this.step), R(o, this.min, this.max);
 	}
+	setActive(e, t = 0) {
+		clearTimeout(this.activeTimer), this.toggleAttribute("active", e), e && t > 0 && (this.activeTimer = window.setTimeout(() => this.toggleAttribute("active", this.dragging), t));
+	}
 	setWobbleTarget(e) {
 		if (this.wobbleTarget = matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : e, this.wobbleFrame !== void 0) return;
 		let t = () => {
@@ -1726,7 +1729,7 @@ var nn, rn = class extends ze {
 		this.wobbleFrame = requestAnimationFrame(t);
 	}
 	disconnectedCallback() {
-		this.wobbleFrame !== void 0 && cancelAnimationFrame(this.wobbleFrame), super.disconnectedCallback();
+		this.wobbleFrame !== void 0 && cancelAnimationFrame(this.wobbleFrame), clearTimeout(this.activeTimer), super.disconnectedCallback();
 	}
 	render() {
 		let e = this.ratio, t = this.variant === "thumb", n = t || this.variant === "bar" || this.showThumb, r = this.showFill && !(this.hideFillWhenZero && e <= 0), i = "var(--lg-effective-slider-height)", a = `(100% - ${i})`, o = { width: `${e * 100}%` };
@@ -1776,6 +1779,7 @@ var nn, rn = class extends ze {
                 .highlight=${1.25}
                 .tintAlpha=${.18}
               ></lg-glass-surface>`}
+              <div class="knob-cap"></div>
             </div>` : I}
       </div>
     `;
@@ -1886,13 +1890,34 @@ nn = rn, nn.styles = h`
       -webkit-backdrop-filter: url(#lg-slider-knob);
       backdrop-filter: url(#lg-slider-knob);
     }
+    /*
+     * A slider stays opaque at rest and only turns to glass while it is moving, so the
+     * glass knob is rendered all the time and this cap hides it until an interaction.
+     */
+    .knob-cap {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: var(--lg-knob-solid);
+      box-shadow: inset 0 0 0 1px var(--lg-knob-solid-rim);
+      transition: opacity 0.22s ease;
+    }
+    :host([active]) .knob-cap {
+      opacity: 0;
+      transition-duration: 0.12s;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .knob-cap {
+        transition-duration: 0.01ms !important;
+      }
+    }
     .knob:has(> lg-glass-surface) {
       background: transparent;
       -webkit-backdrop-filter: none;
       backdrop-filter: none;
       box-shadow: 0 5px 14px rgba(0, 0, 0, 0.38);
     }
-    :host([dragging]) .knob {
+    :host([active]) .knob {
       transform: scaleX(calc(1.06 - var(--lg-wobble, 0) * 0.1)) scaleY(calc(1.06 + var(--lg-wobble, 0) * 0.2));
     }
   `, H([L({ type: Number })], rn.prototype, "value", void 0), H([L({ type: Number })], rn.prototype, "min", void 0), H([L({ type: Number })], rn.prototype, "max", void 0), H([L({ type: Number })], rn.prototype, "step", void 0), H([L()], rn.prototype, "variant", void 0), H([L({
@@ -2070,6 +2095,14 @@ var on = h`
     --lg-glass-stroke: rgba(255, 255, 255, 0.7);
     --lg-glass-inner: rgba(255, 255, 255, 0.5);
     --lg-track-bg: rgba(255, 255, 255, 0.4);
+    /* A slider knob is solid until it is dragged, when the glass under it is revealed. */
+    --lg-knob-solid: #ffffff;
+    --lg-knob-solid-rim: rgba(28, 28, 30, 0.06);
+    --lg-knob-shadow: 0 0.5px 4px rgba(28, 28, 30, 0.16), 0 6px 13px rgba(28, 28, 30, 0.18);
+    --lg-knob-shadow-active: 0 1px 6px rgba(28, 28, 30, 0.18), 0 10px 22px rgba(28, 28, 30, 0.26);
+    /* The unfilled part of a slider bar, matching the neutral fill Apple uses. */
+    --lg-slider-bar-bg: rgba(120, 120, 128, 0.24);
+    --lg-slider-mark: rgba(28, 28, 30, 0.26);
     --lg-shadow-glass: rgba(28, 28, 30, 0.18);
     --lg-segment-selected: rgba(255, 255, 255, 0.85);
     --lg-glass-tint-active: 255, 255, 255;
@@ -2136,6 +2169,12 @@ var on = h`
     --lg-glass-stroke: rgba(255, 255, 255, 0.25);
     --lg-glass-inner: rgba(255, 255, 255, 0.12);
     --lg-track-bg: rgba(255, 255, 255, 0.14);
+    --lg-knob-solid: #f2f2f7;
+    --lg-knob-solid-rim: rgba(28, 28, 30, 0.12);
+    --lg-knob-shadow: 0 0.5px 4px rgba(0, 0, 0, 0.4), 0 6px 14px rgba(0, 0, 0, 0.42);
+    --lg-knob-shadow-active: 0 1px 6px rgba(0, 0, 0, 0.44), 0 10px 24px rgba(0, 0, 0, 0.5);
+    --lg-slider-bar-bg: rgba(120, 120, 128, 0.36);
+    --lg-slider-mark: rgba(255, 255, 255, 0.4);
     --lg-shadow-glass: rgba(0, 0, 0, 0.45);
     --lg-segment-selected: rgba(255, 255, 255, 0.2);
     --lg-glass-tint-active: 255, 255, 255;
@@ -12922,9 +12961,9 @@ _r.displayName = "GlassDiv";
 //#region src/react/glass-primitives.tsx
 var vr = {
 	strength: .035,
-	depth: .28,
-	curvature: .14,
-	dispersion: .18,
+	depth: .22,
+	curvature: .12,
+	dispersion: 0,
 	bend: .38,
 	bendWidth: .12,
 	frost: 7,
@@ -12932,17 +12971,16 @@ var vr = {
 	sheen: .42,
 	sheenWidth: 2.5,
 	sheenFalloff: 1.6,
-	glow: .12,
-	glowSpread: .55,
-	glowFalloff: .7,
+	glow: .09,
+	glowSpread: .14,
+	glowFalloff: 1.5,
 	specular: 1.18,
 	brightness: .015
 }, yr = {
 	...vr,
 	strength: .05,
-	depth: .36,
-	curvature: .2,
-	dispersion: .24,
+	depth: .3,
+	curvature: .18,
 	bend: .48,
 	bendWidth: .1,
 	frost: 3,
@@ -12953,10 +12991,11 @@ var vr = {
 	brightness: 0
 }, br = {
 	...vr,
+	glowSpread: .55,
+	glowFalloff: .7,
 	strength: .12,
 	depth: .88,
 	curvature: .58,
-	dispersion: .48,
 	bend: .74,
 	bendWidth: .14,
 	frost: 4,
@@ -12967,7 +13006,6 @@ var vr = {
 	...br,
 	strength: .14,
 	curvature: .66,
-	dispersion: .54,
 	frost: 2,
 	saturate: 1.45
 }, Sr = (e) => ({
@@ -12994,7 +13032,7 @@ function wr(e, t = "regular", n = "card") {
 	let r = Cr[t][n];
 	return e ? r : Sr(r);
 }
-var Tr = "\n  .lg-liquid-surface {\n    isolation: isolate;\n    background: rgba(var(--lg-glass-tint), var(--lg-glass-tint-alpha));\n  }\n  .lg-liquid-card {\n    box-shadow: 0 14px 36px -4px var(--lg-shadow-glass);\n  }\n  .lg-liquid-compact {\n    box-shadow: 0 4px 14px -2px var(--lg-shadow-glass);\n  }\n  .lg-liquid-control {\n    background: rgba(255, 255, 255, 0.32);\n    box-shadow: 0 5px 14px rgba(0, 0, 0, 0.46);\n  }\n  :host([dark]) .lg-liquid-control {\n    background: rgba(255, 255, 255, 0.18);\n  }\n  /*\n   * The DOM refraction route inserts a crisp-content wrapper before its optical\n   * layers. Recreate the surface layout on that wrapper and keep it above the\n   * refracted background. Without this, a card becomes one blank flex item and\n   * the later SVG layer paints over its contents.\n   */\n  .lg-liquid-surface[data-liquid-glass=\"\"] > :first-child {\n    position: relative;\n    z-index: 2;\n    min-width: 0;\n    box-sizing: border-box;\n  }\n  .lg-liquid-card[data-liquid-glass=\"\"] > :first-child {\n    width: 100%;\n    display: flex;\n    flex-direction: column;\n    gap: inherit;\n  }\n  .lg-liquid-compact[data-liquid-glass=\"\"] > :first-child {\n    width: 100%;\n    height: 100%;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    gap: inherit;\n  }\n  .lg-liquid-control[data-liquid-glass=\"\"] > :first-child {\n    width: 100%;\n    height: 100%;\n    display: grid;\n    place-items: center;\n  }\n  .lg-refraction-source {\n    width: 100%;\n    height: 100%;\n    min-height: inherit;\n    border-radius: inherit;\n    background:\n      radial-gradient(circle at 14% 2%, rgba(255, 255, 255, 0.72), transparent 34%),\n      radial-gradient(circle at 88% 96%, color-mix(in srgb, var(--lg-refraction-accent, var(--lg-accent)) 42%, transparent), transparent 48%),\n      linear-gradient(135deg, rgba(var(--lg-glass-tint), 0.34), rgba(var(--lg-glass-tint), 0.08));\n  }\n  :host([dark]) .lg-refraction-source {\n    background:\n      radial-gradient(circle at 14% 2%, rgba(255, 255, 255, 0.32), transparent 34%),\n      radial-gradient(circle at 88% 96%, color-mix(in srgb, var(--lg-refraction-accent, var(--lg-accent)) 34%, transparent), transparent 48%),\n      linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(0, 0, 0, 0.14));\n  }\n";
+var Tr = "\n  .lg-liquid-surface {\n    isolation: isolate;\n    background: rgba(var(--lg-glass-tint), var(--lg-glass-tint-alpha));\n  }\n  .lg-liquid-card {\n    box-shadow: 0 10px 26px -8px var(--lg-shadow-glass);\n  }\n  .lg-liquid-compact {\n    box-shadow: 0 3px 10px -3px var(--lg-shadow-glass);\n  }\n  .lg-liquid-control {\n    background: rgba(255, 255, 255, 0.32);\n    box-shadow: 0 5px 14px rgba(0, 0, 0, 0.46);\n  }\n  :host([dark]) .lg-liquid-control {\n    background: rgba(255, 255, 255, 0.18);\n  }\n  /*\n   * The DOM refraction route inserts a crisp-content wrapper before its optical\n   * layers. Recreate the surface layout on that wrapper and keep it above the\n   * refracted background. Without this, a card becomes one blank flex item and\n   * the later SVG layer paints over its contents.\n   */\n  .lg-liquid-surface[data-liquid-glass=\"\"] > :first-child {\n    position: relative;\n    z-index: 2;\n    min-width: 0;\n    box-sizing: border-box;\n  }\n  .lg-liquid-card[data-liquid-glass=\"\"] > :first-child {\n    width: 100%;\n    display: flex;\n    flex-direction: column;\n    gap: inherit;\n  }\n  .lg-liquid-compact[data-liquid-glass=\"\"] > :first-child {\n    width: 100%;\n    height: 100%;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    gap: inherit;\n  }\n  .lg-liquid-control[data-liquid-glass=\"\"] > :first-child {\n    width: 100%;\n    height: 100%;\n    display: grid;\n    place-items: center;\n  }\n  /*\n   * The copy the lens refracts stands in for the backdrop, so it has to read as an\n   * even panel: Apple's glass carries its light at the rim, not as a wash across the\n   * middle. A soft top light and a flat tint, with only a hint of the card's accent.\n   */\n  .lg-refraction-source {\n    width: 100%;\n    height: 100%;\n    min-height: inherit;\n    border-radius: inherit;\n    background:\n      radial-gradient(120% 160% at 12% -28%, rgba(255, 255, 255, 0.4), transparent 58%),\n      radial-gradient(80% 120% at 94% 112%, color-mix(in srgb, var(--lg-refraction-accent, var(--lg-accent)) 14%, transparent), transparent 62%),\n      linear-gradient(180deg, rgba(var(--lg-glass-tint), 0.3), rgba(var(--lg-glass-tint), 0.18));\n  }\n  :host([dark]) .lg-refraction-source {\n    background:\n      radial-gradient(120% 160% at 12% -28%, rgba(255, 255, 255, 0.16), transparent 58%),\n      radial-gradient(80% 120% at 94% 112%, color-mix(in srgb, var(--lg-refraction-accent, var(--lg-accent)) 12%, transparent), transparent 62%),\n      linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.04));\n  }\n";
 function Er({ refraction: e, variant: t = "regular", surface: n = "card", sourceAccent: r, sourceBackground: i, className: a, children: o, ...s }) {
 	let c = e ? /* @__PURE__ */ (0, W.jsx)("div", {
 		"aria-hidden": "true",
@@ -13023,42 +13061,42 @@ function Dr({ icon: e, decorative: t = !0 }) {
 }
 //#endregion
 //#region src/react/glass-slider.tsx
-var Or = "\n  .lg-react-slider {\n    display: block;\n    touch-action: none;\n    user-select: none;\n    -webkit-user-select: none;\n  }\n  .lg-react-slider.disabled { pointer-events: none; }\n  .slider-track {\n    --lg-effective-slider-height: var(--lg-slider-height, 40px);\n    position: relative;\n    width: 100%;\n    height: var(--lg-effective-slider-height);\n    overflow: hidden;\n    border-radius: 999px;\n    background: var(--lg-slider-track, var(--lg-track-bg));\n    box-shadow:\n      0 2px 4px rgba(0, 0, 0, 0.14),\n      inset 0 0 0 1px var(--lg-glass-stroke);\n    cursor: pointer;\n  }\n  .slider-track:focus-visible {\n    outline: 2px solid var(--lg-cool-deep);\n    outline-offset: 2px;\n  }\n  .slider-fill {\n    position: absolute;\n    inset-block: 0;\n    left: 0;\n    background: var(--lg-slider-fill, linear-gradient(90deg, #fff8ea, #ffe2a6));\n    pointer-events: none;\n  }\n  .slider-knob {\n    top: 0;\n    width: var(--lg-effective-slider-height);\n    height: var(--lg-effective-slider-height);\n    border-radius: 50%;\n    pointer-events: none;\n    transform: scaleX(calc(1 - var(--lg-wobble, 0) * 0.1)) scaleY(calc(1 + var(--lg-wobble, 0) * 0.2));\n    transition:\n      left 80ms linear,\n      transform 80ms ease;\n  }\n  .lg-react-slider.dragging .slider-knob {\n    transform: scaleX(calc(1.06 - var(--lg-wobble, 0) * 0.1)) scaleY(calc(1.06 + var(--lg-wobble, 0) * 0.2));\n  }\n  @media (prefers-reduced-motion: reduce) {\n    .slider-knob { transition-duration: 0.01ms !important; }\n  }\n";
-function kr({ value: e, min: t, max: n, step: r, disabled: i = !1, refraction: a, glassVariant: o = "regular", showFill: s = !0, label: c, onInput: l, onChange: u }) {
-	let [d, f] = (0, U.useState)(), p = (0, U.useRef)(null), m = (0, U.useRef)(0), h = (0, U.useRef)(0), g = (0, U.useRef)(0), _ = (0, U.useRef)(0), v = (0, U.useRef)(void 0), y = d ?? e, b = n - t || 1, x = R((y - t) / b, 0, 1), S = "(100% - var(--lg-effective-slider-height))";
+var Or = "\n  .lg-react-slider {\n    display: block;\n    touch-action: none;\n    user-select: none;\n    -webkit-user-select: none;\n  }\n  .lg-react-slider.disabled { pointer-events: none; }\n  /*\n   * Apple's slider is a thin capsule with a round thumb riding over it, so the row\n   * height here is only the touch target: the bar and the knob are centred in it.\n   */\n  .slider-track {\n    --lg-effective-slider-height: var(--lg-slider-height, 44px);\n    --lg-effective-bar-height: var(--lg-slider-bar-height, 12px);\n    --lg-effective-knob-size: var(--lg-slider-knob-size, 32px);\n    position: relative;\n    width: 100%;\n    height: var(--lg-effective-slider-height);\n    border-radius: 999px;\n    cursor: pointer;\n  }\n  .slider-track:focus-visible {\n    outline: 2px solid var(--lg-cool-deep);\n    outline-offset: 2px;\n  }\n  /* The bar carries no stroke or drop shadow of its own; it is a flat filled capsule. */\n  .slider-bar {\n    position: absolute;\n    inset-inline: 0;\n    top: calc((var(--lg-effective-slider-height) - var(--lg-effective-bar-height)) / 2);\n    height: var(--lg-effective-bar-height);\n    overflow: hidden;\n    border-radius: 999px;\n    background: var(--lg-slider-track, var(--lg-slider-bar-bg));\n  }\n  .slider-fill {\n    position: absolute;\n    inset-block: 0;\n    left: 0;\n    border-radius: inherit;\n    background: var(--lg-slider-fill, linear-gradient(90deg, #fff8ea, #ffe2a6));\n    pointer-events: none;\n  }\n  /* Step marks sit under the knob, spaced between the two positions it can reach. */\n  .marks {\n    position: absolute;\n    inset-block: 0;\n    inset-inline: calc(var(--lg-effective-knob-size) / 2 - 2px);\n    display: flex;\n    align-items: center;\n    justify-content: space-between;\n    pointer-events: none;\n  }\n  .marks span {\n    width: 4px;\n    height: 4px;\n    border-radius: 50%;\n    background: var(--lg-slider-mark);\n  }\n  .slider-knob,\n  .slider-knob-cap {\n    top: calc((var(--lg-effective-slider-height) - var(--lg-effective-knob-size)) / 2);\n    width: var(--lg-effective-knob-size);\n    height: var(--lg-effective-knob-size);\n    border-radius: 50%;\n    pointer-events: none;\n    transform: scaleX(calc(1 - var(--lg-wobble, 0) * 0.1)) scaleY(calc(1 + var(--lg-wobble, 0) * 0.2));\n    transition:\n      left 80ms linear,\n      transform 80ms ease;\n  }\n  /* The glass thumb carries the elevation for both states, so the cap stays flat. */\n  .slider-knob {\n    box-shadow: var(--lg-knob-shadow);\n    transition:\n      left 80ms linear,\n      transform 80ms ease,\n      box-shadow 200ms ease;\n  }\n  /*\n   * A slider reads as opaque at rest and only becomes glass while it is being moved.\n   * The glass knob stays mounted underneath so its filter is already warm; this cap\n   * covers it and fades out the moment a drag or a key press starts.\n   */\n  .slider-knob-cap {\n    background: var(--lg-knob-solid);\n    box-shadow: inset 0 0 0 1px var(--lg-knob-solid-rim);\n    transition:\n      left 80ms linear,\n      transform 80ms ease,\n      opacity 220ms ease;\n  }\n  .lg-react-slider.active .slider-knob-cap {\n    opacity: 0;\n    transition-duration: 80ms, 80ms, 120ms;\n  }\n  /* Lifting the thumb while it is dragged is what sells it as a floating lens. */\n  .lg-react-slider.active .slider-knob {\n    box-shadow: var(--lg-knob-shadow-active);\n  }\n  .lg-react-slider.active .slider-knob,\n  .lg-react-slider.active .slider-knob-cap {\n    transform: scaleX(calc(1.06 - var(--lg-wobble, 0) * 0.1)) scaleY(calc(1.06 + var(--lg-wobble, 0) * 0.2));\n  }\n  @media (prefers-reduced-motion: reduce) {\n    .slider-knob,\n    .slider-knob-cap { transition-duration: 0.01ms !important; }\n  }\n";
+function kr({ value: e, min: t, max: n, step: r, disabled: i = !1, refraction: a, glassVariant: o = "regular", showFill: s = !0, ticks: c = 0, label: l, onInput: u, onChange: d }) {
+	let [f, p] = (0, U.useState)(), [m, h] = (0, U.useState)(!1), g = (0, U.useRef)(void 0), _ = (0, U.useRef)(null), v = (0, U.useRef)(null), y = (0, U.useRef)(0), b = (0, U.useRef)(0), x = (0, U.useRef)(0), S = (0, U.useRef)(0), C = (0, U.useRef)(void 0), w = f ?? e, T = f !== void 0 || m, E = n - t || 1, ee = R((w - t) / E, 0, 1), te = "(100% - var(--lg-effective-knob-size))";
 	(0, U.useEffect)(() => () => {
-		v.current !== void 0 && cancelAnimationFrame(v.current);
+		C.current !== void 0 && cancelAnimationFrame(C.current), window.clearTimeout(g.current);
 	}, []);
-	let C = (i) => {
-		let a = p.current?.getBoundingClientRect();
+	let D = (i) => {
+		let a = _.current?.getBoundingClientRect();
 		if (!a) return e;
-		let o = a.height / 2, s = Math.max(1, a.width - o * 2), c = t + R((i - a.left - o) / s, 0, 1) * (n - t);
+		let o = (v.current?.offsetWidth || a.height) / 2, s = Math.max(1, a.width - o * 2), c = t + R((i - a.left - o) / s, 0, 1) * (n - t);
 		return r > 0 && (c = Math.round(c / r) * r), R(c, t, n);
-	}, w = (e) => {
+	}, O = (e) => {
 		let t = typeof matchMedia == "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
-		if (_.current = t ? 0 : e, _.current === 0 && g.current === 0 || v.current !== void 0) return;
+		if (S.current = t ? 0 : e, S.current === 0 && x.current === 0 || C.current !== void 0) return;
 		let n = () => {
-			g.current += (_.current - g.current) * .24, _.current *= d === void 0 ? .72 : .9, p.current?.style.setProperty("--lg-wobble", g.current.toFixed(4)), Math.abs(_.current - g.current) > .004 || _.current > .004 ? v.current = requestAnimationFrame(n) : (g.current = 0, p.current?.style.removeProperty("--lg-wobble"), v.current = void 0);
+			x.current += (S.current - x.current) * .24, S.current *= f === void 0 ? .72 : .9, _.current?.style.setProperty("--lg-wobble", x.current.toFixed(4)), Math.abs(S.current - x.current) > .004 || S.current > .004 ? C.current = requestAnimationFrame(n) : (x.current = 0, _.current?.style.removeProperty("--lg-wobble"), C.current = void 0);
 		};
-		v.current = requestAnimationFrame(n);
-	}, T = (e) => {
-		f(e), l(e);
-	}, E = (e) => {
+		C.current = requestAnimationFrame(n);
+	}, ne = (e) => {
+		p(e), u(e);
+	}, k = (e) => {
 		if (i || e.button !== 0) return;
 		e.preventDefault(), e.currentTarget.setPointerCapture?.(e.pointerId);
-		let t = C(e.clientX);
-		m.current = e.clientX, h.current = e.timeStamp, T(t);
-	}, ee = (e) => {
-		if (d === void 0) return;
-		let t = Math.max(1, e.timeStamp - h.current), n = Math.abs(e.clientX - m.current) / t;
-		m.current = e.clientX, h.current = e.timeStamp, w(R(n / 1.4, 0, 1));
-		let r = C(e.clientX);
-		r !== d && T(r);
-	}, te = (e) => {
-		if (d === void 0) return;
-		let t = C(e.clientX);
-		f(void 0), w(0), u(t);
-	}, D = (a) => {
+		let t = D(e.clientX);
+		y.current = e.clientX, b.current = e.timeStamp, ne(t);
+	}, A = (e) => {
+		if (f === void 0) return;
+		let t = Math.max(1, e.timeStamp - b.current), n = Math.abs(e.clientX - y.current) / t;
+		y.current = e.clientX, b.current = e.timeStamp, O(R(n / 1.4, 0, 1));
+		let r = D(e.clientX);
+		r !== f && ne(r);
+	}, j = (e) => {
+		if (f === void 0) return;
+		let t = D(e.clientX);
+		p(void 0), O(0), d(t);
+	}, re = (a) => {
 		if (i) return;
 		let o = r > 0 ? r : (n - t) / 20, s = e;
 		if (a.key === "ArrowRight" || a.key === "ArrowUp") s += o;
@@ -13066,40 +13104,59 @@ function kr({ value: e, min: t, max: n, step: r, disabled: i = !1, refraction: a
 		else if (a.key === "Home") s = t;
 		else if (a.key === "End") s = n;
 		else return;
-		a.preventDefault(), u(R(s, t, n));
-	}, O = { width: `calc(var(--lg-effective-slider-height) / 2 + ${S} * ${x})` }, ne = {
+		a.preventDefault(), h(!0), window.clearTimeout(g.current), g.current = window.setTimeout(() => h(!1), 320), d(R(s, t, n));
+	}, ie = { width: `calc(var(--lg-effective-knob-size) / 2 + ${te} * ${ee})` }, ae = {
 		display: "block",
 		position: "absolute",
-		left: `calc(${S} * ${x})`
-	};
+		width: "var(--lg-effective-knob-size)",
+		left: `calc(${te} * ${ee})`
+	}, oe = `${!s || ee <= 0 ? "linear-gradient(var(--lg-slider-bar-bg), var(--lg-slider-bar-bg))" : ee >= 1 ? "linear-gradient(90deg, var(--fill-from), var(--fill-to))" : "linear-gradient(90deg, var(--fill-from) 0%, var(--fill-to) 46%, var(--lg-slider-bar-bg) 54%)"} center / 100% 38% no-repeat,
+    radial-gradient(circle at 30% 18%, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.28))`;
 	return /* @__PURE__ */ (0, W.jsx)("div", {
-		className: `lg-react-slider${d === void 0 ? "" : " dragging"}${i ? " disabled" : ""}`,
+		className: `lg-react-slider${T ? " active" : ""}${i ? " disabled" : ""}`,
 		children: /* @__PURE__ */ (0, W.jsxs)("div", {
-			ref: p,
+			ref: _,
 			className: "slider-track",
 			role: "slider",
 			tabIndex: i ? -1 : 0,
-			"aria-label": c,
+			"aria-label": l,
 			"aria-valuemin": t,
 			"aria-valuemax": n,
-			"aria-valuenow": y,
+			"aria-valuenow": w,
 			"aria-disabled": i,
-			onPointerDown: E,
-			onPointerMove: ee,
-			onPointerUp: te,
-			onPointerCancel: te,
-			onKeyDown: D,
-			children: [s && /* @__PURE__ */ (0, W.jsx)("div", {
-				className: "slider-fill",
-				style: O
-			}), /* @__PURE__ */ (0, W.jsx)(Er, {
-				className: "slider-knob",
-				refraction: a,
-				variant: o,
-				surface: "control",
-				sourceBackground: !s || x <= 0 ? "var(--lg-slider-track, var(--lg-track-bg))" : x >= 1 ? "linear-gradient(90deg, var(--fill-from), var(--fill-to))" : "linear-gradient(90deg, var(--fill-from) 0%, var(--fill-to) 48%, rgba(var(--lg-glass-tint), 0.18) 52%, var(--lg-slider-track, var(--lg-track-bg)) 100%)",
-				style: ne
-			})]
+			onPointerDown: k,
+			onPointerMove: A,
+			onPointerUp: j,
+			onPointerCancel: j,
+			onKeyDown: re,
+			children: [
+				/* @__PURE__ */ (0, W.jsx)("div", {
+					className: "slider-bar",
+					children: s && /* @__PURE__ */ (0, W.jsx)("div", {
+						className: "slider-fill",
+						style: ie
+					})
+				}),
+				c > 0 && /* @__PURE__ */ (0, W.jsx)("div", {
+					className: "marks",
+					"aria-hidden": "true",
+					children: Array.from({ length: c }, (e, t) => /* @__PURE__ */ (0, W.jsx)("span", {}, t))
+				}),
+				/* @__PURE__ */ (0, W.jsx)(Er, {
+					className: "slider-knob",
+					refraction: a,
+					variant: o,
+					surface: "control",
+					sourceBackground: oe,
+					style: ae
+				}),
+				/* @__PURE__ */ (0, W.jsx)("div", {
+					ref: v,
+					className: "slider-knob-cap",
+					style: ae,
+					"aria-hidden": "true"
+				})
+			]
 		})
 	});
 }
@@ -13332,30 +13389,18 @@ var Pr = `${on.cssText}${Ar}${Tr}${Or}
   .value.zero .num { color: var(--lg-text-secondary); }
   .track-wrap {
     position: relative;
-    --lg-slider-height: var(--lg-track-h, 56px);
+    --lg-slider-height: var(--lg-track-h, 44px);
+    --lg-slider-bar-height: var(--lg-bar-h, 12px);
+    --lg-slider-knob-size: var(--lg-knob-size, 32px);
     --lg-slider-fill: linear-gradient(90deg, var(--fill-from), var(--fill-to));
-  }
-  .marks {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 20px;
-    pointer-events: none;
-    z-index: 1;
-  }
-  .marks span {
-    width: 2px;
-    height: 12px;
-    border-radius: 1px;
-    background: rgba(255, 255, 255, 0.5);
   }
   @supports (container-type: inline-size) {
     .card {
       --lg-sv: clamp(20px, 7.4cqi, 28px);
       --lg-sv-unit: clamp(11px, 3.9cqi, 15px);
-      --lg-track-h: clamp(40px, 14.7cqi, 56px);
+      --lg-track-h: clamp(34px, 11.6cqi, 44px);
+      --lg-bar-h: clamp(8px, 3.2cqi, 12px);
+      --lg-knob-size: clamp(24px, 8.4cqi, 32px);
     }
   }
 `;
@@ -13461,9 +13506,9 @@ function Ir({ config: e, hass: t, host: n }) {
 					})
 				]
 			}),
-			/* @__PURE__ */ (0, W.jsxs)("div", {
+			/* @__PURE__ */ (0, W.jsx)("div", {
 				className: "track-wrap",
-				children: [/* @__PURE__ */ (0, W.jsx)(kr, {
+				children: /* @__PURE__ */ (0, W.jsx)(kr, {
 					value: p,
 					min: d.min,
 					max: d.max,
@@ -13472,14 +13517,11 @@ function Ir({ config: e, hass: t, host: n }) {
 					refraction: r,
 					glassVariant: e.glass_variant,
 					showFill: !m,
+					ticks: w,
 					label: e.name ?? Qe(u, e.entity ?? ""),
 					onInput: a,
 					onChange: E
-				}), w > 0 && /* @__PURE__ */ (0, W.jsx)("div", {
-					className: "marks",
-					"aria-hidden": "true",
-					children: Array.from({ length: w }, (e, t) => /* @__PURE__ */ (0, W.jsx)("span", {}, t))
-				})]
+				})
 			}),
 			e.show_range !== !1 && /* @__PURE__ */ (0, W.jsxs)("div", {
 				className: "ticks",
@@ -18649,7 +18691,7 @@ var ca = On({
 		icon: "mdi:lightbulb-outline",
 		style: "pill"
 	})
-}), la = "0.6.0", ua = "2026-09-04 14:13", da = "https://github.com/cos-overclock/ha-liquid-glass", fa = (e, t) => !!((e.attributes.supported_features ?? 0) & t);
+}), la = "0.6.0", ua = "2026-09-04 14:59", da = "https://github.com/cos-overclock/ha-liquid-glass", fa = (e, t) => !!((e.attributes.supported_features ?? 0) & t);
 function pa(e, t, n, r, i, a = (e) => ({ entity: e })) {
 	return {
 		type: e,

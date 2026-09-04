@@ -6,9 +6,17 @@ type GlassSurface = "card" | "compact" | "control";
 
 const regularCardOptics: Partial<GlassOptics> = {
   strength: 0.035,
-  depth: 0.28,
-  curvature: 0.14,
-  dispersion: 0.18,
+  // A panel bends light at its rim and stays flat in the middle.
+  depth: 0.22,
+  curvature: 0.12,
+  /*
+   * Dispersion has to stay off on this route. The filter displaces R, G and B
+   * separately and adds the three results back together, which sums their alpha as
+   * well: a translucent source copy comes out at triple opacity and a third of its
+   * colour, i.e. a dark veil that swallows the backdrop. Only an opaque source
+   * survives that, and the source here is deliberately translucent.
+   */
+  dispersion: 0,
   bend: 0.38,
   bendWidth: 0.12,
   frost: 7,
@@ -16,9 +24,10 @@ const regularCardOptics: Partial<GlassOptics> = {
   sheen: 0.42,
   sheenWidth: 2.5,
   sheenFalloff: 1.6,
-  glow: 0.12,
-  glowSpread: 0.55,
-  glowFalloff: 0.7,
+  // The inner glow hugs the rim instead of pooling across the panel.
+  glow: 0.09,
+  glowSpread: 0.14,
+  glowFalloff: 1.5,
   specular: 1.18,
   brightness: 0.015,
 };
@@ -26,9 +35,8 @@ const regularCardOptics: Partial<GlassOptics> = {
 const clearCardOptics: Partial<GlassOptics> = {
   ...regularCardOptics,
   strength: 0.05,
-  depth: 0.36,
-  curvature: 0.2,
-  dispersion: 0.24,
+  depth: 0.3,
+  curvature: 0.18,
   bend: 0.48,
   bendWidth: 0.1,
   frost: 3,
@@ -41,10 +49,11 @@ const clearCardOptics: Partial<GlassOptics> = {
 
 const regularControlOptics: Partial<GlassOptics> = {
   ...regularCardOptics,
+  glowSpread: 0.55,
+  glowFalloff: 0.7,
   strength: 0.12,
   depth: 0.88,
   curvature: 0.58,
-  dispersion: 0.48,
   bend: 0.74,
   bendWidth: 0.14,
   frost: 4,
@@ -57,7 +66,6 @@ const clearControlOptics: Partial<GlassOptics> = {
   ...regularControlOptics,
   strength: 0.14,
   curvature: 0.66,
-  dispersion: 0.54,
   frost: 2,
   saturate: 1.45,
 };
@@ -101,10 +109,10 @@ export const glassSurfaceStyles = `
     background: rgba(var(--lg-glass-tint), var(--lg-glass-tint-alpha));
   }
   .lg-liquid-card {
-    box-shadow: 0 14px 36px -4px var(--lg-shadow-glass);
+    box-shadow: 0 10px 26px -8px var(--lg-shadow-glass);
   }
   .lg-liquid-compact {
-    box-shadow: 0 4px 14px -2px var(--lg-shadow-glass);
+    box-shadow: 0 3px 10px -3px var(--lg-shadow-glass);
   }
   .lg-liquid-control {
     background: rgba(255, 255, 255, 0.32);
@@ -145,21 +153,26 @@ export const glassSurfaceStyles = `
     display: grid;
     place-items: center;
   }
+  /*
+   * The copy the lens refracts stands in for the backdrop, so it has to read as an
+   * even panel: Apple's glass carries its light at the rim, not as a wash across the
+   * middle. A soft top light and a flat tint, with only a hint of the card's accent.
+   */
   .lg-refraction-source {
     width: 100%;
     height: 100%;
     min-height: inherit;
     border-radius: inherit;
     background:
-      radial-gradient(circle at 14% 2%, rgba(255, 255, 255, 0.72), transparent 34%),
-      radial-gradient(circle at 88% 96%, color-mix(in srgb, var(--lg-refraction-accent, var(--lg-accent)) 42%, transparent), transparent 48%),
-      linear-gradient(135deg, rgba(var(--lg-glass-tint), 0.34), rgba(var(--lg-glass-tint), 0.08));
+      radial-gradient(120% 160% at 12% -28%, rgba(255, 255, 255, 0.4), transparent 58%),
+      radial-gradient(80% 120% at 94% 112%, color-mix(in srgb, var(--lg-refraction-accent, var(--lg-accent)) 14%, transparent), transparent 62%),
+      linear-gradient(180deg, rgba(var(--lg-glass-tint), 0.3), rgba(var(--lg-glass-tint), 0.18));
   }
   :host([dark]) .lg-refraction-source {
     background:
-      radial-gradient(circle at 14% 2%, rgba(255, 255, 255, 0.32), transparent 34%),
-      radial-gradient(circle at 88% 96%, color-mix(in srgb, var(--lg-refraction-accent, var(--lg-accent)) 34%, transparent), transparent 48%),
-      linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(0, 0, 0, 0.14));
+      radial-gradient(120% 160% at 12% -28%, rgba(255, 255, 255, 0.16), transparent 58%),
+      radial-gradient(80% 120% at 94% 112%, color-mix(in srgb, var(--lg-refraction-accent, var(--lg-accent)) 12%, transparent), transparent 62%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.04));
   }
 `;
 
