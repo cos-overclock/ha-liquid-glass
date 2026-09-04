@@ -13,6 +13,8 @@ export interface GlassSliderProps {
   showFill?: boolean;
   /** Drop the thumb for a bare progress bar, the way a seek bar reads at rest. */
   showKnob?: boolean;
+  /** Fill from this value to the current one instead of from the start, for a tilt. */
+  fillFrom?: number;
   /** Step marks drawn along the bar. 0 draws none. */
   ticks?: number;
   label: string;
@@ -65,6 +67,18 @@ export const glassSliderStyles = `
     left: 0;
     border-radius: inherit;
     background: var(--lg-slider-fill, linear-gradient(90deg, #fff8ea, #ffe2a6));
+    pointer-events: none;
+  }
+  /* Where a two-way fill starts from, e.g. the flat position of a tilt. */
+  .slider-anchor {
+    position: absolute;
+    top: 50%;
+    width: 2px;
+    height: calc(var(--lg-effective-bar-height) + 6px);
+    margin-left: -1px;
+    transform: translateY(-50%);
+    border-radius: 1px;
+    background: var(--lg-slider-mark);
     pointer-events: none;
   }
   /* Step marks sit under the knob, spaced between the two positions it can reach. */
@@ -145,6 +159,7 @@ export function GlassSlider({
   glassVariant = "regular",
   showFill = true,
   showKnob = true,
+  fillFrom,
   ticks = 0,
   label,
   onInput,
@@ -255,11 +270,17 @@ export function GlassSlider({
     onChange(clamp(next, min, max));
   };
 
-  const fillStyle: CSSProperties = {
-    width: showKnob
-      ? `calc(var(--lg-effective-knob-size) / 2 + ${travel} * ${ratio})`
-      : `${(ratio * 100).toFixed(3)}%`,
-  };
+  const anchor = fillFrom === undefined ? undefined : clamp((fillFrom - min) / span, 0, 1);
+  const fillStyle: CSSProperties = anchor !== undefined
+    ? {
+        left: `calc(var(--lg-effective-knob-size) / 2 + ${travel} * ${Math.min(anchor, ratio)})`,
+        width: `calc(${travel} * ${Math.abs(ratio - anchor)})`,
+      }
+    : {
+        width: showKnob
+          ? `calc(var(--lg-effective-knob-size) / 2 + ${travel} * ${ratio})`
+          : `${(ratio * 100).toFixed(3)}%`,
+      };
   const knobStyle: CSSProperties = {
     display: "block",
     position: "absolute",
@@ -298,6 +319,11 @@ export function GlassSlider({
         <div className="slider-bar">
           {showFill && <div className="slider-fill" style={fillStyle} />}
         </div>
+        {anchor !== undefined && <div
+          className="slider-anchor"
+          style={{ left: `calc(var(--lg-effective-knob-size) / 2 + ${travel} * ${anchor})` }}
+          aria-hidden="true"
+        />}
         {ticks > 0 && <div className="marks" aria-hidden="true">
           {Array.from({ length: ticks }, (_, index) => <span key={index} />)}
         </div>}

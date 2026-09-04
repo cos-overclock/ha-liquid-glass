@@ -183,6 +183,67 @@ export const reactCardStyles = `
     max-width: 100%;
   }
 
+  .section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .label-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    font-size: var(--lg-label);
+  }
+  .label-row .label {
+    color: var(--lg-text-secondary);
+    font-weight: 500;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .label-row .value {
+    flex: none;
+    color: var(--lg-text-primary);
+    font-weight: 600;
+    font-family: var(--lg-font-ui);
+    letter-spacing: -0.2px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .round-btn {
+    --btn: 56px;
+    flex: none;
+    width: var(--btn);
+    height: var(--btn);
+    border: 0;
+    border-radius: 50%;
+    background: var(--lg-track-bg);
+    box-shadow:
+      0 1px 1px var(--lg-glass-inner),
+      inset 0 0 0 1px var(--lg-glass-stroke);
+    color: var(--lg-text-primary);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    padding: 0;
+    transition: background 0.2s ease, color 0.2s ease;
+  }
+  .round-btn:active {
+    background: var(--lg-segment-selected);
+  }
+  .round-btn lg-icon {
+    --mdc-icon-size: calc(var(--btn) * 0.43);
+    width: calc(var(--btn) * 0.43);
+    height: calc(var(--btn) * 0.43);
+  }
+  @supports (container-type: inline-size) {
+    .round-btn {
+      --btn: clamp(38px, 14.7cqi, 56px);
+    }
+  }
+
   .ticks {
     display: flex;
     justify-content: space-between;
