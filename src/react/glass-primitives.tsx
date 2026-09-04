@@ -132,12 +132,11 @@ export const glassSurfaceStyles = `
     gap: inherit;
   }
   .lg-liquid-compact[data-liquid-glass=""] > :first-child {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: inherit;
+    display: contents;
+  }
+  .lg-liquid-compact[data-liquid-glass=""] > :first-child > * {
+    position: relative;
+    z-index: 2;
   }
   .lg-liquid-control[data-liquid-glass=""] > :first-child {
     width: 100%;

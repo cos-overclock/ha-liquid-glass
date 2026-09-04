@@ -44,6 +44,9 @@ describe("liquid-glass-separator-card", () => {
     expect((element.shadowRoot?.querySelector(".pill") as HTMLElement).style.display).toBe("flex");
     expect(element.shadowRoot?.querySelector(".pill")?.getAttribute("data-liquid-glass")).toBe("");
     expect(element.shadowRoot?.querySelector(".pill [data-lg-refraction-source='copy']")).toBeTruthy();
+    const css = element.shadowRoot?.querySelector("style")?.textContent ?? "";
+    expect(css).toContain('.lg-liquid-compact[data-liquid-glass=""] > :first-child');
+    expect(css).toContain("display: contents");
     expect(element.getCardSize()).toBe(1);
 
     await act(async () => {
