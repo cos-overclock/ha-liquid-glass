@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import { loadHaFormComponents } from "../editor/load";
 import { createTranslator, type Translator } from "../i18n";
 import { Badge, CardTitle, IconWell, UnavailableCard, type BadgeStyle, type WellStyle } from "../react/card-parts";
 import { reactCardStyles } from "../react/card-styles";
 import { defineReactCard, type ReactCardProps } from "../react/define-react-card";
 import { glassSurfaceStyles, Icon, LiquidGlassSurface } from "../react/glass-primitives";
+import { GlassSlider, glassSliderStyles } from "../react/glass-slider";
 import { useCardHost } from "../react/use-card-host";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HomeAssistant } from "../types";
@@ -53,7 +54,7 @@ function arcPath(fromDeg: number, toDeg: number): string {
   return `M ${x1} ${y1} A ${RADIUS} ${RADIUS} 0 ${large} 1 ${x2} ${y2}`;
 }
 
-const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}
+const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}${glassSliderStyles}
   .dial-row {
     display: flex;
     justify-content: center;
@@ -193,11 +194,13 @@ const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}
   }
   .card.climate-compact {
     --lg-gap: 16px;
-    --lg-tile-slider-size: 56px;
-    --lg-tile-thumb-track: rgba(76, 76, 82, 0.18);
   }
-  :host([dark]) .card.climate-compact {
-    --lg-tile-thumb-track: rgba(8, 8, 10, 0.42);
+  /* Same geometry as every other slider in the app: a thin capsule, a round knob. */
+  .card.climate-compact .lg-react-slider {
+    --lg-slider-height: var(--lg-tile-row-h, 44px);
+    --lg-slider-bar-height: var(--lg-tile-bar-h, 12px);
+    --lg-slider-knob-size: var(--lg-tile-knob, 32px);
+    --lg-slider-fill: linear-gradient(90deg, #5ac8fa 0%, #ffd9a0 35%, #ff9f0a 62%, #ff2d55 100%);
   }
   .tile-readout {
     min-width: 0;
@@ -256,77 +259,6 @@ const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}
     font-weight: 600;
     letter-spacing: -0.2px;
     font-variant-numeric: tabular-nums;
-  }
-  .tile-track {
-    position: relative;
-    width: 100%;
-    height: var(--lg-tile-slider-size);
-    overflow: hidden;
-    border-radius: calc(var(--lg-tile-slider-size) / 2);
-    background: var(--lg-track-bg);
-    box-shadow:
-      0 2px 4px rgba(0, 0, 0, 0.14),
-      inset 0 0 0 1px var(--lg-glass-stroke);
-    cursor: pointer;
-    touch-action: none;
-    user-select: none;
-    -webkit-user-select: none;
-  }
-  .tile-track.off {
-    cursor: default;
-  }
-  .tile-gradient {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, #5ac8fa 0%, #ffd9a0 35%, #ff9f0a 62%, #ff2d55 100%);
-    clip-path: inset(0 var(--clip-right) 0 var(--clip-left));
-    transition: clip-path 0.35s cubic-bezier(0.3, 0.8, 0.3, 1), opacity 0.25s ease;
-    pointer-events: none;
-  }
-  .tile-track.dragging .tile-gradient,
-  .tile-track.dragging .tile-thumb {
-    transition: none;
-  }
-  .tile-thumb {
-    position: absolute;
-    top: 0;
-    left: calc(var(--lg-tile-slider-size) / 2 + (100% - var(--lg-tile-slider-size)) * var(--value));
-    width: var(--lg-tile-slider-size);
-    height: var(--lg-tile-slider-size);
-    overflow: hidden;
-    isolation: isolate;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.32);
-    -webkit-backdrop-filter: blur(3px) saturate(1.15);
-    backdrop-filter: blur(3px) saturate(1.15);
-    box-shadow:
-      0 5px 14px rgba(0, 0, 0, 0.42),
-      0 1px 3px rgba(255, 255, 255, 0.35);
-    transform: translateX(-50%);
-    transition: left 0.35s cubic-bezier(0.3, 0.8, 0.3, 1), transform 0.12s ease;
-    pointer-events: none;
-  }
-  .tile-thumb::before {
-    content: "";
-    position: absolute;
-    inset: 1px;
-    border-radius: inherit;
-    background: linear-gradient(90deg, var(--tile-thumb-color) 0 50%, var(--lg-tile-thumb-track) 50% 100%);
-    pointer-events: none;
-  }
-  .tile-thumb::after {
-    content: "";
-    position: absolute;
-    inset: 1px;
-    border-radius: inherit;
-    background: linear-gradient(160deg, rgba(255, 255, 255, 0.72) 0%, rgba(255, 255, 255, 0.16) 38%, transparent 62%);
-    box-shadow:
-      inset 0 0 0 1px rgba(255, 255, 255, 0.9),
-      inset 0 -5px 8px rgba(0, 0, 0, 0.08);
-    pointer-events: none;
-  }
-        .tile-track.dragging .tile-thumb {
-    transform: translateX(-50%) scale(1.06);
   }
   .tile-step-controls {
     height: 44px;
@@ -418,7 +350,9 @@ const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}
       --lg-temp-fraction: clamp(15px, 5.8cqi, 22px);
     }
     .card.climate-compact {
-      --lg-tile-slider-size: clamp(40px, 14.7cqi, 56px);
+      --lg-tile-row-h: clamp(34px, 11.6cqi, 44px);
+      --lg-tile-bar-h: clamp(8px, 3.2cqi, 12px);
+      --lg-tile-knob: clamp(24px, 8.4cqi, 32px);
       --lg-tile-temp: clamp(38px, 14.7cqi, 56px);
       --lg-tile-range: clamp(28px, 10.5cqi, 40px);
       --lg-tile-fraction: clamp(17px, 6.3cqi, 24px);
@@ -608,22 +542,6 @@ function modeMeta(mode: string, t: Translator): { icon: string; label: string } 
   return { icon: icons[mode] ?? "mdi:thermostat", label: t(`mode_${mode}`) };
 }
 
-/** Matches the four-stop temperature track at the thumb's current position. */
-function tileGradientColor(ratio: number): string {
-  const stops: Array<[number, [number, number, number]]> = [
-    [0, [90, 200, 250]],
-    [0.35, [255, 217, 160]],
-    [0.62, [255, 159, 10]],
-    [1, [255, 45, 85]],
-  ];
-  const index = Math.min(stops.findIndex(([position]) => ratio <= position), stops.length - 1);
-  const [toPosition, toColor] = stops[Math.max(index, 1)];
-  const [fromPosition, fromColor] = stops[Math.max(index - 1, 0)];
-  const mix = clamp((ratio - fromPosition) / Math.max(toPosition - fromPosition, 0.001), 0, 1);
-  const [red, green, blue] = fromColor.map((channel, i) => Math.round(channel + (toColor[i] - channel) * mix));
-  return `rgba(${red}, ${green}, ${blue}, 0.58)`;
-}
-
 /**
  * 270° liquid-glass dial with a draggable knob (two knobs in heat_cool), a mode segment
  * and fan / preset detail dropdowns. `design: compact` swaps the dial for a slider tile.
@@ -640,7 +558,6 @@ function ClimateCard({ config, hass, host }: ReactCardProps<ClimateCardConfig>) 
   const [pending, setPending] = useState<Pending>();
   const pendingTimer = useRef<number | undefined>(undefined);
   const dialRef = useRef<HTMLDivElement>(null);
-  const tileRef = useRef<HTMLDivElement>(null);
   const entity = config.entity ? hass?.states[config.entity] : undefined;
   const name = config.name ?? friendlyName(entity, config.entity ?? "");
   const attributes = entity?.attributes ?? {};
@@ -737,14 +654,6 @@ function ClimateCard({ config, hass, host }: ReactCardProps<ClimateCardConfig>) 
     return clamp(Math.round((min + (deg / SWEEP) * (max - min)) / step) * step, min, max);
   };
 
-  const valueFromTile = (event: PointerEvent<HTMLDivElement>): number => {
-    const rect = tileRef.current?.getBoundingClientRect();
-    if (!rect) return min;
-    const pad = rect.height / 2;
-    const position = clamp((event.clientX - rect.left - pad) / Math.max(rect.width - pad * 2, 1), 0, 1);
-    return clamp(Math.round((min + position * (max - min)) / step) * step, min, max);
-  };
-
   const nearestKnob = (value: number): Which => {
     if (!isRange) return "single";
     return Math.abs(value - low) <= Math.abs(value - high) ? "low" : "high";
@@ -773,18 +682,6 @@ function ClimateCard({ config, hass, host }: ReactCardProps<ClimateCardConfig>) 
     if (next === single) return;
     call("set_temperature", { temperature: next });
     hold("single", next);
-  };
-
-  const onTileKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (off || isRange) return;
-    let value = single;
-    if (event.key === "ArrowRight" || event.key === "ArrowUp") value += step;
-    else if (event.key === "ArrowLeft" || event.key === "ArrowDown") value -= step;
-    else if (event.key === "Home") value = min;
-    else if (event.key === "End") value = max;
-    else return;
-    event.preventDefault();
-    commit("single", clamp(value, min, max));
   };
 
   const action = attributes.hvac_action as string | undefined;
@@ -832,8 +729,6 @@ function ClimateCard({ config, hass, host }: ReactCardProps<ClimateCardConfig>) 
   </div>;
 
   if (compact) {
-    const from = isRange ? ratio(low) : 0;
-    const to = ratio(isRange ? high : single);
     const [whole, fraction] = (Math.round(single * 10) / 10).toFixed(1).split(".");
 
     return <>
@@ -860,47 +755,26 @@ function ClimateCard({ config, hass, host }: ReactCardProps<ClimateCardConfig>) 
           </div>}
         </div>
 
-        <div
-          ref={tileRef}
-          className={`tile-track${drag ? " dragging" : ""}${off ? " off" : ""}`}
-          style={{
-            "--clip-left": from <= 0 ? "0px" : `calc(var(--lg-tile-slider-size) / 2 + (100% - var(--lg-tile-slider-size)) * ${from})`,
-            "--clip-right": to >= 1 ? "0px" : `calc(100% - var(--lg-tile-slider-size) / 2 - (100% - var(--lg-tile-slider-size)) * ${to})`,
-          } as CSSProperties}
-          role="slider"
-          tabIndex={off ? -1 : 0}
-          aria-valuemin={min}
-          aria-valuemax={max}
-          aria-valuenow={isRange ? undefined : single}
-          aria-valuetext={isRange ? `${low}–${high}` : String(single)}
-          aria-disabled={off}
-          onPointerDown={(event) => {
-            if (off || event.button !== 0) return;
-            event.preventDefault();
-            event.currentTarget.setPointerCapture?.(event.pointerId);
-            startDrag(valueFromTile(event));
+        <GlassSlider
+          value={isRange ? low : single}
+          highValue={isRange ? high : undefined}
+          min={min}
+          max={max}
+          step={step}
+          disabled={off}
+          showFill={!off}
+          showKnob={!off}
+          clipFill
+          refraction={refraction}
+          glassVariant={config.glass_variant}
+          label={isRange ? t("target_range") : t("target_temp")}
+          onInput={(next, handle) => setDrag({ which: isRange ? handle : "single", value: next })}
+          onChange={(next, handle) => {
+            const which = isRange ? handle : "single";
+            setDrag(undefined);
+            commit(which, next);
           }}
-          onPointerMove={(event) => {
-            if (!drag) return;
-            const value = valueFromTile(event);
-            if (value !== drag.value) setDrag({ ...drag, value });
-          }}
-          onPointerUp={finishDrag}
-          onPointerCancel={finishDrag}
-          onKeyDown={onTileKeyDown}
-        >
-          <div className="tile-gradient" style={{ opacity: off ? 0 : 1 }} />
-          {!off && (isRange ? [low, high] : [single]).map((value, index) => (
-            <div
-              key={index}
-              className="tile-thumb"
-              style={{
-                "--value": String(ratio(value)),
-                "--tile-thumb-color": tileGradientColor(ratio(value)),
-              } as CSSProperties}
-            />
-          ))}
-        </div>
+        />
 
         <div className="tile-step-controls">
           <button

@@ -138,12 +138,45 @@ describe("liquid-glass-climate-card", () => {
     const root = element.shadowRoot!;
     expect(root.querySelector(".dial")).toBeNull();
     expect(root.querySelector(".tile-target .number")?.textContent).toBe("22");
-    expect(root.querySelectorAll(".tile-thumb")).toHaveLength(1);
+    // The compact design uses the same slider component as every other card.
+    expect(root.querySelector(".climate-compact .slider-track")).toBeTruthy();
+    expect(root.querySelectorAll(".climate-compact .slider-knob-cap")).toHaveLength(1);
 
     await act(async () => root.querySelector<HTMLElement>(".tile-step.increase")?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
     expect(callService).toHaveBeenCalledWith("climate", "set_temperature", {
       entity_id: target.entity_id,
       temperature: 23,
+    });
+  });
+
+  it("drags a heat_cool range from the compact slider", async () => {
+    const callService = vi.fn<HomeAssistant["callService"]>(async () => undefined);
+    const target = thermostat("heat_cool", {
+      hvac_action: "idle",
+      temperature: undefined,
+      target_temp_low: 18,
+      target_temp_high: 26,
+    });
+    const element = document.createElement("liquid-glass-climate-card") as CardElement;
+    element.setConfig({
+      type: "custom:liquid-glass-climate-card",
+      entity: target.entity_id,
+      design: "compact",
+    });
+    element.hass = createHass(target, callService);
+
+    await act(async () => document.body.append(element));
+    const root = element.shadowRoot!;
+    expect(root.querySelectorAll(".climate-compact .slider-knob-cap")).toHaveLength(2);
+
+    // Drag the handle nearest 100 on a 10..30 range, i.e. the high end.
+    const track = mockRect(root.querySelector<HTMLElement>(".climate-compact .slider-track")!, { width: 200, height: 44 });
+    await act(async () => track.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, button: 0, clientX: 190 })));
+    await act(async () => track.dispatchEvent(new MouseEvent("pointerup", { bubbles: true, button: 0, clientX: 190 })));
+    expect(callService).toHaveBeenCalledWith("climate", "set_temperature", {
+      entity_id: target.entity_id,
+      target_temp_low: 18,
+      target_temp_high: 30,
     });
   });
 });

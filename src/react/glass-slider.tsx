@@ -2,8 +2,13 @@ import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, ty
 import { clamp } from "../utils";
 import { LiquidGlassSurface } from "./glass-primitives";
 
+/** Which handle a change came from. A single-value slider always reports "low". */
+export type SliderHandle = "low" | "high";
+
 export interface GlassSliderProps {
   value: number;
+  /** Upper handle. With it the slider is a range and `value` is its lower end. */
+  highValue?: number;
   min: number;
   max: number;
   step: number;
@@ -11,6 +16,11 @@ export interface GlassSliderProps {
   refraction: boolean;
   glassVariant?: "regular" | "clear";
   showFill?: boolean;
+  /**
+   * Reveal the fill by clipping a full-width layer instead of sizing it. A gradient fill
+   * then keeps its own scale, so the colour under the thumb always means the same value.
+   */
+  clipFill?: boolean;
   /** Drop the thumb for a bare progress bar, the way a seek bar reads at rest. */
   showKnob?: boolean;
   /** Fill from this value to the current one instead of from the start, for a tilt. */
@@ -18,8 +28,8 @@ export interface GlassSliderProps {
   /** Step marks drawn along the bar. 0 draws none. */
   ticks?: number;
   label: string;
-  onInput(value: number): void;
-  onChange(value: number): void;
+  onInput(value: number, handle: SliderHandle): void;
+  onChange(value: number, handle: SliderHandle): void;
 }
 
 export const glassSliderStyles = `
@@ -68,6 +78,13 @@ export const glassSliderStyles = `
     border-radius: inherit;
     background: var(--lg-slider-fill, linear-gradient(90deg, #fff8ea, #ffe2a6));
     pointer-events: none;
+  }
+  .slider-fill.clipped {
+    inset-inline: 0;
+    transition: clip-path 0.35s cubic-bezier(0.3, 0.8, 0.3, 1);
+  }
+  .lg-react-slider.active .slider-fill.clipped {
+    transition: none;
   }
   /* Where a two-way fill starts from, e.g. the flat position of a tilt. */
   .slider-anchor {
@@ -130,16 +147,17 @@ export const glassSliderStyles = `
       transform 80ms ease,
       opacity 220ms ease;
   }
-  .lg-react-slider.active .slider-knob-cap {
+  /* Only the handle being moved turns to glass; a range leaves the other one solid. */
+  .lg-react-slider.active .slider-knob-cap.moving {
     opacity: 0;
     transition-duration: 80ms, 80ms, 120ms;
   }
   /* Lifting the thumb while it is dragged is what sells it as a floating lens. */
-  .lg-react-slider.active .slider-knob {
+  .lg-react-slider.active .slider-knob.moving {
     box-shadow: var(--lg-knob-shadow-active);
   }
-  .lg-react-slider.active .slider-knob,
-  .lg-react-slider.active .slider-knob-cap {
+  .lg-react-slider.active .slider-knob.moving,
+  .lg-react-slider.active .slider-knob-cap.moving {
     transform: scaleX(calc(1.06 - var(--lg-wobble, 0) * 0.1)) scaleY(calc(1.06 + var(--lg-wobble, 0) * 0.2));
   }
   @media (prefers-reduced-motion: reduce) {
@@ -151,6 +169,7 @@ export const glassSliderStyles = `
 /** Pointer and keyboard accessible slider with a @samasante/liquid-glass thumb. */
 export function GlassSlider({
   value,
+  highValue,
   min,
   max,
   step,
@@ -158,6 +177,7 @@ export function GlassSlider({
   refraction,
   glassVariant = "regular",
   showFill = true,
+  clipFill = false,
   showKnob = true,
   fillFrom,
   ticks = 0,
@@ -165,7 +185,7 @@ export function GlassSlider({
   onInput,
   onChange,
 }: GlassSliderProps) {
-  const [dragValue, setDragValue] = useState<number>();
+  const [drag, setDrag] = useState<{ handle: SliderHandle; value: number }>();
   /** Keeps the glass exposed for a beat after a key press, the way a drag does. */
   const [keyActive, setKeyActive] = useState(false);
   const keyTimer = useRef<number | undefined>(undefined);
@@ -176,12 +196,19 @@ export function GlassSlider({
   const wobble = useRef(0);
   const wobbleTarget = useRef(0);
   const wobbleFrame = useRef<number | undefined>(undefined);
-  const currentValue = dragValue ?? value;
-  const active = dragValue !== undefined || keyActive;
+  const isRange = highValue !== undefined;
+  const low = drag?.handle === "low" ? drag.value : value;
+  const high = drag?.handle === "high" ? drag.value : highValue ?? value;
+  const active = drag !== undefined || keyActive;
   const span = max - min || 1;
-  const ratio = clamp((currentValue - min) / span, 0, 1);
+  const asRatio = (raw: number): number => clamp((raw - min) / span, 0, 1);
+  const lowRatio = asRatio(low);
+  const highRatio = asRatio(high);
   // The knob is the only thing that travels, so it sets the reachable span.
   const travel = showKnob ? "(100% - var(--lg-effective-knob-size))" : "100%";
+  /** Distance from the bar's left edge to a handle's centre. */
+  const centre = (ratio: number) =>
+    showKnob ? `calc(var(--lg-effective-knob-size) / 2 + ${travel} * ${ratio})` : `${(ratio * 100).toFixed(3)}%`;
 
   useEffect(() => () => {
     if (wobbleFrame.current !== undefined) cancelAnimationFrame(wobbleFrame.current);
@@ -207,7 +234,7 @@ export function GlassSlider({
     if (wobbleFrame.current !== undefined) return;
     const tick = () => {
       wobble.current += (wobbleTarget.current - wobble.current) * 0.24;
-      wobbleTarget.current *= dragValue !== undefined ? 0.9 : 0.72;
+      wobbleTarget.current *= drag !== undefined ? 0.9 : 0.72;
       trackRef.current?.style.setProperty("--lg-wobble", wobble.current.toFixed(4));
       if (Math.abs(wobbleTarget.current - wobble.current) > 0.004 || wobbleTarget.current > 0.004) {
         wobbleFrame.current = requestAnimationFrame(tick);
@@ -220,42 +247,45 @@ export function GlassSlider({
     wobbleFrame.current = requestAnimationFrame(tick);
   };
 
-  const updateDrag = (next: number) => {
-    setDragValue(next);
-    onInput(next);
-  };
-
   const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
     if (disabled || event.button !== 0) return;
     event.preventDefault();
     event.currentTarget.setPointerCapture?.(event.pointerId);
     const next = valueFromPointer(event.clientX);
+    // A range grabs whichever end the pointer landed nearer to, and keeps it for the drag.
+    const handle: SliderHandle = isRange && Math.abs(next - high) < Math.abs(next - low) ? "high" : "low";
     lastPointerX.current = event.clientX;
     lastPointerTime.current = event.timeStamp;
-    updateDrag(next);
+    setDrag({ handle, value: next });
+    onInput(next, handle);
   };
 
   const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
-    if (dragValue === undefined) return;
+    if (!drag) return;
     const elapsed = Math.max(1, event.timeStamp - lastPointerTime.current);
     const speed = Math.abs(event.clientX - lastPointerX.current) / elapsed;
     lastPointerX.current = event.clientX;
     lastPointerTime.current = event.timeStamp;
     animateWobble(clamp(speed / 1.4, 0, 1));
     const next = valueFromPointer(event.clientX);
-    if (next !== dragValue) updateDrag(next);
+    if (next !== drag.value) {
+      setDrag({ ...drag, value: next });
+      onInput(next, drag.handle);
+    }
   };
 
   const finishDrag = (event: PointerEvent<HTMLDivElement>) => {
-    if (dragValue === undefined) return;
+    if (!drag) return;
     const next = valueFromPointer(event.clientX);
-    setDragValue(undefined);
+    const handle = drag.handle;
+    setDrag(undefined);
     animateWobble(0);
-    onChange(next);
+    onChange(next, handle);
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (disabled) return;
+    // A range has two ends and one focus ring; the keys would be ambiguous.
+    if (disabled || isRange) return;
     const increment = step > 0 ? step : (max - min) / 20;
     let next = value;
     if (event.key === "ArrowRight" || event.key === "ArrowUp") next += increment;
@@ -267,36 +297,41 @@ export function GlassSlider({
     setKeyActive(true);
     window.clearTimeout(keyTimer.current);
     keyTimer.current = window.setTimeout(() => setKeyActive(false), 320);
-    onChange(clamp(next, min, max));
+    onChange(clamp(next, min, max), "low");
   };
 
   const anchor = fillFrom === undefined ? undefined : clamp((fillFrom - min) / span, 0, 1);
-  const fillStyle: CSSProperties = anchor !== undefined
-    ? {
-        left: `calc(var(--lg-effective-knob-size) / 2 + ${travel} * ${Math.min(anchor, ratio)})`,
-        width: `calc(${travel} * ${Math.abs(ratio - anchor)})`,
-      }
-    : {
-        width: showKnob
-          ? `calc(var(--lg-effective-knob-size) / 2 + ${travel} * ${ratio})`
-          : `${(ratio * 100).toFixed(3)}%`,
-      };
-  const knobStyle: CSSProperties = {
+  // Where the fill starts and stops: an anchor, the lower handle, or the bar's own start.
+  const from = anchor !== undefined ? Math.min(anchor, highRatio) : isRange ? lowRatio : 0;
+  const to = anchor !== undefined ? Math.max(anchor, highRatio) : highRatio;
+  const fillStyle: CSSProperties = clipFill
+    ? { clipPath: `inset(0 calc(100% - ${centre(to)}) 0 ${isRange || anchor !== undefined ? centre(from) : "0px"} round 999px)` }
+    : anchor !== undefined || isRange
+      ? {
+          left: centre(from),
+          width: `calc(${travel} * ${to - from})`,
+        }
+      : { width: centre(to) };
+  const knobStyle = (ratio: number): CSSProperties => ({
     display: "block",
     position: "absolute",
     // Glass sizes itself to its content when it has no refraction source, so the
     // knob has to state its width where the library cannot overrule it.
     width: "var(--lg-effective-knob-size)",
     left: `calc(${travel} * ${ratio})`,
-  };
+  });
   // What the thumb has behind it: the card, crossed by the band of bar it covers.
-  const band = !showFill || ratio <= 0
+  const band = (ratio: number) => (!showFill || (ratio <= 0 && !isRange)
     ? "linear-gradient(var(--lg-slider-bar-bg), var(--lg-slider-bar-bg))"
     : ratio >= 1
       ? "linear-gradient(90deg, var(--lg-effective-fill-from), var(--lg-effective-fill-to))"
-      : "linear-gradient(90deg, var(--lg-effective-fill-from) 0%, var(--lg-effective-fill-to) 46%, var(--lg-slider-bar-bg) 54%)";
-  const sourceBackground = `${band} center / 100% 38% no-repeat,
+      : "linear-gradient(90deg, var(--lg-effective-fill-from) 0%, var(--lg-effective-fill-to) 46%, var(--lg-slider-bar-bg) 54%)");
+  const sourceBackground = (ratio: number) => `${band(ratio)} center / 100% 38% no-repeat,
     radial-gradient(circle at 30% 18%, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.28))`;
+
+  const handles: Array<{ key: SliderHandle; ratio: number }> = isRange
+    ? [{ key: "low", ratio: lowRatio }, { key: "high", ratio: highRatio }]
+    : [{ key: "low", ratio: highRatio }];
 
   return (
     <div className={`lg-react-slider${active ? " active" : ""}${disabled ? " disabled" : ""}`}>
@@ -308,7 +343,8 @@ export function GlassSlider({
         aria-label={label}
         aria-valuemin={min}
         aria-valuemax={max}
-        aria-valuenow={currentValue}
+        aria-valuenow={isRange ? undefined : high}
+        aria-valuetext={isRange ? `${low}–${high}` : undefined}
         aria-disabled={disabled}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -317,27 +353,38 @@ export function GlassSlider({
         onKeyDown={onKeyDown}
       >
         <div className="slider-bar">
-          {showFill && <div className="slider-fill" style={fillStyle} />}
+          {showFill && <div className={`slider-fill${clipFill ? " clipped" : ""}`} style={fillStyle} />}
         </div>
         {anchor !== undefined && <div
           className="slider-anchor"
-          style={{ left: `calc(var(--lg-effective-knob-size) / 2 + ${travel} * ${anchor})` }}
+          style={{ left: centre(anchor) }}
           aria-hidden="true"
         />}
         {ticks > 0 && <div className="marks" aria-hidden="true">
           {Array.from({ length: ticks }, (_, index) => <span key={index} />)}
         </div>}
-        {showKnob && <>
-          <LiquidGlassSurface
-            className="slider-knob"
-            refraction={refraction}
-            variant={glassVariant}
-            surface="control"
-            sourceBackground={sourceBackground}
-            style={knobStyle}
-          />
-          <div ref={knobRef} className="slider-knob-cap" style={knobStyle} aria-hidden="true" />
-        </>}
+        {showKnob && handles.map(({ key, ratio }) => {
+          // Only one handle can be under the finger, so only that one lifts and clears.
+          const moving = drag ? drag.handle === key : !isRange || key === "low";
+          return (
+            <div key={key}>
+              <LiquidGlassSurface
+                className={`slider-knob${moving ? " moving" : ""}`}
+                refraction={refraction}
+                variant={glassVariant}
+                surface="control"
+                sourceBackground={sourceBackground(ratio)}
+                style={knobStyle(ratio)}
+              />
+              <div
+                ref={key === "low" ? knobRef : undefined}
+                className={`slider-knob-cap${moving ? " moving" : ""}`}
+                style={knobStyle(ratio)}
+                aria-hidden="true"
+              />
+            </div>
+          );
+        })}
       </div>
     </div>
   );
