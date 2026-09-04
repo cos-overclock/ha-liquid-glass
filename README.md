@@ -1,7 +1,7 @@
 # Liquid Glass Cards for Home Assistant
 
 `pen/design.pen` の Liquid Glass デザインを、Home Assistant のダッシュボードに追加できるカスタムカード群として実装したものです。
-Vite + React + TypeScript への段階的な移行を進めており、Home Assistant 向けには単一ファイル `dist/liquid-glass-cards.js` にバンドルされます。Separator Card は React と `@samasante/liquid-glass`、既存カードは移行期間中の Lit 実装です。
+Vite + React + TypeScript への段階的な移行を進めており、Home Assistant 向けには単一ファイル `dist/liquid-glass-cards.js` にバンドルされます。Separator / Lock Card は React と `@samasante/liquid-glass`、その他の既存カードは移行期間中の Lit 実装です。
 
 | カード | type | 対応ドメイン |
 | --- | --- | --- |

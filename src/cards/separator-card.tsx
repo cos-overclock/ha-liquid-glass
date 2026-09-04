@@ -1,8 +1,8 @@
-import { Glass, type GlassOptics } from "@samasante/liquid-glass";
-import { createElement } from "react";
+import { Glass } from "@samasante/liquid-glass";
 import { loadHaFormComponents } from "../editor/load";
 import { createTranslator } from "../i18n";
 import { defineReactCard, type ReactCardProps } from "../react/define-react-card";
+import { Icon, opticsFor } from "../react/glass-primitives";
 import { useCardHost } from "../react/use-card-host";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig } from "../types";
@@ -20,13 +20,6 @@ export interface SeparatorCardConfig extends BaseCardConfig {
   /** Secondary line shown by the header variant. */
   subtitle?: string;
 }
-
-const flatOptics: Partial<GlassOptics> = {
-  strength: 0,
-  curvature: 0,
-  dispersion: 0,
-  bend: 0,
-};
 
 const styles = `${tokens.cssText}
   * { box-sizing: border-box; }
@@ -210,10 +203,6 @@ const styles = `${tokens.cssText}
   }
 `;
 
-function Icon({ icon }: { icon: string }) {
-  return createElement("lg-icon", { icon, "aria-hidden": "true" });
-}
-
 function SeparatorCard({ config, hass, host }: ReactCardProps<SeparatorCardConfig>) {
   const { refraction } = useCardHost(host, config, hass);
   const language = config.language ?? hass?.locale?.language ?? hass?.language;
@@ -221,7 +210,7 @@ function SeparatorCard({ config, hass, host }: ReactCardProps<SeparatorCardConfi
   const heading = config.title ?? config.name ?? t("sep_title");
   const icon = config.icon ?? "mdi:lightbulb-outline";
   const hasCount = config.count !== undefined && config.count !== null && config.count !== "";
-  const optics = refraction ? undefined : flatOptics;
+  const optics = opticsFor(refraction);
 
   let content;
   switch (config.style) {
