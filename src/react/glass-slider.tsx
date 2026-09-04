@@ -11,6 +11,8 @@ export interface GlassSliderProps {
   refraction: boolean;
   glassVariant?: "regular" | "clear";
   showFill?: boolean;
+  /** Drop the thumb for a bare progress bar, the way a seek bar reads at rest. */
+  showKnob?: boolean;
   /** Step marks drawn along the bar. 0 draws none. */
   ticks?: number;
   label: string;
@@ -34,6 +36,9 @@ export const glassSliderStyles = `
     --lg-effective-slider-height: var(--lg-slider-height, 44px);
     --lg-effective-bar-height: var(--lg-slider-bar-height, 12px);
     --lg-effective-knob-size: var(--lg-slider-knob-size, 32px);
+    /* A card that paints its own fill also names its ends; the rest get the accent. */
+    --lg-effective-fill-from: var(--fill-from, rgba(255, 255, 255, 0.9));
+    --lg-effective-fill-to: var(--fill-to, var(--lg-accent));
     position: relative;
     width: 100%;
     height: var(--lg-effective-slider-height);
@@ -139,6 +144,7 @@ export function GlassSlider({
   refraction,
   glassVariant = "regular",
   showFill = true,
+  showKnob = true,
   ticks = 0,
   label,
   onInput,
@@ -160,7 +166,7 @@ export function GlassSlider({
   const span = max - min || 1;
   const ratio = clamp((currentValue - min) / span, 0, 1);
   // The knob is the only thing that travels, so it sets the reachable span.
-  const travel = "(100% - var(--lg-effective-knob-size))";
+  const travel = showKnob ? "(100% - var(--lg-effective-knob-size))" : "100%";
 
   useEffect(() => () => {
     if (wobbleFrame.current !== undefined) cancelAnimationFrame(wobbleFrame.current);
@@ -171,7 +177,7 @@ export function GlassSlider({
     const rect = trackRef.current?.getBoundingClientRect();
     if (!rect) return value;
     // The knob centre stops half a knob in from either end, so that is the dead margin.
-    const pad = (knobRef.current?.offsetWidth || rect.height) / 2;
+    const pad = showKnob ? (knobRef.current?.offsetWidth || rect.height) / 2 : 0;
     const usable = Math.max(1, rect.width - pad * 2);
     const pointerRatio = clamp((clientX - rect.left - pad) / usable, 0, 1);
     let next = min + pointerRatio * (max - min);
@@ -250,7 +256,9 @@ export function GlassSlider({
   };
 
   const fillStyle: CSSProperties = {
-    width: `calc(var(--lg-effective-knob-size) / 2 + ${travel} * ${ratio})`,
+    width: showKnob
+      ? `calc(var(--lg-effective-knob-size) / 2 + ${travel} * ${ratio})`
+      : `${(ratio * 100).toFixed(3)}%`,
   };
   const knobStyle: CSSProperties = {
     display: "block",
@@ -264,8 +272,8 @@ export function GlassSlider({
   const band = !showFill || ratio <= 0
     ? "linear-gradient(var(--lg-slider-bar-bg), var(--lg-slider-bar-bg))"
     : ratio >= 1
-      ? "linear-gradient(90deg, var(--fill-from), var(--fill-to))"
-      : "linear-gradient(90deg, var(--fill-from) 0%, var(--fill-to) 46%, var(--lg-slider-bar-bg) 54%)";
+      ? "linear-gradient(90deg, var(--lg-effective-fill-from), var(--lg-effective-fill-to))"
+      : "linear-gradient(90deg, var(--lg-effective-fill-from) 0%, var(--lg-effective-fill-to) 46%, var(--lg-slider-bar-bg) 54%)";
   const sourceBackground = `${band} center / 100% 38% no-repeat,
     radial-gradient(circle at 30% 18%, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.28))`;
 
@@ -293,15 +301,17 @@ export function GlassSlider({
         {ticks > 0 && <div className="marks" aria-hidden="true">
           {Array.from({ length: ticks }, (_, index) => <span key={index} />)}
         </div>}
-        <LiquidGlassSurface
-          className="slider-knob"
-          refraction={refraction}
-          variant={glassVariant}
-          surface="control"
-          sourceBackground={sourceBackground}
-          style={knobStyle}
-        />
-        <div ref={knobRef} className="slider-knob-cap" style={knobStyle} aria-hidden="true" />
+        {showKnob && <>
+          <LiquidGlassSurface
+            className="slider-knob"
+            refraction={refraction}
+            variant={glassVariant}
+            surface="control"
+            sourceBackground={sourceBackground}
+            style={knobStyle}
+          />
+          <div ref={knobRef} className="slider-knob-cap" style={knobStyle} aria-hidden="true" />
+        </>}
       </div>
     </div>
   );
