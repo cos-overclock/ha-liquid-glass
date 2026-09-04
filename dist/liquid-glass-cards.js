@@ -12988,7 +12988,7 @@ function wr(e, t = "regular", n = "card") {
 	let r = Cr[t][n];
 	return e ? r : Sr(r);
 }
-var Tr = "\n  .lg-liquid-surface {\n    isolation: isolate;\n    background: rgba(var(--lg-glass-tint), var(--lg-glass-tint-alpha));\n  }\n  .lg-liquid-card {\n    box-shadow: 0 14px 36px -4px var(--lg-shadow-glass);\n  }\n  .lg-liquid-compact {\n    box-shadow: 0 4px 14px -2px var(--lg-shadow-glass);\n  }\n  .lg-liquid-control {\n    background: rgba(255, 255, 255, 0.32);\n    box-shadow: 0 5px 14px rgba(0, 0, 0, 0.46);\n  }\n  :host([dark]) .lg-liquid-control {\n    background: rgba(255, 255, 255, 0.18);\n  }\n  /*\n   * The DOM refraction route inserts a crisp-content wrapper before its optical\n   * layers. Recreate the surface layout on that wrapper and keep it above the\n   * refracted background. Without this, a card becomes one blank flex item and\n   * the later SVG layer paints over its contents.\n   */\n  .lg-liquid-surface[data-liquid-glass=\"\"] > :first-child {\n    position: relative;\n    z-index: 2;\n    min-width: 0;\n    box-sizing: border-box;\n  }\n  .lg-liquid-card[data-liquid-glass=\"\"] > :first-child {\n    width: 100%;\n    display: flex;\n    flex-direction: column;\n    gap: inherit;\n  }\n  .lg-liquid-compact[data-liquid-glass=\"\"] > :first-child {\n    display: contents;\n  }\n  .lg-liquid-compact[data-liquid-glass=\"\"] > :first-child > * {\n    position: relative;\n    z-index: 2;\n  }\n  .lg-liquid-control[data-liquid-glass=\"\"] > :first-child {\n    width: 100%;\n    height: 100%;\n    display: grid;\n    place-items: center;\n  }\n  .lg-refraction-source {\n    width: 100%;\n    height: 100%;\n    min-height: inherit;\n    border-radius: inherit;\n    background:\n      radial-gradient(circle at 14% 2%, rgba(255, 255, 255, 0.72), transparent 34%),\n      radial-gradient(circle at 88% 96%, color-mix(in srgb, var(--lg-refraction-accent, var(--lg-accent)) 42%, transparent), transparent 48%),\n      linear-gradient(135deg, rgba(var(--lg-glass-tint), 0.34), rgba(var(--lg-glass-tint), 0.08));\n  }\n  :host([dark]) .lg-refraction-source {\n    background:\n      radial-gradient(circle at 14% 2%, rgba(255, 255, 255, 0.32), transparent 34%),\n      radial-gradient(circle at 88% 96%, color-mix(in srgb, var(--lg-refraction-accent, var(--lg-accent)) 34%, transparent), transparent 48%),\n      linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(0, 0, 0, 0.14));\n  }\n";
+var Tr = "\n  .lg-liquid-surface {\n    isolation: isolate;\n    background: rgba(var(--lg-glass-tint), var(--lg-glass-tint-alpha));\n  }\n  .lg-liquid-card {\n    box-shadow: 0 14px 36px -4px var(--lg-shadow-glass);\n  }\n  .lg-liquid-compact {\n    box-shadow: 0 4px 14px -2px var(--lg-shadow-glass);\n  }\n  .lg-liquid-control {\n    background: rgba(255, 255, 255, 0.32);\n    box-shadow: 0 5px 14px rgba(0, 0, 0, 0.46);\n  }\n  :host([dark]) .lg-liquid-control {\n    background: rgba(255, 255, 255, 0.18);\n  }\n  /*\n   * The DOM refraction route inserts a crisp-content wrapper before its optical\n   * layers. Recreate the surface layout on that wrapper and keep it above the\n   * refracted background. Without this, a card becomes one blank flex item and\n   * the later SVG layer paints over its contents.\n   */\n  .lg-liquid-surface[data-liquid-glass=\"\"] > :first-child {\n    position: relative;\n    z-index: 2;\n    min-width: 0;\n    box-sizing: border-box;\n  }\n  .lg-liquid-card[data-liquid-glass=\"\"] > :first-child {\n    width: 100%;\n    display: flex;\n    flex-direction: column;\n    gap: inherit;\n  }\n  .lg-liquid-compact[data-liquid-glass=\"\"] > :first-child {\n    width: 100%;\n    height: 100%;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    gap: inherit;\n  }\n  .lg-liquid-control[data-liquid-glass=\"\"] > :first-child {\n    width: 100%;\n    height: 100%;\n    display: grid;\n    place-items: center;\n  }\n  .lg-refraction-source {\n    width: 100%;\n    height: 100%;\n    min-height: inherit;\n    border-radius: inherit;\n    background:\n      radial-gradient(circle at 14% 2%, rgba(255, 255, 255, 0.72), transparent 34%),\n      radial-gradient(circle at 88% 96%, color-mix(in srgb, var(--lg-refraction-accent, var(--lg-accent)) 42%, transparent), transparent 48%),\n      linear-gradient(135deg, rgba(var(--lg-glass-tint), 0.34), rgba(var(--lg-glass-tint), 0.08));\n  }\n  :host([dark]) .lg-refraction-source {\n    background:\n      radial-gradient(circle at 14% 2%, rgba(255, 255, 255, 0.32), transparent 34%),\n      radial-gradient(circle at 88% 96%, color-mix(in srgb, var(--lg-refraction-accent, var(--lg-accent)) 34%, transparent), transparent 48%),\n      linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(0, 0, 0, 0.14));\n  }\n";
 function Er({ refraction: e, variant: t = "regular", surface: n = "card", sourceAccent: r, sourceBackground: i, className: a, children: o, ...s }) {
 	let c = e ? /* @__PURE__ */ (0, W.jsx)("div", {
 		"aria-hidden": "true",
@@ -18393,9 +18393,9 @@ var oa = `${on.cssText}${Tr}
     color: var(--lg-text-primary);
   }
   .separator > lg-icon,
-  .pill lg-icon,
-  .header-well lg-icon,
-  .chevron lg-icon { flex: none; }
+  .pill > lg-icon,
+  .header-well > lg-icon,
+  .chevron > lg-icon { flex: none; }
   .plain {
     gap: 10px;
     padding: 16px 6px 10px;
@@ -18445,7 +18445,7 @@ var oa = `${on.cssText}${Tr}
     border-radius: 20px;
     color: var(--lg-text-primary);
   }
-  .pill lg-icon {
+  .pill > lg-icon {
     --mdc-icon-size: 15px;
     width: 15px;
     height: 15px;
@@ -18487,7 +18487,7 @@ var oa = `${on.cssText}${Tr}
     place-items: center;
     color: var(--lg-text-primary);
   }
-  .header-well lg-icon {
+  .header-well > lg-icon {
     --mdc-icon-size: 15px;
     width: 15px;
     height: 15px;
@@ -18527,7 +18527,7 @@ var oa = `${on.cssText}${Tr}
     background: var(--lg-track-bg);
     box-shadow: inset 0 0 0 1px var(--lg-glass-stroke);
   }
-  .chevron lg-icon {
+  .chevron > lg-icon {
     --mdc-icon-size: 15px;
     width: 15px;
     height: 15px;
@@ -18643,7 +18643,7 @@ var ca = On({
 		icon: "mdi:lightbulb-outline",
 		style: "pill"
 	})
-}), la = "0.6.0", ua = "2026-09-04 14:03", da = "https://github.com/cos-overclock/ha-liquid-glass", fa = (e, t) => !!((e.attributes.supported_features ?? 0) & t);
+}), la = "0.6.0", ua = "2026-09-04 14:07", da = "https://github.com/cos-overclock/ha-liquid-glass", fa = (e, t) => !!((e.attributes.supported_features ?? 0) & t);
 function pa(e, t, n, r, i, a = (e) => ({ entity: e })) {
 	return {
 		type: e,
@@ -18722,7 +18722,13 @@ var ma = [
 	{
 		type: "liquid-glass-separator-card",
 		name: "Liquid Glass Separator",
-		description: "A section heading in plain, pill or header style"
+		description: "A section heading in plain, pill or header style",
+		getEntitySuggestion: () => ({ config: {
+			type: "custom:liquid-glass-separator-card",
+			title: "Section",
+			icon: "mdi:lightbulb-outline",
+			style: "pill"
+		} })
 	}
 ];
 window.customCards = window.customCards ?? [];

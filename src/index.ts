@@ -167,6 +167,16 @@ const cards: CustomCardRegistration[] = [
     type: "liquid-glass-separator-card",
     name: "Liquid Glass Separator",
     description: "A section heading in plain, pill or header style",
+    // Separator has no entity of its own, but exposing a neutral suggestion keeps
+    // it available in HA's entity-first Community list as well as the By card list.
+    getEntitySuggestion: () => ({
+      config: {
+        type: "custom:liquid-glass-separator-card",
+        title: "Section",
+        icon: "mdi:lightbulb-outline",
+        style: "pill",
+      },
+    }),
   },
 ];
 

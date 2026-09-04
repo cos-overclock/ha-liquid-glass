@@ -29,6 +29,30 @@ afterEach(() => {
 });
 
 describe("liquid-glass-separator-card", () => {
+  it("registers a card-picker entry and an entity-first Community suggestion", async () => {
+    window.customCards = [];
+    await import("../index");
+
+    const registration = window.customCards.find(
+      (card) => card.type === "liquid-glass-separator-card",
+    );
+    expect(registration).toMatchObject({
+      type: "liquid-glass-separator-card",
+      name: "Liquid Glass Separator",
+      preview: true,
+    });
+    expect(
+      registration?.getEntitySuggestion?.({} as HomeAssistant, "light.example"),
+    ).toEqual({
+      config: {
+        type: "custom:liquid-glass-separator-card",
+        title: "Section",
+        icon: "mdi:lightbulb-outline",
+        style: "pill",
+      },
+    });
+  });
+
   it("renders through React and follows Home Assistant theme/config updates", async () => {
     const element = document.createElement("liquid-glass-separator-card") as SeparatorElement;
     element.setConfig({
@@ -44,9 +68,6 @@ describe("liquid-glass-separator-card", () => {
     expect((element.shadowRoot?.querySelector(".pill") as HTMLElement).style.display).toBe("flex");
     expect(element.shadowRoot?.querySelector(".pill")?.getAttribute("data-liquid-glass")).toBe("");
     expect(element.shadowRoot?.querySelector(".pill [data-lg-refraction-source='copy']")).toBeTruthy();
-    const css = element.shadowRoot?.querySelector("style")?.textContent ?? "";
-    expect(css).toContain('.lg-liquid-compact[data-liquid-glass=""] > :first-child');
-    expect(css).toContain("display: contents");
     expect(element.getCardSize()).toBe(1);
 
     await act(async () => {

@@ -39,9 +39,9 @@ const styles = `${tokens.cssText}${glassSurfaceStyles}
     color: var(--lg-text-primary);
   }
   .separator > lg-icon,
-  .pill lg-icon,
-  .header-well lg-icon,
-  .chevron lg-icon { flex: none; }
+  .pill > lg-icon,
+  .header-well > lg-icon,
+  .chevron > lg-icon { flex: none; }
   .plain {
     gap: 10px;
     padding: 16px 6px 10px;
@@ -91,7 +91,7 @@ const styles = `${tokens.cssText}${glassSurfaceStyles}
     border-radius: 20px;
     color: var(--lg-text-primary);
   }
-  .pill lg-icon {
+  .pill > lg-icon {
     --mdc-icon-size: 15px;
     width: 15px;
     height: 15px;
@@ -133,7 +133,7 @@ const styles = `${tokens.cssText}${glassSurfaceStyles}
     place-items: center;
     color: var(--lg-text-primary);
   }
-  .header-well lg-icon {
+  .header-well > lg-icon {
     --mdc-icon-size: 15px;
     width: 15px;
     height: 15px;
@@ -173,7 +173,7 @@ const styles = `${tokens.cssText}${glassSurfaceStyles}
     background: var(--lg-track-bg);
     box-shadow: inset 0 0 0 1px var(--lg-glass-stroke);
   }
-  .chevron lg-icon {
+  .chevron > lg-icon {
     --mdc-icon-size: 15px;
     width: 15px;
     height: 15px;
