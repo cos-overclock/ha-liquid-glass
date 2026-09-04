@@ -55,6 +55,7 @@ export const glassStyles = css`
     inset: 0;
     border-radius: inherit;
     pointer-events: none;
+    z-index: 2;
   }
   /*
    * Specular, fresnel and hairline, evaluated from liquid-glass.glsl and painted in pixel
@@ -64,6 +65,28 @@ export const glassStyles = css`
    */
   .glass::before {
     background: ${unsafeCSS(rimBackground())};
+  }
+  /* Pointer-following caustic: a masked one-pixel rim, never a veil over the content. */
+  .glass::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    padding: 1.25px;
+    border-radius: inherit;
+    pointer-events: none;
+    background: radial-gradient(
+      circle at var(--lg-light-x, 18%) var(--lg-light-y, 8%),
+      rgb(255 255 255 / calc(0.16 + var(--lg-sheen-active, 0) * 0.5)) 0,
+      rgb(255 255 255 / 0.08) 24%,
+      transparent 54%
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    transition: opacity 180ms ease;
   }
   .card {
     --lg-pad: 20px;
@@ -121,22 +144,9 @@ export const glassStyles = css`
     position: relative;
     z-index: 1;
   }
-  .card > .lg-card-shader,
   .lg-control-shader {
     position: absolute;
     z-index: 0;
-  }
-  .glass:has(> .lg-card-shader) {
-    background: transparent;
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-  }
-  :host([refraction]) .glass:has(> .lg-card-shader) {
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-  }
-  .glass:has(> .lg-card-shader)::before {
-    background: none;
   }
 
   /* Small glass surface used for knobs / play button / slide thumb */

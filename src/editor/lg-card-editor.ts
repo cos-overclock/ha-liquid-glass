@@ -38,6 +38,7 @@ export class LiquidGlassCardEditor extends LitElement {
     const data: FormData = { ...rest };
     data.refraction = refraction === true ? "on" : refraction === false ? "off" : "auto";
     data.theme = theme ?? "auto";
+    data.glass_variant = (rest.glass_variant as string | undefined) ?? "regular";
     // "full" is the weather card's default layout; show it rather than an empty dropdown.
     if (cardKind(config.type) === "weather") data.layout = (rest.layout as string | undefined) ?? "full";
     // The original climate dial remains the default; make that explicit in the selector.
@@ -45,6 +46,7 @@ export class LiquidGlassCardEditor extends LitElement {
       const design = rest.design as string | undefined;
       data.design = design === "a" ? "compact" : design ?? "classic";
     }
+    if (cardKind(config.type) === "separator") data.style = (rest.style as string | undefined) ?? "pill";
 
     for (const name of fieldNames(schemaFor(config.type, this.t, data))) {
       if (!DEFAULT_ON.has(name)) continue;
@@ -84,8 +86,10 @@ export class LiquidGlassCardEditor extends LitElement {
     else if (out.refraction === "off") out.refraction = false;
     else delete out.refraction;
     if (out.theme === "auto") delete out.theme;
+    if (out.glass_variant === "regular") delete out.glass_variant;
     if (out.layout === "full") delete out.layout;
     if (out.design === "classic") delete out.design;
+    if (out.style === "pill" && cardKind(out.type as string | undefined) === "separator") delete out.style;
     // Same for the swatches: the editor seeds them so the list is visible, but an
     // untouched list is what the card shows anyway.
     const favorites = out.favorites;

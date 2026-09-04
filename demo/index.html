@@ -321,9 +321,14 @@
           { type: "custom:liquid-glass-media-card", entity: "media_player.living" },
           { type: "custom:liquid-glass-switch-card", entity: "switch.desk_off" },
         ] }],
+        ["liquid-glass-separator-card", { title: "照明", icon: "mdi:lightbulb-outline", style: "plain", count: 4 }],
+        ["liquid-glass-separator-card", { title: "照明", icon: "mdi:lightbulb-outline", style: "pill", count: 4 }],
+        ["liquid-glass-separator-card", { title: "照明", icon: "mdi:lightbulb-outline", style: "header", subtitle: "4台 · 2台が点灯中" }],
       ];
       const visibleCards = params.get("focus") === "climate-a"
         ? cards.filter(([type, cfg]) => type === "liquid-glass-climate-card" && cfg.design === "compact")
+        : params.get("focus") === "separator"
+          ? cards.filter(([type]) => type === "liquid-glass-separator-card")
         : cards;
 
       const main = document.getElementById("main");

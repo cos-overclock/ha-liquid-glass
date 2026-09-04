@@ -174,7 +174,6 @@ export class LiquidGlassButtonCard extends LiquidGlassBaseCard<ButtonCardConfig>
         @click=${this.press}
         @keydown=${this.onKeyDown}
       >
-        ${this.renderCardSurface()}
         ${this.renderIconWell(icon, well, null)}
         <div class="title">
           <div class="name">${this.entityName}</div>

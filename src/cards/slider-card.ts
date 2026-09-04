@@ -347,7 +347,6 @@ export class LiquidGlassSliderCard extends LiquidGlassBaseCard<SliderCardConfig>
 
     return html`${this.renderDefs()}
       <div class="glass card" style=${styleMap({ "--fill-from": fillFrom, "--fill-to": fillTo })}>
-        ${this.renderCardSurface()}
         <div class="header">
           ${this.renderIconWell(spec.icon, well)}
           ${this.renderTitle(this.entityName, this.subtitleFor(spec, value))}

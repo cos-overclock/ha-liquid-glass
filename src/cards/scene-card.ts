@@ -271,7 +271,6 @@ export class LiquidGlassSceneCard extends LiquidGlassBaseCard<SceneCardConfig> {
 
     return html`${this.renderDefs()}
       <div class=${classMap({ glass: true, card: true, chips })}>
-        ${this.renderCardSurface()}
         ${heading || this.config.show_count
           ? html`<div class="head">
               <span class="heading">${heading ?? ""}</span>

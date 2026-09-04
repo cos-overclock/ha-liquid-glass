@@ -335,7 +335,6 @@ export class LiquidGlassCoverCard extends LiquidGlassBaseCard<CoverCardConfig> {
 
     return html`${this.renderDefs()}
       <div class="glass card">
-        ${this.renderCardSurface()}
         <div class="header">
           ${this.renderIconWell(icon, well)}
           ${this.renderTitle(this.entityName, this.stateText())}

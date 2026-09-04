@@ -298,7 +298,6 @@ export class LiquidGlassMediaCard extends LiquidGlassBaseCard<MediaCardConfig> {
 
     return html`${this.renderDefs()}
       <div class="glass card" style=${styleMap({ "--source-color": sourceColor })}>
-        ${this.renderCardSurface()}
         ${showDevice
           ? html`<div class="device" @click=${this.openMoreInfo}><lg-icon icon="mdi:speaker"></lg-icon><span>${this.entityName}</span></div>`
           : nothing}

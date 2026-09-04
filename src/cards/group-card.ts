@@ -288,7 +288,7 @@ export class LiquidGlassGroupCard extends LiquidGlassBaseCard<GroupCardConfig> {
   private childConfig(config: LovelaceCardConfig): LovelaceCardConfig {
     if (!String(config.type ?? "").startsWith("custom:liquid-glass-")) return config;
     const out = { ...config };
-    for (const key of ["theme", "refraction", "language"] as const) {
+    for (const key of ["theme", "refraction", "language", "glass_variant"] as const) {
       const value = this.config?.[key];
       if (out[key] === undefined && value !== undefined) out[key] = value;
     }

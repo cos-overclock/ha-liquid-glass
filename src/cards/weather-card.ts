@@ -612,7 +612,6 @@ export class LiquidGlassWeatherCard extends LiquidGlassBaseCard<WeatherCardConfi
 
     return html`${this.renderDefs()}
       <div class="glass card row">
-        ${this.renderCardSurface()}
         <div class="big-icon" style=${styleMap({ "--wx-color": look.color, "--wx-glow": withAlpha(look.color, 0.4) })}>
           <lg-icon .icon=${this.config.icon ?? look.icon}></lg-icon>
         </div>
@@ -633,7 +632,6 @@ export class LiquidGlassWeatherCard extends LiquidGlassBaseCard<WeatherCardConfi
 
     return html`${this.renderDefs()}
       <div class="glass card">
-        ${this.renderCardSurface()}
         ${this.renderCurrent()}
         ${this.config.show_hourly === false ? nothing : this.renderHourly()}
         ${this.config.show_daily === false ? nothing : this.renderDaily()}

@@ -65,6 +65,10 @@ function advanced(t: Translator): FormSchema {
         { value: "ja", label: "日本語" },
         { value: "en", label: "English" },
       ]),
+      select("glass_variant", [
+        { value: "regular", label: t("ed_glass_variant_regular") },
+        { value: "clear", label: t("ed_glass_variant_clear") },
+      ]),
     ],
   };
 }
@@ -238,6 +242,20 @@ export function schemaFor(type: string | undefined, t: Translator, data?: Record
         object("cards"),
         advanced(t),
       ];
+
+    case "separator": {
+      const style = (data?.style as string | undefined) ?? "pill";
+      return [
+        grid([text("title"), icon("icon")]),
+        select("style", [
+          { value: "plain", label: t("ed_style_plain") },
+          { value: "pill", label: t("ed_style_pill") },
+          { value: "header", label: t("ed_style_header") },
+        ]),
+        ...(style === "header" ? [text("subtitle")] : [number("count", 0, 999)]),
+        advanced(t),
+      ];
+    }
 
     case "camera":
       return [

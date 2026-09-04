@@ -336,7 +336,6 @@ export class LiquidGlassCameraCard extends LiquidGlassBaseCard<CameraCardConfig>
         class=${classMap({ glass: true, card: true, offline })}
         style=${styleMap({ "--lg-cam-ratio": String(this.config.aspect_ratio ?? 16 / 9) })}
       >
-        ${this.renderCardSurface()}
         <div class="feed" style=${still ? styleMap({ backgroundImage: `url("${still}")` }) : nothing}>
           <div class="scrim"></div>
 

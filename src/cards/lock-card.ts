@@ -269,7 +269,6 @@ export class LiquidGlassLockCard extends LiquidGlassBaseCard<LockCardConfig> {
 
     return html`${this.renderDefs()}
       <div class="glass card">
-        ${this.renderCardSurface()}
         <div class="header">
           ${this.renderIconWell(this.config.icon ?? v.icon, v.well)}
           ${this.renderTitle(this.entityName, v.state)}

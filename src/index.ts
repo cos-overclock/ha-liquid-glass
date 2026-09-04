@@ -13,6 +13,7 @@ import "./cards/button-card";
 import "./cards/scene-card";
 import "./cards/camera-card";
 import "./cards/group-card";
+import "./cards/separator-card";
 import type { CustomCardRegistration, HassEntity, HomeAssistant } from "./types";
 
 export { LiquidGlassLightCard } from "./cards/light-card";
@@ -29,6 +30,7 @@ export { LiquidGlassButtonCard } from "./cards/button-card";
 export { LiquidGlassSceneCard } from "./cards/scene-card";
 export { LiquidGlassCameraCard } from "./cards/camera-card";
 export { LiquidGlassGroupCard } from "./cards/group-card";
+export { LiquidGlassSeparatorCard } from "./cards/separator-card";
 
 /** Replaced at build time by scripts/build.mjs. */
 declare const __LG_VERSION__: string;
@@ -153,6 +155,11 @@ const cards: CustomCardRegistration[] = [
     type: "liquid-glass-group-card",
     name: "Liquid Glass Group",
     description: "A collapsible panel that holds other cards",
+  },
+  {
+    type: "liquid-glass-separator-card",
+    name: "Liquid Glass Separator",
+    description: "A section heading in plain, pill or header style",
   },
 ];
 

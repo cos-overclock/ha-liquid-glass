@@ -291,7 +291,6 @@ export class LiquidGlassLightCard extends LiquidGlassBaseCard<LightCardConfig> {
 
     return html`${this.renderDefs()}
       <div class=${classMap({ glass: true, card: true })}>
-        ${this.renderCardSurface()}
         <div class="header">
           ${this.renderIconWell(this.config.icon ?? entity.attributes.icon ?? "mdi:lightbulb", this.wellStyle, this.toggle)}
           ${this.renderTitle(this.entityName, this.stateText())}

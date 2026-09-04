@@ -966,12 +966,17 @@
         const root = card.shadowRoot;
         check("compact climate: renders the slider instead of the dial", root.querySelector(".climate-compact") !== null && root.querySelector(".dial") === null);
         await new Promise((resolve) => requestAnimationFrame(resolve));
-        check("compact climate: card and thumb are shader-rendered", root.querySelector(".lg-card-shader")?.hasAttribute("shader-ready") && root.querySelector(".tile-thumb lg-glass-surface")?.hasAttribute("shader-ready"));
+        const cardSurface = root.querySelector(".glass.card");
+        const cardSurfaceStyle = getComputedStyle(cardSurface);
+        const cardBackdrop = cardSurfaceStyle.backdropFilter || cardSurfaceStyle.webkitBackdropFilter;
+        check("compact climate: card uses the live backdrop while the thumb stays shader-rendered", root.querySelector(".lg-card-shader") === null && Boolean(cardBackdrop) && cardBackdrop !== "none" && root.querySelector(".tile-thumb lg-glass-surface")?.hasAttribute("shader-ready"), cardBackdrop || "(unsupported)");
         const climateGlass = root.querySelector(".tile-thumb lg-glass-surface");
         check("compact climate: thumb uses high-quality diffusion", climateGlass.highQualityBlur === true && climateGlass.renderScale === 1.5);
         check("compact climate: room temperature is moved out of the subtitle", !root.querySelector(".state").textContent.includes("室温") && root.querySelector(".tile-room .value").textContent.trim() === "21.5°", root.querySelector(".state").textContent);
         check("compact climate: the setpoint uses the split large readout", root.querySelector(".tile-target .number").textContent.trim() === "22" && root.querySelector(".tile-target .fraction").textContent.trim() === ".0°");
         check("compact climate: mode buttons are icon-only", [...root.querySelectorAll(".tile-modes button")].every((button) => button.textContent.trim() === ""));
+        const compactModePill = root.querySelector(".tile-mode-pill");
+        check("compact climate: mode selection uses the stable CSS surface", compactModePill.querySelector("lg-glass-surface") === null && getComputedStyle(compactModePill).backgroundColor !== "rgba(0, 0, 0, 0)", getComputedStyle(compactModePill).backgroundColor);
         const modesHeight = Math.round(root.querySelector(".tile-modes").getBoundingClientRect().height);
         const modeButtonHeight = Math.round(root.querySelector(".tile-modes button").getBoundingClientRect().height);
         check("compact climate: mode control uses the compact 40px treatment", modesHeight === 40 && modeButtonHeight === 34, `${modesHeight}px / ${modeButtonHeight}px`);
@@ -1050,6 +1055,15 @@
         const hr = heat.shadowRoot;
         const fill = hr.querySelector(".ring-fill");
         const dash = (el) => el.style.strokeDasharray.split(" ").map(parseFloat);
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+
+        const dialKnobGlass = hr.querySelector(".dial-knob .dial-knob-shader");
+        check("climate dial: knob uses the transparent shader", dialKnobGlass?.hasAttribute("shader-ready"));
+        check("climate dial: knob uses high-quality diffusion", dialKnobGlass?.highQualityBlur === true && dialKnobGlass?.renderScale === 1.5 && dialKnobGlass?.pixelRatioLimit === 3);
+        check("climate dial: knob follows the design refraction profile", dialKnobGlass?.refraction === (heat.hasAttribute("refraction") ? 14 : 0) && dialKnobGlass?.edge === 14 && dialKnobGlass?.highlight === 1.1);
+        const dialKnobStyle = getComputedStyle(dialKnobGlass.parentElement);
+        const dialKnobBackdrop = dialKnobStyle.backdropFilter || dialKnobStyle.webkitBackdropFilter;
+        check("climate dial: shader leaves the real backdrop visible", dialKnobGlass?.surfaceAlpha === 0.52 && Boolean(dialKnobBackdrop) && dialKnobBackdrop !== "none", dialKnobBackdrop || "(unsupported)");
 
         // The arc is drawn once at full length and revealed by the dash pattern, so its
         // length can interpolate instead of the path being rebuilt on every change.
@@ -1115,6 +1129,8 @@
           getComputedStyle(hr.querySelector(".segment.modes > button.selected")).backgroundColor === "rgba(0, 0, 0, 0)",
           getComputedStyle(hr.querySelector(".segment.modes > button.selected")).backgroundColor,
         );
+        const classicModePill = hr.querySelector(".seg-pill");
+        check("climate mode: selection pill uses the stable CSS surface", classicModePill.querySelector("lg-glass-surface") === null && getComputedStyle(classicModePill).backgroundColor !== "rgba(0, 0, 0, 0)", getComputedStyle(classicModePill).backgroundColor);
 
         // Releasing a drag: the dial must hold what it sent, not fall back to the entity's
         // old value and then animate to the new one once Home Assistant answers.

@@ -3,7 +3,7 @@ import { property, state } from "lit/decorators.js";
 import { classMap } from "lit/directives/class-map.js";
 import { styleMap } from "lit/directives/style-map.js";
 import { createTranslator, type Translator } from "./i18n";
-import { glassDefs, supportsRefraction } from "./styles/glass-defs";
+import { glassDefsFor, supportsRefraction, type GlassGeometry } from "./styles/glass-defs";
 import type { BaseCardConfig, HassEntity, HomeAssistant } from "./types";
 import { friendlyName, moreInfo } from "./utils";
 import { loadHaFormComponents } from "./editor/load";
@@ -35,8 +35,13 @@ export interface BadgeStyle {
 export abstract class LiquidGlassBaseCard<C extends BaseCardConfig = BaseCardConfig> extends LitElement {
   @property({ attribute: false }) hass?: HomeAssistant;
   @state() protected config!: C;
+  @state() private glassGeometry: GlassGeometry | undefined;
 
   protected t: Translator = createTranslator("en");
+  private glassResizeObserver?: ResizeObserver;
+  private glassResizeTimer?: number;
+  private glassSurface?: HTMLElement;
+  private lightFrame?: number;
 
   /**
    * Every card shares one editor element, which reads its schema from `config.type`.
@@ -93,7 +98,66 @@ export abstract class LiquidGlassBaseCard<C extends BaseCardConfig = BaseCardCon
     const lang = this.config?.language ?? this.hass?.locale?.language ?? this.hass?.language;
     this.t = createTranslator(lang);
     this.toggleAttribute("dark", this.isDark);
+    this.setAttribute("glass-variant", this.config?.glass_variant ?? "regular");
   }
+
+  protected override firstUpdated(): void {
+    const surface = this.renderRoot.querySelector<HTMLElement>(".glass");
+    if (!surface || typeof ResizeObserver === "undefined") return;
+    this.glassSurface = surface;
+    surface.addEventListener("pointermove", this.updateLight, { passive: true });
+    surface.addEventListener("pointerleave", this.resetLight, { passive: true });
+    const measure = () => {
+      window.clearTimeout(this.glassResizeTimer);
+      this.glassResizeTimer = window.setTimeout(() => {
+        const rect = surface.getBoundingClientRect();
+        if (rect.width < 1 || rect.height < 1) return;
+        const rawRadius = getComputedStyle(surface).borderTopLeftRadius;
+        const parsed = Number.parseFloat(rawRadius) || 0;
+        const radius = rawRadius.trim().endsWith("%") ? (parsed / 100) * Math.min(rect.width, rect.height) : parsed;
+        const next = {
+          width: Math.round(rect.width / 4) * 4,
+          height: Math.round(rect.height / 4) * 4,
+          radius: Math.round(radius / 2) * 2,
+        };
+        const current = this.glassGeometry;
+        if (!current || current.width !== next.width || current.height !== next.height || current.radius !== next.radius) {
+          this.glassGeometry = next;
+        }
+      }, 120);
+    };
+    this.glassResizeObserver = new ResizeObserver(measure);
+    this.glassResizeObserver.observe(surface);
+    measure();
+  }
+
+  override disconnectedCallback(): void {
+    this.glassResizeObserver?.disconnect();
+    this.glassSurface?.removeEventListener("pointermove", this.updateLight);
+    this.glassSurface?.removeEventListener("pointerleave", this.resetLight);
+    window.clearTimeout(this.glassResizeTimer);
+    if (this.lightFrame !== undefined) cancelAnimationFrame(this.lightFrame);
+    super.disconnectedCallback();
+  }
+
+  private updateLight = (event: PointerEvent): void => {
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches || !this.glassSurface) return;
+    const { clientX, clientY } = event;
+    if (this.lightFrame !== undefined) cancelAnimationFrame(this.lightFrame);
+    this.lightFrame = requestAnimationFrame(() => {
+      if (!this.glassSurface) return;
+      const rect = this.glassSurface.getBoundingClientRect();
+      this.glassSurface.style.setProperty("--lg-light-x", `${((clientX - rect.left) / rect.width) * 100}%`);
+      this.glassSurface.style.setProperty("--lg-light-y", `${((clientY - rect.top) / rect.height) * 100}%`);
+      this.glassSurface.style.setProperty("--lg-sheen-active", "1");
+    });
+  };
+
+  private resetLight = (): void => {
+    this.glassSurface?.style.removeProperty("--lg-light-x");
+    this.glassSurface?.style.removeProperty("--lg-light-y");
+    this.glassSurface?.style.removeProperty("--lg-sheen-active");
+  };
 
   protected openMoreInfo = (): void => moreInfo(this, this.config?.entity);
 
@@ -103,37 +167,25 @@ export abstract class LiquidGlassBaseCard<C extends BaseCardConfig = BaseCardCon
   }
 
   protected renderDefs(): TemplateResult | typeof nothing {
-    return this.refraction ? glassDefs : nothing;
+    return this.refraction ? glassDefsFor(this.glassGeometry) : nothing;
   }
 
-  /** GPU-rendered card underlay. Text, icons and interaction remain normal accessible DOM. */
-  protected renderCardSurface(): TemplateResult {
-    const palette = this.isDark
-      ? ["#151619", "#222327", "#292a2f", "#17181b"]
-      : ["#fafafa", "#f1f1f2", "#e8e9eb", "#f8f8f9"];
-    return html`<lg-glass-surface
-      class="lg-card-shader"
-      shape="roundrect"
-      .palette=${palette}
-      .radius=${32}
-      .edge=${28}
-      .refraction=${this.refraction ? 22 : 0}
-      .blurRadius=${7}
-      .highlight=${0.85}
-      .tintAlpha=${this.isDark ? 0.18 : 0.24}
-      .tint=${this.isDark ? "#1c1c1e" : "#ffffff"}
-    ></lg-glass-surface>`;
-  }
-
-  /** GPU-rendered overlay for knobs and floating controls. */
-  protected renderControlSurface(palette?: string[], shape: "circle" | "pill" | "roundrect" = "circle"): TemplateResult {
+  /**
+   * GPU fallback for browsers without SVG-filtered backdrops. On Chromium the surface is
+   * intentionally omitted so the control refracts its real track, image, or card below.
+   */
+  protected renderControlSurface(
+    palette?: string[],
+    shape: "circle" | "pill" | "roundrect" = "circle",
+  ): TemplateResult | typeof nothing {
+    if (this.refraction) return nothing;
     return html`<lg-glass-surface
       class="lg-control-shader"
       .shape=${shape}
       .palette=${palette ?? (this.isDark ? ["#242529", "#45474d"] : ["#ffffff", "#d8d9dc"])}
       .radius=${shape === "circle" ? 999 : 22}
       .edge=${14}
-      .refraction=${this.refraction ? 16 : 0}
+      .refraction=${0}
       .blurRadius=${3}
       .highlight=${1.25}
       .tintAlpha=${this.isDark ? 0.12 : 0.24}
@@ -197,7 +249,6 @@ export abstract class LiquidGlassBaseCard<C extends BaseCardConfig = BaseCardCon
   protected renderUnavailable(): TemplateResult {
     return html`${this.renderDefs()}
       <div class="glass card">
-        ${this.renderCardSurface()}
         <div class="header">
           ${this.renderIconWell(this.config?.icon ?? "mdi:help-circle-outline", undefined)}
           ${this.renderTitle(this.entityName, this.t("unavailable"))}

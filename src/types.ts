@@ -46,6 +46,8 @@ export interface BaseCardConfig {
   refraction?: "auto" | boolean;
   /** Force theme: "auto" | "light" | "dark". */
   theme?: "auto" | "light" | "dark";
+  /** Optical material: regular for legibility, clear for media-rich backgrounds. */
+  glass_variant?: "regular" | "clear";
   language?: string;
 }
 

@@ -2,6 +2,7 @@ import { LitElement, html, css, nothing } from "lit";
 import { property, state } from "lit/decorators.js";
 import { styleMap } from "lit/directives/style-map.js";
 import { clamp } from "../utils";
+import { sliderKnobDefs } from "../styles/glass-defs";
 import "./lg-glass-surface";
 
 export type SliderVariant = "bar" | "thumb" | "thin";
@@ -35,6 +36,11 @@ export class LgSlider extends LitElement {
 
   @state() private dragging = false;
   @state() private dragValue = 0;
+  private lastPointerX = 0;
+  private lastPointerTime = 0;
+  private wobble = 0;
+  private wobbleTarget = 0;
+  private wobbleFrame?: number;
 
   static override styles = css`
     :host {
@@ -126,6 +132,7 @@ export class LgSlider extends LitElement {
         0 1px 3px rgba(255, 255, 255, 0.4),
         inset 0 0 0 1.5px #fff;
       pointer-events: none;
+      transform: scaleX(calc(1 - var(--lg-wobble, 0) * 0.1)) scaleY(calc(1 + var(--lg-wobble, 0) * 0.2));
       transition: transform 0.08s ease;
     }
     .track.thin .knob {
@@ -145,7 +152,7 @@ export class LgSlider extends LitElement {
       box-shadow: 0 5px 14px rgba(0, 0, 0, 0.38);
     }
     :host([dragging]) .knob {
-      transform: scale(1.08);
+      transform: scaleX(calc(1.06 - var(--lg-wobble, 0) * 0.1)) scaleY(calc(1.06 + var(--lg-wobble, 0) * 0.2));
     }
   `;
 
@@ -176,11 +183,18 @@ export class LgSlider extends LitElement {
     this.dragging = true;
     this.toggleAttribute("dragging", true);
     this.dragValue = this.valueFromEvent(e);
+    this.lastPointerX = e.clientX;
+    this.lastPointerTime = e.timeStamp;
     this.dispatchEvent(new CustomEvent("lg-input", { detail: { value: this.dragValue }, bubbles: true, composed: true }));
   };
 
   private onPointerMove = (e: PointerEvent) => {
     if (!this.dragging) return;
+    const elapsed = Math.max(1, e.timeStamp - this.lastPointerTime);
+    const speed = Math.abs(e.clientX - this.lastPointerX) / elapsed;
+    this.lastPointerX = e.clientX;
+    this.lastPointerTime = e.timeStamp;
+    this.setWobbleTarget(clamp(speed / 1.4, 0, 1));
     const v = this.valueFromEvent(e);
     if (v !== this.dragValue) {
       this.dragValue = v;
@@ -194,8 +208,32 @@ export class LgSlider extends LitElement {
     this.toggleAttribute("dragging", false);
     const v = this.valueFromEvent(e);
     this.value = v;
+    this.setWobbleTarget(0);
     this.dispatchEvent(new CustomEvent("lg-change", { detail: { value: v }, bubbles: true, composed: true }));
   };
+
+  private setWobbleTarget(value: number): void {
+    this.wobbleTarget = matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : value;
+    if (this.wobbleFrame !== undefined) return;
+    const tick = () => {
+      this.wobble += (this.wobbleTarget - this.wobble) * 0.24;
+      this.wobbleTarget *= this.dragging ? 0.9 : 0.72;
+      this.style.setProperty("--lg-wobble", this.wobble.toFixed(4));
+      if (Math.abs(this.wobbleTarget - this.wobble) > 0.004 || this.wobbleTarget > 0.004) {
+        this.wobbleFrame = requestAnimationFrame(tick);
+      } else {
+        this.wobble = 0;
+        this.style.removeProperty("--lg-wobble");
+        this.wobbleFrame = undefined;
+      }
+    };
+    this.wobbleFrame = requestAnimationFrame(tick);
+  }
+
+  override disconnectedCallback(): void {
+    if (this.wobbleFrame !== undefined) cancelAnimationFrame(this.wobbleFrame);
+    super.disconnectedCallback();
+  }
 
   private onKeyDown = (e: KeyboardEvent) => {
     if (this.disabled) return;
@@ -232,6 +270,7 @@ export class LgSlider extends LitElement {
       fillStyle = { width: `calc(${h} / 2 + ${travel} * ${ratio})` };
     }
     return html`
+      ${this.refraction ? sliderKnobDefs : nothing}
       <div
         class="track ${this.variant}"
         role="slider"
@@ -252,21 +291,23 @@ export class LgSlider extends LitElement {
           : nothing}
         <div class="overlay"><slot name="start"></slot><slot name="end"></slot></div>
         ${hasKnob
-          ? html`<div class="knob" style=${styleMap({ left: `calc(${travel} * ${ratio})` })}>
-              <lg-glass-surface
+          ? html`<div class=${this.refraction ? "knob refraction" : "knob"} style=${styleMap({ left: `calc(${travel} * ${ratio})` })}>
+              ${this.refraction
+                ? nothing
+                : html`<lg-glass-surface
                 shape="circle"
                 .palette=${this.shaderPalette}
                 .stops=${[0, 0.44, 0.56, 1]}
                 .radius=${999}
                 .edge=${20}
-                .refraction=${this.refraction ? 10 : 0}
+                .refraction=${0}
                 .blurRadius=${12}
                 .highQualityBlur=${true}
                 .renderScale=${1.5}
                 .pixelRatioLimit=${3}
                 .highlight=${1.25}
-                .tintAlpha=${this.refraction ? 0.28 : 0.18}
-              ></lg-glass-surface>
+                .tintAlpha=${0.18}
+              ></lg-glass-surface>`}
             </div>`
           : nothing}
       </div>

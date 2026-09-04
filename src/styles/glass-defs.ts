@@ -1,114 +1,124 @@
-import { html, svg } from "lit";
-
-/**
- * SVG filter port of pen/liquid-glass.glsl for use in `backdrop-filter: url(#id)`.
- *
- * The shader samples the pixels behind the surface, and `backdrop-filter` is the only
- * browser primitive with access to those, so the whole effect is expressed as filter
- * primitives rather than as GLSL. The graph mirrors the shader step for step:
- *
- *   blur + saturate      → feGaussianBlur, feColorMatrix       (sampleBg, u_saturation)
- *   Snell refraction     → feDisplacementMap driven by feImage  (refractDisp, u_refraction)
- *   chromatic dispersion → three displacement passes recombined (u_chroma)
- *
- * The specular, fresnel and hairline terms are not here: Chromium runs neither
- * feSpecularLighting nor a partly transparent feImage inside backdrop-filter, so glass.ts
- * paints them from the same equations instead — which also gets them into Safari and
- * Firefox, where this filter never runs.
- */
-
+import { html, svg, type TemplateResult } from "lit";
 import { SHADER, inwardShift } from "./shader-profile";
 
-/** Sampled densely near the rim, where the Snell curve turns over sharply. */
-const PROFILE = [0, 0.01, 0.02, 0.04, 0.07, 0.1, 0.15, 0.22, 0.3, 0.4, 0.55, 0.7, 0.85, 1];
-
-/**
- * Largest inward pull the map can express. The shader's curve runs away to hundreds of
- * pixels in the last fraction of a pixel before the edge, which the border radius clips
- * anyway, so it is capped here and the map saturates.
- */
-const MAX_SHIFT = 40;
-
-function dataUri(body: string): string {
-  const src = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1" preserveAspectRatio="none">${body}</svg>`;
-  return `data:image/svg+xml;utf8,${encodeURIComponent(src)}`;
-}
-
-/** Rects covering the two bands of one axis, plus the gradients they are painted with. */
-function bands(axis: "x" | "y", band: number) {
-  const horizontal = axis === "x";
-  const b = band.toFixed(4);
-  const far = (1 - band).toFixed(4);
-  return {
-    gradA: horizontal ? `x1="0" y1="0" x2="1" y2="0"` : `x1="0" y1="0" x2="0" y2="1"`,
-    gradB: horizontal ? `x1="1" y1="0" x2="0" y2="0"` : `x1="0" y1="1" x2="0" y2="0"`,
-    rectA: horizontal ? `x="0" y="0" width="${b}" height="1"` : `x="0" y="0" width="1" height="${b}"`,
-    rectB: horizontal ? `x="${far}" y="0" width="${b}" height="1"` : `x="0" y="${far}" width="1" height="${b}"`,
-  };
-}
-
-/**
- * Displacement map for one axis, following the shader's refracted profile.
- *
- * Each axis writes to its own channel — x to red, y to green — because the two maps are
- * summed into one. Greyscale maps would put both ramps into both channels, and the top and
- * bottom bands would then shove the backdrop sideways as well as inward.
- */
-function displacementMap(axis: "x" | "y", band: number, edge: number, refraction: number): string {
-  const { gradA, gradB, rectA, rectB } = bands(axis, band);
-  const paint = (v: number) => (axis === "x" ? `rgb(${v},128,128)` : `rgb(128,${v},128)`);
-  const stops = (sign: 1 | -1) =>
-    PROFILE.map((t) => {
-      const shift = Math.min(inwardShift(t, edge, refraction), MAX_SHIFT) / MAX_SHIFT;
-      return `<stop offset="${t}" stop-color="${paint(Math.round(128 + sign * 127 * shift))}"/>`;
-    }).join("");
-  return dataUri(
-    `<defs><linearGradient id="a" ${gradA}>${stops(1)}</linearGradient>` +
-      `<linearGradient id="b" ${gradB}>${stops(-1)}</linearGradient></defs>` +
-      `<rect width="1" height="1" fill="rgb(128,128,128)"/>` +
-      `<rect ${rectA} fill="url(#a)"/><rect ${rectB} fill="url(#b)"/>`,
-  );
+/** The measured box used to build a shape-correct rounded-rectangle lens map. */
+export interface GlassGeometry {
+  width: number;
+  height: number;
+  radius: number;
 }
 
 interface FilterSpec {
   id: string;
-  /**
-   * The band as a fraction of the box. u_edge is a pixel width, but the map is stretched to
-   * whatever the element measures, so this is the fraction it works out to on a typical
-   * card of this kind.
-   */
-  band: number;
-  /** u_edge in pixels. */
   edge: number;
-  /** u_refraction, which the shader turns into an index of refraction. */
   refraction: number;
   blur: number;
   saturation: number;
-  /** u_chroma: how much further red bends than blue. */
   chroma: number;
+  bend: number;
 }
 
+const MAX_SHIFT = 40;
+const MAP_LONG_SIDE = 160;
+const MAP_CACHE_LIMIT = 80;
+
 const specs: FilterSpec[] = [
-  // 28px of edge on a card around 310px across its shorter run.
-  { id: "lg-card", band: 0.09, edge: SHADER.edge, refraction: SHADER.refraction, blur: 5, saturation: SHADER.saturation, chroma: SHADER.chroma },
-  // Dial knobs and play buttons keep the lighter treatment used by those design nodes.
-  { id: "lg-knob", band: 0.4, edge: 14, refraction: 16, blur: 2.2, saturation: SHADER.saturation, chroma: SHADER.chroma },
-  // Slider thumbs use the stronger full-height frost treatment from the slider designs.
-  { id: "lg-slider-knob", band: 0.4, edge: 20, refraction: 10, blur: 12, saturation: SHADER.saturation, chroma: SHADER.chroma },
+  { id: "lg-card", edge: SHADER.edge, refraction: SHADER.refraction, blur: 5, saturation: SHADER.saturation, chroma: SHADER.chroma, bend: 0.34 },
+  { id: "lg-knob", edge: 14, refraction: 16, blur: 2.2, saturation: SHADER.saturation, chroma: SHADER.chroma, bend: 0.46 },
+  { id: "lg-slider-knob", edge: 20, refraction: 10, blur: 12, saturation: SHADER.saturation, chroma: SHADER.chroma, bend: 0.38 },
 ];
 
-/** feColorMatrix that keeps one channel and leaves alpha opaque, ready to be summed. */
+const DEFAULT_CARD: GlassGeometry = { width: 320, height: 190, radius: 40 };
+const DEFAULT_KNOB: GlassGeometry = { width: 64, height: 64, radius: 32 };
+const DEFAULT_SLIDER_KNOB: GlassGeometry = { width: 44, height: 44, radius: 22 };
+const mapCache = new Map<string, string>();
+
 const CHANNEL = {
   r: "1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0",
   g: "0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0",
   b: "0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0",
 };
 
-/**
- * Red and blue take a different index of refraction, so they land at slightly different
- * displacements. One map serves all three passes; the ratio is measured mid-band, where
- * the curve is smooth enough for a single scale factor to stand in for it.
- */
+const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
+
+/** Standard rounded-box signed distance: negative inside, positive outside. */
+function roundedBoxSdf(x: number, y: number, width: number, height: number, radius: number): number {
+  const halfW = width / 2;
+  const halfH = height / 2;
+  const r = clamp(radius, 0, Math.min(halfW, halfH));
+  const qx = Math.abs(x - halfW) - halfW + r;
+  const qy = Math.abs(y - halfH) - halfH + r;
+  return Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - r;
+}
+
+function normalAt(x: number, y: number, geometry: GlassGeometry): [number, number] {
+  const e = 0.6;
+  const dx =
+    roundedBoxSdf(x + e, y, geometry.width, geometry.height, geometry.radius) -
+    roundedBoxSdf(x - e, y, geometry.width, geometry.height, geometry.radius);
+  const dy =
+    roundedBoxSdf(x, y + e, geometry.width, geometry.height, geometry.radius) -
+    roundedBoxSdf(x, y - e, geometry.width, geometry.height, geometry.radius);
+  const length = Math.hypot(dx, dy) || 1;
+  return [dx / length, dy / length];
+}
+
+/** Rasterise one exact rounded-rectangle SDF into R/G displacement channels. */
+function sdfMap(geometry: GlassGeometry, spec: FilterSpec): string | undefined {
+  if (typeof document === "undefined") return undefined;
+  const width = Math.max(1, geometry.width);
+  const height = Math.max(1, geometry.height);
+  const radius = clamp(geometry.radius, 0, Math.min(width, height) / 2);
+  const key = [spec.id, Math.round(width / 4) * 4, Math.round(height / 4) * 4, Math.round(radius / 2) * 2].join(":");
+  const cached = mapCache.get(key);
+  if (cached) return cached;
+
+  const scale = Math.min(1, MAP_LONG_SIDE / Math.max(width, height));
+  const mapW = Math.max(32, Math.round(width * scale));
+  const mapH = Math.max(32, Math.round(height * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = mapW;
+  canvas.height = mapH;
+  const context = canvas.getContext("2d");
+  if (!context) return undefined;
+  const image = context.createImageData(mapW, mapH);
+  const exact = { width, height, radius };
+
+  for (let row = 0; row < mapH; row += 1) {
+    const y = ((row + 0.5) / mapH) * height;
+    for (let col = 0; col < mapW; col += 1) {
+      const x = ((col + 0.5) / mapW) * width;
+      const sdf = roundedBoxSdf(x, y, width, height, radius);
+      const index = (row * mapW + col) * 4;
+      let dx = 0;
+      let dy = 0;
+
+      if (sdf <= 1) {
+        const inside = Math.max(0, -sdf);
+        const t = clamp(inside / Math.max(spec.edge, 1), 0, 1);
+        let shift = Math.min(inwardShift(t, spec.edge, spec.refraction), MAX_SHIFT);
+        // A soft meniscus just inside the contour makes the background wrap at the lip.
+        const lip = clamp(1 - inside / Math.max(3, spec.edge * 0.42), 0, 1);
+        shift += spec.bend * 6.75 * lip * lip * (1 - lip);
+        const [outX, outY] = normalAt(x, y, exact);
+        dx = -outX * shift;
+        dy = -outY * shift;
+      }
+
+      image.data[index] = Math.round(clamp(128 + (dx / MAX_SHIFT) * 127, 0, 255));
+      image.data[index + 1] = Math.round(clamp(128 + (dy / MAX_SHIFT) * 127, 0, 255));
+      image.data[index + 2] = 128;
+      image.data[index + 3] = 255;
+    }
+  }
+
+  context.putImageData(image, 0, 0);
+  const url = canvas.toDataURL("image/png");
+  mapCache.set(key, url);
+  if (mapCache.size > MAP_CACHE_LIMIT) mapCache.delete(mapCache.keys().next().value as string);
+  return url;
+}
+
 function chromaScale(spec: FilterSpec, sign: 1 | -1): number {
   const mid = 0.15;
   const base = inwardShift(mid, spec.edge, spec.refraction);
@@ -116,24 +126,16 @@ function chromaScale(spec: FilterSpec, sign: 1 | -1): number {
   return base > 0 ? shifted / base : 1;
 }
 
-function filter(spec: FilterSpec) {
-  const mapX = displacementMap("x", spec.band, spec.edge, spec.refraction);
-  const mapY = displacementMap("y", spec.band, spec.edge, spec.refraction);
-  // The map stores the pull normalised to MAX_SHIFT, and a channel spans ±0.5 of `scale`.
+function filter(spec: FilterSpec, geometry: GlassGeometry) {
+  const map = sdfMap(geometry, spec);
   const scale = MAX_SHIFT * 2;
-
   return svg`
     <filter id=${spec.id} x="0" y="0" width="1" height="1" color-interpolation-filters="sRGB">
-      <!-- No x/y/width/height: those are user-space units, and pinning them to 1 makes
-           Chromium clip the whole result to a one-unit box. Left out, each image stretches
-           to the filter region, which is the element. -->
-      <feImage href=${mapX} preserveAspectRatio="none" result="mx" />
-      <feImage href=${mapY} preserveAspectRatio="none" result="my" />
-      <feComposite in="mx" in2="my" operator="arithmetic" k1="0" k2="1" k3="1" k4="-0.5" result="map" />
-
+      ${map
+        ? svg`<feImage href=${map} preserveAspectRatio="none" result="map" />`
+        : svg`<feFlood flood-color="rgb(128,128,128)" result="map" />`}
       <feGaussianBlur in="SourceGraphic" stdDeviation=${spec.blur} result="blurred" />
       <feColorMatrix in="blurred" type="saturate" values=${String(spec.saturation)} result="sat" />
-
       <feDisplacementMap in="sat" in2="map" scale=${scale * chromaScale(spec, -1)} xChannelSelector="R" yChannelSelector="G" result="dr" />
       <feDisplacementMap in="sat" in2="map" scale=${scale} xChannelSelector="R" yChannelSelector="G" result="dg" />
       <feDisplacementMap in="sat" in2="map" scale=${scale * chromaScale(spec, 1)} xChannelSelector="R" yChannelSelector="G" result="db" />
@@ -145,18 +147,23 @@ function filter(spec: FilterSpec) {
     </filter>`;
 }
 
-export const glassDefs = html`<svg class="lg-defs" aria-hidden="true" focusable="false">
-  <defs>${specs.map(filter)}</defs>
-</svg>`;
+/** Card-local definitions. Geometry is measured by the base card and cached in 4px buckets. */
+export function glassDefsFor(geometry: GlassGeometry = DEFAULT_CARD): TemplateResult {
+  return html`<svg class="lg-defs" aria-hidden="true" focusable="false">
+    <defs>
+      ${filter(specs[0], geometry)}
+      ${filter(specs[1], DEFAULT_KNOB)}
+      ${filter(specs[2], DEFAULT_SLIDER_KNOB)}
+    </defs>
+  </svg>`;
+}
 
-/** Knob-only defs for components that live in their own shadow root (lg-slider). */
+export const glassDefs = glassDefsFor();
 export const knobDefs = html`<svg class="lg-defs" aria-hidden="true" focusable="false" style="position:absolute;width:0;height:0">
-  <defs>${filter(specs[1])}</defs>
+  <defs>${filter(specs[1], DEFAULT_KNOB)}</defs>
 </svg>`;
-
-/** Strong-frost slider defs for components that live in their own shadow root. */
 export const sliderKnobDefs = html`<svg class="lg-defs" aria-hidden="true" focusable="false" style="position:absolute;width:0;height:0">
-  <defs>${filter(specs[2])}</defs>
+  <defs>${filter(specs[2], DEFAULT_SLIDER_KNOB)}</defs>
 </svg>`;
 
 let cachedSupport: boolean | undefined;
@@ -168,9 +175,12 @@ export function supportsRefraction(): boolean {
   const isChromium = /Chrome\/|Chromium\/|CriOS\//.test(ua) || Boolean((navigator as unknown as { userAgentData?: unknown }).userAgentData);
   const isSafari = /Safari\//.test(ua) && !/Chrome\/|Chromium\/|CriOS\//.test(ua);
   const isFirefox = /Firefox\//.test(ua);
-  // Android/HA WebViews can report CSS support while silently dropping SVG URL filters.
-  // Keep `auto` deterministic there; users can still explicitly opt in with refraction: true.
   const isEmbeddedWebView = /\bwv\b|Home[ /]?Assistant/i.test(ua);
-  cachedSupport = isChromium && !isSafari && !isFirefox && !isEmbeddedWebView && CSS.supports("backdrop-filter", "blur(1px)");
+  cachedSupport =
+    isChromium &&
+    !isSafari &&
+    !isFirefox &&
+    !isEmbeddedWebView &&
+    CSS.supports("backdrop-filter", "url(#lg-test)");
   return cachedSupport;
 }

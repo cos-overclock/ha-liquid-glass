@@ -118,6 +118,20 @@ export class LiquidGlassClimateCard extends LiquidGlassBaseCard<ClimateCardConfi
         cursor: grab;
         transition: left 0.45s cubic-bezier(0.3, 0.8, 0.3, 1), top 0.45s cubic-bezier(0.3, 0.8, 0.3, 1), transform 0.12s ease;
       }
+      /* Keep the real dial/ring visible below the shader. The WebGL layer supplies the
+         liquid rim while backdrop-filter supplies the pixels it cannot sample itself. */
+      .dial-knob:has(> .dial-knob-shader) {
+        background: rgba(255, 255, 255, 0.14);
+        -webkit-backdrop-filter: blur(3px) saturate(1.35);
+        backdrop-filter: blur(3px) saturate(1.35);
+        box-shadow:
+          0 3px 8px rgba(0, 0, 0, 0.3),
+          inset 0 0 0 1px rgba(255, 255, 255, 0.62);
+      }
+      :host([refraction]) .dial-knob:has(> .dial-knob-shader) {
+        -webkit-backdrop-filter: url(#lg-knob);
+        backdrop-filter: url(#lg-knob);
+      }
       /* Anything that eased towards the finger would feel like lag, so while a drag is in
          flight the knob and the arc track the pointer exactly. */
       .dial.dragging .dial-knob {
@@ -929,7 +943,25 @@ export class LiquidGlassClimateCard extends LiquidGlassBaseCard<ClimateCardConfi
     return html`<div
       class="dial-knob knob"
       style=${styleMap({ left: `${((x / DIAL) * 100).toFixed(3)}%`, top: `${((y / DIAL) * 100).toFixed(3)}%` })}
-    >${this.renderControlSurface()}</div>`;
+    >
+      ${this.refraction
+        ? nothing
+        : html`<lg-glass-surface
+        class="lg-control-shader dial-knob-shader"
+        shape="circle"
+        .palette=${this.isDark ? ["#242529", "#45474d"] : ["#ffffff", "#d8d9dc"]}
+        .radius=${999}
+        .edge=${14}
+        .refraction=${0}
+        .blurRadius=${3}
+        .highQualityBlur=${true}
+        .renderScale=${1.5}
+        .pixelRatioLimit=${3}
+        .highlight=${1.1}
+        .tintAlpha=${0.22}
+        .surfaceAlpha=${0.52}
+      ></lg-glass-surface>`}
+    </div>`;
   }
 
   private renderDetail(kind: "fan_mode" | "preset_mode" | "swing_mode", icon: string) {
@@ -1014,7 +1046,6 @@ export class LiquidGlassClimateCard extends LiquidGlassBaseCard<ClimateCardConfi
 
     return html`${this.renderDefs()}
       <div class="glass card climate-compact">
-        ${this.renderCardSurface()}
         <div class="header">
           ${this.renderIconWell(this.config.icon ?? theme.icon, theme.well)}
           ${this.renderTitle(this.entityName, this.tileStateText())}
@@ -1063,20 +1094,22 @@ export class LiquidGlassClimateCard extends LiquidGlassBaseCard<ClimateCardConfi
                     class="tile-thumb"
                     style=${styleMap({ "--value": String(this.ratio(value)), "--tile-thumb-color": thumbColor })}
                   >
-                    <lg-glass-surface
+                    ${this.refraction
+                      ? nothing
+                      : html`<lg-glass-surface
                       shape="circle"
                       .palette=${[thumbColor, thumbColor, this.isDark ? "#24242c" : "#dedde2", this.isDark ? "#24242c" : "#dedde2"]}
                       .stops=${[0, 0.44, 0.56, 1]}
                       .radius=${999}
                       .edge=${20}
-                      .refraction=${this.refraction ? 10 : 0}
+                      .refraction=${0}
                       .blurRadius=${12}
                       .highQualityBlur=${true}
                       .renderScale=${1.5}
                       .pixelRatioLimit=${3}
                       .highlight=${1.25}
-                      .tintAlpha=${this.refraction ? 0.28 : 0.18}
-                    ></lg-glass-surface>
+                      .tintAlpha=${0.18}
+                    ></lg-glass-surface>`}
                   </div>`;
                 },
               )}
@@ -1104,7 +1137,7 @@ export class LiquidGlassClimateCard extends LiquidGlassBaseCard<ClimateCardConfi
               class="tile-modes"
               style=${styleMap({ "--selected-color": selected, "--n": String(modes.length), "--i": String(Math.max(modes.indexOf(this.mode), 0)) })}
             >
-              <div class="tile-mode-pill" style=${styleMap({ opacity: modes.includes(this.mode) ? "1" : "0" })}>${this.renderControlSurface(undefined, "pill")}</div>
+              <div class="tile-mode-pill" style=${styleMap({ opacity: modes.includes(this.mode) ? "1" : "0" })}></div>
               ${modes.map((mode) => {
                 const meta = this.tileModeMeta(mode);
                 return html`<button
@@ -1140,7 +1173,6 @@ export class LiquidGlassClimateCard extends LiquidGlassBaseCard<ClimateCardConfi
 
     return html`${this.renderDefs()}
       <div class="glass card">
-        ${this.renderCardSurface()}
         <div class="header">
           ${this.renderIconWell(this.config.icon ?? theme.icon, theme.well)}
           ${this.renderTitle(this.entityName, this.stateText())}
@@ -1160,7 +1192,7 @@ export class LiquidGlassClimateCard extends LiquidGlassBaseCard<ClimateCardConfi
                 single element can travel; two cross-fading ones read as a blink.
                 An unlisted mode leaves nothing selected, so the pill sits out.
               -->
-              <div class="seg-pill" style=${styleMap({ opacity: modes.includes(this.mode) ? "1" : "0" })}>${this.renderControlSurface(undefined, "pill")}</div>
+              <div class="seg-pill" style=${styleMap({ opacity: modes.includes(this.mode) ? "1" : "0" })}></div>
               ${modes.map((m) => {
                 const meta = this.modeMeta(m);
                 return html`<button class=${classMap({ selected: m === this.mode })} @click=${() => this.callService("climate", "set_hvac_mode", { hvac_mode: m })}>

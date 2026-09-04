@@ -10,15 +10,15 @@ export const tokens = css`
     --lg-text-primary: #1c1c1e;
     --lg-text-secondary: rgba(60, 60, 67, 0.65);
     --lg-glass-tint: 255, 255, 255;
-    --lg-glass-tint-alpha: 0.32;
+    --lg-glass-tint-alpha: 0.2;
     --lg-glass-stroke: rgba(255, 255, 255, 0.7);
     --lg-glass-inner: rgba(255, 255, 255, 0.5);
     --lg-track-bg: rgba(255, 255, 255, 0.4);
     --lg-shadow-glass: rgba(28, 28, 30, 0.18);
     --lg-segment-selected: rgba(255, 255, 255, 0.85);
     --lg-glass-tint-active: 255, 255, 255;
-    --lg-glass-tint-active-alpha: 0.62;
-    --lg-glass-stroke-active: rgba(255, 255, 255, 0.9);
+    --lg-glass-tint-active-alpha: 0.34;
+    --lg-glass-stroke-active: rgba(255, 255, 255, 0.82);
     --lg-trend-up: #1e9e4a;
     --lg-trend-up-bg: rgba(48, 209, 88, 0.18);
     --lg-trend-down: #0a7ea4;
@@ -35,6 +35,7 @@ export const tokens = css`
     /* Group panel: a container that holds glass cards, so it must not be glass itself. */
     --lg-group-panel: rgba(255, 255, 255, 0.32);
     --lg-group-panel-stroke: rgba(255, 255, 255, 0.54);
+    --lg-separator-line: rgba(28, 28, 30, 0.12);
 
     --lg-accent: #ffb340;
     --lg-accent-deep: #ff8a1f;
@@ -75,15 +76,15 @@ export const tokens = css`
     --lg-text-primary: #ffffff;
     --lg-text-secondary: rgba(235, 235, 245, 0.65);
     --lg-glass-tint: 28, 28, 30;
-    --lg-glass-tint-alpha: 0.36;
+    --lg-glass-tint-alpha: 0.24;
     --lg-glass-stroke: rgba(255, 255, 255, 0.25);
     --lg-glass-inner: rgba(255, 255, 255, 0.12);
     --lg-track-bg: rgba(255, 255, 255, 0.14);
     --lg-shadow-glass: rgba(0, 0, 0, 0.45);
     --lg-segment-selected: rgba(255, 255, 255, 0.2);
     --lg-glass-tint-active: 255, 255, 255;
-    --lg-glass-tint-active-alpha: 0.3;
-    --lg-glass-stroke-active: rgba(255, 255, 255, 0.4);
+    --lg-glass-tint-active-alpha: 0.22;
+    --lg-glass-stroke-active: rgba(255, 255, 255, 0.36);
     --lg-trend-up: #4cde73;
     --lg-trend-up-bg: rgba(48, 209, 88, 0.2);
     --lg-trend-down: #5dd6ee;
@@ -98,5 +99,19 @@ export const tokens = css`
     --lg-motion-label: #ffc46b;
     --lg-group-panel: rgba(255, 255, 255, 0.08);
     --lg-group-panel-stroke: rgba(255, 255, 255, 0.12);
+    --lg-separator-line: rgba(255, 255, 255, 0.14);
+  }
+
+  /* Clear glass is reserved for surfaces over photos/video or user-selected showcase UI. */
+  :host([glass-variant="clear"]) {
+    --lg-glass-tint-alpha: 0.07;
+    --lg-blur: 3px;
+    --lg-saturation: 1.45;
+    --lg-rim-gain: 1.12;
+  }
+
+  :host([dark][glass-variant="clear"]) {
+    --lg-glass-tint-alpha: 0.1;
+    --lg-rim-gain: 0.94;
   }
 `;

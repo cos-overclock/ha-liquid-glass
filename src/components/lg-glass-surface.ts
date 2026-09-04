@@ -22,6 +22,7 @@ uniform float u_highlight;
 uniform float u_lightAngle;
 uniform float u_saturation;
 uniform float u_tintAlpha;
+uniform float u_surfaceAlpha;
 uniform vec3 u_tint;
 uniform vec3 u_colors[4];
 uniform vec4 u_stops;
@@ -124,7 +125,8 @@ void main() {
   col -= back * (1.0 - normal.z) * 0.14;
   float dither = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) - 0.5;
   col += dither / 768.0;
-  gl_FragColor = vec4(clamp(col, 0.0, 1.0) * coverage, coverage);
+  float alpha = coverage * clamp(u_surfaceAlpha, 0.0, 1.0);
+  gl_FragColor = vec4(clamp(col, 0.0, 1.0) * alpha, alpha);
 }
 `;
 
@@ -244,6 +246,7 @@ class SharedGlassRenderer {
     f("u_lightAngle", options.lightAngle);
     f("u_saturation", options.saturation);
     f("u_tintAlpha", options.tintAlpha);
+    f("u_surfaceAlpha", options.surfaceAlpha);
     gl.uniform3fv(gl.getUniformLocation(p, "u_tint"), parseColor(options.tint));
     const palette = [...options.palette];
     while (palette.length < 4) palette.push(palette[palette.length - 1] ?? "#b8b8c2");
@@ -279,6 +282,8 @@ export class LgGlassSurface extends LitElement {
   @property({ type: Number }) lightAngle = 120;
   @property({ type: Number }) saturation = 1.35;
   @property({ type: Number }) tintAlpha = 0.22;
+  /** Final compositing alpha. Keep at 1 for opaque simulated backdrops. */
+  @property({ type: Number }) surfaceAlpha = 1;
   @property() tint = "#ffffff";
   private observer?: ResizeObserver;
 

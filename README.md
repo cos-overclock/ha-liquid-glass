@@ -32,10 +32,12 @@ Home Assistant 2026.6 以降では、ダッシュボード編集時に先にエ�
 
 ## Liquid Glass 効果について
 
-デザインファイルの `liquid-glass.glsl` シェーダ（エッジ屈折 + ブラー + 彩度 + リムハイライト）を CSS / SVG で再現しています。
+デザインファイルの `liquid-glass.glsl` シェーダ（エッジ屈折 + ブラー + 彩度 + リムハイライト）を、カード本体では CSS / SVG、スライダーやノブなどの操作部では WebGL で再現しています。カード本体は Home Assistant のダッシュボード背景を実際に透過・ぼかします。
 
 - ブラー・彩度・ティント・リムハイライト・内側グロー・影: すべてのモダンブラウザで動作
 - エッジ屈折（`feDisplacementMap` を使った `backdrop-filter: url(#lg-card)`）: Chromium 系ブラウザのみ。Safari / Firefox では自動的に通常のブラー表示にフォールバックします
+- スライダー・ノブ: WebGL シェーダ描画を維持します。ダイヤルノブは実バックドロップの上へ半透明シェーダーを重ねます
+- モード選択ピル: 背景透過と表示安定性を優先し、CSS の半透明サーフェスで描画します
 - 背景がカラフルなほど効果が映えます。ダッシュボードのテーマで `background` にグラデーション画像を設定することを推奨します
 
 ## アニメーション
@@ -101,8 +103,11 @@ name: リビング              # 表示名（省略時は friendly_name）
 icon: mdi:lightbulb         # アイコン上書き
 refraction: auto            # auto | true | false（SVG 屈折フィルタ）
 theme: auto                 # auto | light | dark
+glass_variant: regular      # regular | clear（写真・映像上では clear が有効）
 language: ja                # 省略時は HA の言語設定
 ```
+
+`regular` は文字の読みやすさを保つ標準素材です。`clear` は tint と blur を抑えて背後の写真や映像を優先します。屈折対応ブラウザではカードの実寸と角丸からSDF変位マップを生成し、サイズ変更時だけ再生成します。スライダーやトグルなどの小型コントロールは、対応環境では推定色ではなく実際のトラックやカード面を屈折します。
 
 ### Light
 
