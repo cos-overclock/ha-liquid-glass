@@ -244,6 +244,77 @@ export const reactCardStyles = `
     }
   }
 
+  .toggle {
+    flex: none;
+    width: 51px;
+    height: 31px;
+    border-radius: 16px;
+    padding: 2px;
+    display: flex;
+    align-items: center;
+    background: rgba(120, 120, 128, 0.36);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+    cursor: pointer;
+    transition: background 0.25s ease;
+  }
+  .toggle.on {
+    background: var(--toggle-color, var(--lg-accent));
+  }
+  .toggle .knob-dot {
+    width: 27px;
+    height: 27px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+    transform: translateX(0);
+    transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .toggle.on .knob-dot {
+    transform: translateX(20px);
+  }
+
+  .segment {
+    display: flex;
+    gap: 2px;
+    padding: 3px;
+    border-radius: 18px;
+    background: var(--lg-track-bg);
+    box-shadow: inset 0 0 0 1px var(--lg-glass-stroke);
+  }
+  .segment > button {
+    flex: 1;
+    min-width: 0;
+    height: 30px;
+    border: 0;
+    border-radius: 15px;
+    background: transparent;
+    color: var(--lg-text-secondary);
+    font: inherit;
+    font-size: var(--lg-label);
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 0;
+    transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .segment > button.selected {
+    background: var(--lg-segment-selected);
+    color: var(--lg-text-primary);
+    font-weight: 600;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.14);
+  }
+
+  .dim {
+    opacity: 0.45;
+  }
+  .muted {
+    opacity: 0.6;
+  }
+
   .ticks {
     display: flex;
     justify-content: space-between;
