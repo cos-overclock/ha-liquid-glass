@@ -41,6 +41,7 @@ export class LgSlider extends LitElement {
   private wobble = 0;
   private wobbleTarget = 0;
   private wobbleFrame?: number;
+  private activeTimer?: number;
 
   static override styles = css`
     :host {
@@ -145,13 +146,34 @@ export class LgSlider extends LitElement {
       -webkit-backdrop-filter: url(#lg-slider-knob);
       backdrop-filter: url(#lg-slider-knob);
     }
+    /*
+     * A slider stays opaque at rest and only turns to glass while it is moving, so the
+     * glass knob is rendered all the time and this cap hides it until an interaction.
+     */
+    .knob-cap {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: var(--lg-knob-solid);
+      box-shadow: inset 0 0 0 1px var(--lg-knob-solid-rim);
+      transition: opacity 0.22s ease;
+    }
+    :host([active]) .knob-cap {
+      opacity: 0;
+      transition-duration: 0.12s;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .knob-cap {
+        transition-duration: 0.01ms !important;
+      }
+    }
     .knob:has(> lg-glass-surface) {
       background: transparent;
       -webkit-backdrop-filter: none;
       backdrop-filter: none;
       box-shadow: 0 5px 14px rgba(0, 0, 0, 0.38);
     }
-    :host([dragging]) .knob {
+    :host([active]) .knob {
       transform: scaleX(calc(1.06 - var(--lg-wobble, 0) * 0.1)) scaleY(calc(1.06 + var(--lg-wobble, 0) * 0.2));
     }
   `;
@@ -182,6 +204,7 @@ export class LgSlider extends LitElement {
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     this.dragging = true;
     this.toggleAttribute("dragging", true);
+    this.setActive(true);
     this.dragValue = this.valueFromEvent(e);
     this.lastPointerX = e.clientX;
     this.lastPointerTime = e.timeStamp;
@@ -206,11 +229,21 @@ export class LgSlider extends LitElement {
     if (!this.dragging) return;
     this.dragging = false;
     this.toggleAttribute("dragging", false);
+    this.setActive(false);
     const v = this.valueFromEvent(e);
     this.value = v;
     this.setWobbleTarget(0);
     this.dispatchEvent(new CustomEvent("lg-change", { detail: { value: v }, bubbles: true, composed: true }));
   };
+
+  /** Glass is only shown while the slider moves; a key press holds it for a beat. */
+  private setActive(active: boolean, hold = 0): void {
+    clearTimeout(this.activeTimer);
+    this.toggleAttribute("active", active);
+    if (active && hold > 0) {
+      this.activeTimer = window.setTimeout(() => this.toggleAttribute("active", this.dragging), hold);
+    }
+  }
 
   private setWobbleTarget(value: number): void {
     this.wobbleTarget = matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : value;
@@ -232,6 +265,7 @@ export class LgSlider extends LitElement {
 
   override disconnectedCallback(): void {
     if (this.wobbleFrame !== undefined) cancelAnimationFrame(this.wobbleFrame);
+    clearTimeout(this.activeTimer);
     super.disconnectedCallback();
   }
 
@@ -246,6 +280,7 @@ export class LgSlider extends LitElement {
     else return;
     e.preventDefault();
     this.value = clamp(v, this.min, this.max);
+    this.setActive(true, 320);
     this.dispatchEvent(new CustomEvent("lg-change", { detail: { value: this.value }, bubbles: true, composed: true }));
   };
 
@@ -308,6 +343,7 @@ export class LgSlider extends LitElement {
                 .highlight=${1.25}
                 .tintAlpha=${0.18}
               ></lg-glass-surface>`}
+              <div class="knob-cap"></div>
             </div>`
           : nothing}
       </div>

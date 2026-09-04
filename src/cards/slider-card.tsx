@@ -191,30 +191,18 @@ const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}${glassS
   .value.zero .num { color: var(--lg-text-secondary); }
   .track-wrap {
     position: relative;
-    --lg-slider-height: var(--lg-track-h, 56px);
+    --lg-slider-height: var(--lg-track-h, 44px);
+    --lg-slider-bar-height: var(--lg-bar-h, 12px);
+    --lg-slider-knob-size: var(--lg-knob-size, 32px);
     --lg-slider-fill: linear-gradient(90deg, var(--fill-from), var(--fill-to));
-  }
-  .marks {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 20px;
-    pointer-events: none;
-    z-index: 1;
-  }
-  .marks span {
-    width: 2px;
-    height: 12px;
-    border-radius: 1px;
-    background: rgba(255, 255, 255, 0.5);
   }
   @supports (container-type: inline-size) {
     .card {
       --lg-sv: clamp(20px, 7.4cqi, 28px);
       --lg-sv-unit: clamp(11px, 3.9cqi, 15px);
-      --lg-track-h: clamp(40px, 14.7cqi, 56px);
+      --lg-track-h: clamp(34px, 11.6cqi, 44px);
+      --lg-bar-h: clamp(8px, 3.2cqi, 12px);
+      --lg-knob-size: clamp(24px, 8.4cqi, 32px);
     }
   }
 `;
@@ -352,13 +340,11 @@ function SliderCard({ config, hass, host }: ReactCardProps<SliderCardConfig>) {
           refraction={refraction}
           glassVariant={config.glass_variant}
           showFill={!zero}
+          ticks={tickCount}
           label={config.name ?? friendlyName(entity, config.entity ?? "")}
           onInput={setPreview}
           onChange={commit}
         />
-        {tickCount > 0 && <div className="marks" aria-hidden="true">
-          {Array.from({ length: tickCount }, (_, index) => <span key={index} />)}
-        </div>}
       </div>
 
       {config.show_range !== false && <div className="ticks">

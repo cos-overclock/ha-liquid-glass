@@ -14,6 +14,14 @@ export const tokens = css`
     --lg-glass-stroke: rgba(255, 255, 255, 0.7);
     --lg-glass-inner: rgba(255, 255, 255, 0.5);
     --lg-track-bg: rgba(255, 255, 255, 0.4);
+    /* A slider knob is solid until it is dragged, when the glass under it is revealed. */
+    --lg-knob-solid: #ffffff;
+    --lg-knob-solid-rim: rgba(28, 28, 30, 0.06);
+    --lg-knob-shadow: 0 0.5px 4px rgba(28, 28, 30, 0.16), 0 6px 13px rgba(28, 28, 30, 0.18);
+    --lg-knob-shadow-active: 0 1px 6px rgba(28, 28, 30, 0.18), 0 10px 22px rgba(28, 28, 30, 0.26);
+    /* The unfilled part of a slider bar, matching the neutral fill Apple uses. */
+    --lg-slider-bar-bg: rgba(120, 120, 128, 0.24);
+    --lg-slider-mark: rgba(28, 28, 30, 0.26);
     --lg-shadow-glass: rgba(28, 28, 30, 0.18);
     --lg-segment-selected: rgba(255, 255, 255, 0.85);
     --lg-glass-tint-active: 255, 255, 255;
@@ -80,6 +88,12 @@ export const tokens = css`
     --lg-glass-stroke: rgba(255, 255, 255, 0.25);
     --lg-glass-inner: rgba(255, 255, 255, 0.12);
     --lg-track-bg: rgba(255, 255, 255, 0.14);
+    --lg-knob-solid: #f2f2f7;
+    --lg-knob-solid-rim: rgba(28, 28, 30, 0.12);
+    --lg-knob-shadow: 0 0.5px 4px rgba(0, 0, 0, 0.4), 0 6px 14px rgba(0, 0, 0, 0.42);
+    --lg-knob-shadow-active: 0 1px 6px rgba(0, 0, 0, 0.44), 0 10px 24px rgba(0, 0, 0, 0.5);
+    --lg-slider-bar-bg: rgba(120, 120, 128, 0.36);
+    --lg-slider-mark: rgba(255, 255, 255, 0.4);
     --lg-shadow-glass: rgba(0, 0, 0, 0.45);
     --lg-segment-selected: rgba(255, 255, 255, 0.2);
     --lg-glass-tint-active: 255, 255, 255;

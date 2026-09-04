@@ -11,6 +11,8 @@ export interface GlassSliderProps {
   refraction: boolean;
   glassVariant?: "regular" | "clear";
   showFill?: boolean;
+  /** Step marks drawn along the bar. 0 draws none. */
+  ticks?: number;
   label: string;
   onInput(value: number): void;
   onChange(value: number): void;
@@ -24,34 +26,63 @@ export const glassSliderStyles = `
     -webkit-user-select: none;
   }
   .lg-react-slider.disabled { pointer-events: none; }
+  /*
+   * Apple's slider is a thin capsule with a round thumb riding over it, so the row
+   * height here is only the touch target: the bar and the knob are centred in it.
+   */
   .slider-track {
-    --lg-effective-slider-height: var(--lg-slider-height, 40px);
+    --lg-effective-slider-height: var(--lg-slider-height, 44px);
+    --lg-effective-bar-height: var(--lg-slider-bar-height, 12px);
+    --lg-effective-knob-size: var(--lg-slider-knob-size, 32px);
     position: relative;
     width: 100%;
     height: var(--lg-effective-slider-height);
-    overflow: hidden;
     border-radius: 999px;
-    background: var(--lg-slider-track, var(--lg-track-bg));
-    box-shadow:
-      0 2px 4px rgba(0, 0, 0, 0.14),
-      inset 0 0 0 1px var(--lg-glass-stroke);
     cursor: pointer;
   }
   .slider-track:focus-visible {
     outline: 2px solid var(--lg-cool-deep);
     outline-offset: 2px;
   }
+  /* The bar carries no stroke or drop shadow of its own; it is a flat filled capsule. */
+  .slider-bar {
+    position: absolute;
+    inset-inline: 0;
+    top: calc((var(--lg-effective-slider-height) - var(--lg-effective-bar-height)) / 2);
+    height: var(--lg-effective-bar-height);
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--lg-slider-track, var(--lg-slider-bar-bg));
+  }
   .slider-fill {
     position: absolute;
     inset-block: 0;
     left: 0;
+    border-radius: inherit;
     background: var(--lg-slider-fill, linear-gradient(90deg, #fff8ea, #ffe2a6));
     pointer-events: none;
   }
-  .slider-knob {
-    top: 0;
-    width: var(--lg-effective-slider-height);
-    height: var(--lg-effective-slider-height);
+  /* Step marks sit under the knob, spaced between the two positions it can reach. */
+  .marks {
+    position: absolute;
+    inset-block: 0;
+    inset-inline: calc(var(--lg-effective-knob-size) / 2 - 2px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    pointer-events: none;
+  }
+  .marks span {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--lg-slider-mark);
+  }
+  .slider-knob,
+  .slider-knob-cap {
+    top: calc((var(--lg-effective-slider-height) - var(--lg-effective-knob-size)) / 2);
+    width: var(--lg-effective-knob-size);
+    height: var(--lg-effective-knob-size);
     border-radius: 50%;
     pointer-events: none;
     transform: scaleX(calc(1 - var(--lg-wobble, 0) * 0.1)) scaleY(calc(1 + var(--lg-wobble, 0) * 0.2));
@@ -59,11 +90,42 @@ export const glassSliderStyles = `
       left 80ms linear,
       transform 80ms ease;
   }
-  .lg-react-slider.dragging .slider-knob {
+  /* The glass thumb carries the elevation for both states, so the cap stays flat. */
+  .slider-knob {
+    box-shadow: var(--lg-knob-shadow);
+    transition:
+      left 80ms linear,
+      transform 80ms ease,
+      box-shadow 200ms ease;
+  }
+  /*
+   * A slider reads as opaque at rest and only becomes glass while it is being moved.
+   * The glass knob stays mounted underneath so its filter is already warm; this cap
+   * covers it and fades out the moment a drag or a key press starts.
+   */
+  .slider-knob-cap {
+    background: var(--lg-knob-solid);
+    box-shadow: inset 0 0 0 1px var(--lg-knob-solid-rim);
+    transition:
+      left 80ms linear,
+      transform 80ms ease,
+      opacity 220ms ease;
+  }
+  .lg-react-slider.active .slider-knob-cap {
+    opacity: 0;
+    transition-duration: 80ms, 80ms, 120ms;
+  }
+  /* Lifting the thumb while it is dragged is what sells it as a floating lens. */
+  .lg-react-slider.active .slider-knob {
+    box-shadow: var(--lg-knob-shadow-active);
+  }
+  .lg-react-slider.active .slider-knob,
+  .lg-react-slider.active .slider-knob-cap {
     transform: scaleX(calc(1.06 - var(--lg-wobble, 0) * 0.1)) scaleY(calc(1.06 + var(--lg-wobble, 0) * 0.2));
   }
   @media (prefers-reduced-motion: reduce) {
-    .slider-knob { transition-duration: 0.01ms !important; }
+    .slider-knob,
+    .slider-knob-cap { transition-duration: 0.01ms !important; }
   }
 `;
 
@@ -77,30 +139,39 @@ export function GlassSlider({
   refraction,
   glassVariant = "regular",
   showFill = true,
+  ticks = 0,
   label,
   onInput,
   onChange,
 }: GlassSliderProps) {
   const [dragValue, setDragValue] = useState<number>();
+  /** Keeps the glass exposed for a beat after a key press, the way a drag does. */
+  const [keyActive, setKeyActive] = useState(false);
+  const keyTimer = useRef<number | undefined>(undefined);
   const trackRef = useRef<HTMLDivElement>(null);
+  const knobRef = useRef<HTMLDivElement>(null);
   const lastPointerX = useRef(0);
   const lastPointerTime = useRef(0);
   const wobble = useRef(0);
   const wobbleTarget = useRef(0);
   const wobbleFrame = useRef<number | undefined>(undefined);
   const currentValue = dragValue ?? value;
+  const active = dragValue !== undefined || keyActive;
   const span = max - min || 1;
   const ratio = clamp((currentValue - min) / span, 0, 1);
-  const travel = "(100% - var(--lg-effective-slider-height))";
+  // The knob is the only thing that travels, so it sets the reachable span.
+  const travel = "(100% - var(--lg-effective-knob-size))";
 
   useEffect(() => () => {
     if (wobbleFrame.current !== undefined) cancelAnimationFrame(wobbleFrame.current);
+    window.clearTimeout(keyTimer.current);
   }, []);
 
   const valueFromPointer = (clientX: number): number => {
     const rect = trackRef.current?.getBoundingClientRect();
     if (!rect) return value;
-    const pad = rect.height / 2;
+    // The knob centre stops half a knob in from either end, so that is the dead margin.
+    const pad = (knobRef.current?.offsetWidth || rect.height) / 2;
     const usable = Math.max(1, rect.width - pad * 2);
     const pointerRatio = clamp((clientX - rect.left - pad) / usable, 0, 1);
     let next = min + pointerRatio * (max - min);
@@ -172,25 +243,34 @@ export function GlassSlider({
     else if (event.key === "End") next = max;
     else return;
     event.preventDefault();
+    setKeyActive(true);
+    window.clearTimeout(keyTimer.current);
+    keyTimer.current = window.setTimeout(() => setKeyActive(false), 320);
     onChange(clamp(next, min, max));
   };
 
   const fillStyle: CSSProperties = {
-    width: `calc(var(--lg-effective-slider-height) / 2 + ${travel} * ${ratio})`,
+    width: `calc(var(--lg-effective-knob-size) / 2 + ${travel} * ${ratio})`,
   };
   const knobStyle: CSSProperties = {
     display: "block",
     position: "absolute",
+    // Glass sizes itself to its content when it has no refraction source, so the
+    // knob has to state its width where the library cannot overrule it.
+    width: "var(--lg-effective-knob-size)",
     left: `calc(${travel} * ${ratio})`,
   };
-  const sourceBackground = !showFill || ratio <= 0
-    ? "var(--lg-slider-track, var(--lg-track-bg))"
+  // What the thumb has behind it: the card, crossed by the band of bar it covers.
+  const band = !showFill || ratio <= 0
+    ? "linear-gradient(var(--lg-slider-bar-bg), var(--lg-slider-bar-bg))"
     : ratio >= 1
       ? "linear-gradient(90deg, var(--fill-from), var(--fill-to))"
-      : "linear-gradient(90deg, var(--fill-from) 0%, var(--fill-to) 48%, rgba(var(--lg-glass-tint), 0.18) 52%, var(--lg-slider-track, var(--lg-track-bg)) 100%)";
+      : "linear-gradient(90deg, var(--fill-from) 0%, var(--fill-to) 46%, var(--lg-slider-bar-bg) 54%)";
+  const sourceBackground = `${band} center / 100% 38% no-repeat,
+    radial-gradient(circle at 30% 18%, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.28))`;
 
   return (
-    <div className={`lg-react-slider${dragValue !== undefined ? " dragging" : ""}${disabled ? " disabled" : ""}`}>
+    <div className={`lg-react-slider${active ? " active" : ""}${disabled ? " disabled" : ""}`}>
       <div
         ref={trackRef}
         className="slider-track"
@@ -207,7 +287,12 @@ export function GlassSlider({
         onPointerCancel={finishDrag}
         onKeyDown={onKeyDown}
       >
-        {showFill && <div className="slider-fill" style={fillStyle} />}
+        <div className="slider-bar">
+          {showFill && <div className="slider-fill" style={fillStyle} />}
+        </div>
+        {ticks > 0 && <div className="marks" aria-hidden="true">
+          {Array.from({ length: ticks }, (_, index) => <span key={index} />)}
+        </div>}
         <LiquidGlassSurface
           className="slider-knob"
           refraction={refraction}
@@ -216,6 +301,7 @@ export function GlassSlider({
           sourceBackground={sourceBackground}
           style={knobStyle}
         />
+        <div ref={knobRef} className="slider-knob-cap" style={knobStyle} aria-hidden="true" />
       </div>
     </div>
   );

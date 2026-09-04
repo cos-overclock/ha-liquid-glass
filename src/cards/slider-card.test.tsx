@@ -110,12 +110,20 @@ describe("liquid-glass-slider-card", () => {
     expect(LiquidGlassSliderCard.getStubConfig?.(element.hass)).toEqual({ entity: fan.entity_id });
 
     const track = mockTrack(element);
+    const slider = element.shadowRoot?.querySelector(".lg-react-slider");
+    // The knob is capped opaque until it moves, then the glass under the cap is revealed.
+    expect(element.shadowRoot?.querySelector(".slider-knob-cap")).toBeTruthy();
+    expect(slider?.classList.contains("active")).toBe(false);
+
     await act(async () => {
       track.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, button: 0, clientX: 223 }));
     });
+    expect(slider?.classList.contains("active")).toBe(true);
+
     await act(async () => {
       track.dispatchEvent(new MouseEvent("pointerup", { bubbles: true, button: 0, clientX: 223 }));
     });
+    expect(slider?.classList.contains("active")).toBe(false);
 
     expect(callService).toHaveBeenCalledWith("fan", "set_percentage", {
       entity_id: fan.entity_id,

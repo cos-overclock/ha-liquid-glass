@@ -250,7 +250,7 @@ unit: "%"
 decimals: 0
 ```
 
-トラックには丸いガラスのつまみが乗ります。つまみをドラッグするか、トラックの任意の位置を押すと値が変わります。指を離した後は、Home Assistant が新しい状態を返すまで操作後の値を表示し続けるので、一瞬元の値に戻ることはありません。
+トラックは細いカプセル状のバーで、その上を丸いつまみが動きます。Apple 純正のスライダーと同じく、待機中のつまみは不透明で、ドラッグやキー操作で値を動かしている間だけガラスに変わります。つまみをドラッグするか、トラックの任意の位置を押すと値が変わります。指を離した後は、Home Assistant が新しい状態を返すまで操作後の値を表示し続けるので、一瞬元の値に戻ることはありません。
 
 次のドメインは設定なしで読み書きできます。最小値、最大値、刻み幅、単位はエンティティの属性から取ります。
 
@@ -445,4 +445,4 @@ src/
   cards/*.ts(x)               各カード（React へ順次移行）
 ```
 
-主なトークンに加えて、スライダーカードは `--lg-slider-accent` `--lg-slider-accent-deep` `--lg-slider-accent-light` `--lg-slider-fill-light` を使います。
+主なトークンに加えて、スライダーカードは `--lg-slider-accent` `--lg-slider-accent-deep` `--lg-slider-accent-light` `--lg-slider-fill-light` を使います。バーとつまみは `--lg-slider-bar-bg`（未充填部分）`--lg-slider-mark`（目盛り）`--lg-knob-solid` `--lg-knob-solid-rim`（待機中のつまみ）`--lg-knob-shadow` `--lg-knob-shadow-active`（つまみの影）で調整できます。
