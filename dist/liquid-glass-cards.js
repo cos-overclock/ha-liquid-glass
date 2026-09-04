@@ -11132,15 +11132,21 @@ var gn = /* @__PURE__ */ o(((e) => {
 function On(e) {
 	let t = e.tagName, n = e;
 	Dn.definitions.set(t, n);
-	let r = Dn.constructors.get(t);
-	if (r) {
-		let n = r;
+	let r = Dn.constructors.get(t), i = customElements.get(t);
+	if (r && i === r) {
+		let n = i;
 		n.getConfigElement = e.getConfigElement, n.getStubConfig = e.getStubConfig;
 		for (let e of Dn.instances.get(t) ?? []) e.requestRender();
 		return n;
 	}
-	if (customElements.get(t)) throw Error(`Cannot register React card: custom element "${t}" already exists`);
-	class i extends HTMLElement {
+	if (i) {
+		let n = i;
+		Dn.constructors.set(t, n), n.getConfigElement = e.getConfigElement, n.getStubConfig = e.getStubConfig;
+		for (let e of Dn.instances.get(t) ?? []) e.requestRender();
+		return n;
+	}
+	Dn.constructors.delete(t);
+	class a extends HTMLElement {
 		constructor() {
 			super();
 			let e = this.attachShadow({ mode: "open" });
@@ -11183,8 +11189,8 @@ function On(e) {
 			return e;
 		}
 	}
-	let a = i;
-	return e.getConfigElement && (a.getConfigElement = e.getConfigElement), e.getStubConfig && (a.getStubConfig = e.getStubConfig), Dn.constructors.set(t, a), customElements.define(t, a), a;
+	let o = a;
+	return e.getConfigElement && (o.getConfigElement = e.getConfigElement), e.getStubConfig && (o.getStubConfig = e.getStubConfig), Dn.constructors.set(t, o), customElements.define(t, o), o;
 }
 //#endregion
 //#region node_modules/react/cjs/react-jsx-runtime.production.js
@@ -18643,7 +18649,7 @@ var ca = On({
 		icon: "mdi:lightbulb-outline",
 		style: "pill"
 	})
-}), la = "0.6.0", ua = "2026-09-04 14:07", da = "https://github.com/cos-overclock/ha-liquid-glass", fa = (e, t) => !!((e.attributes.supported_features ?? 0) & t);
+}), la = "0.6.0", ua = "2026-09-04 14:13", da = "https://github.com/cos-overclock/ha-liquid-glass", fa = (e, t) => !!((e.attributes.supported_features ?? 0) & t);
 function pa(e, t, n, r, i, a = (e) => ({ entity: e })) {
 	return {
 		type: e,

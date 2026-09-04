@@ -3,8 +3,7 @@
 import { act } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import type { HomeAssistant } from "../types";
-import { type SeparatorCardConfig } from "./separator-card";
-import "./separator-card";
+import { LiquidGlassSeparatorCard, type SeparatorCardConfig } from "./separator-card";
 
 type SeparatorElement = HTMLElement & {
   hass?: HomeAssistant;
@@ -41,6 +40,9 @@ describe("liquid-glass-separator-card", () => {
       name: "Liquid Glass Separator",
       preview: true,
     });
+    expect(customElements.get("liquid-glass-separator-card")).toBe(
+      LiquidGlassSeparatorCard,
+    );
     expect(
       registration?.getEntitySuggestion?.({} as HomeAssistant, "light.example"),
     ).toEqual({

@@ -65,18 +65,31 @@ export function defineReactCard<C extends BaseCardConfig>(
   runtime.definitions.set(tagName, runtimeDefinition);
 
   const registered = runtime.constructors.get(tagName);
-  if (registered) {
-    const constructor = registered as ReactCardConstructor<C>;
+  const defined = customElements.get(tagName);
+  if (registered && defined === registered) {
+    const constructor = defined as ReactCardConstructor<C>;
     constructor.getConfigElement = definition.getConfigElement;
     constructor.getStubConfig = definition.getStubConfig;
     for (const instance of runtime.instances.get(tagName) ?? []) instance.requestRender();
     return constructor;
   }
 
-  const conflictingElement = customElements.get(tagName);
-  if (conflictingElement) {
-    throw new Error(`Cannot register React card: custom element "${tagName}" already exists`);
+  // A dashboard resource can be evaluated again without a full page reload. Keep the
+  // element that the browser actually knows about instead of aborting the rest of the
+  // bundle when the module-level runtime cache and CustomElementRegistry diverge.
+  if (defined) {
+    const constructor = defined as ReactCardConstructor<C>;
+    runtime.constructors.set(tagName, constructor);
+    constructor.getConfigElement = definition.getConfigElement;
+    constructor.getStubConfig = definition.getStubConfig;
+    for (const instance of runtime.instances.get(tagName) ?? []) instance.requestRender();
+    return constructor;
   }
+
+  // The global runtime can outlive the CustomElementRegistry that originally received
+  // its constructor (for example during HA preview/resource reloads). A cached
+  // constructor is therefore not proof that document.createElement() can use the card.
+  runtime.constructors.delete(tagName);
 
   class ReactCardElement extends HTMLElement implements RuntimeInstance {
     private configValue?: BaseCardConfig;

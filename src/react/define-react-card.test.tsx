@@ -80,4 +80,42 @@ describe("defineReactCard", () => {
     expect(element.shadowRoot?.textContent).toContain("updated:hot");
     expect(element.getCardSize()).toBe(2);
   });
+
+  it("re-registers when only a stale runtime constructor remains", () => {
+    const staleTagName = "liquid-glass-stale-adapter-test";
+    class StaleConstructor extends HTMLElement {}
+
+    const scope = globalThis as typeof globalThis & {
+      __HA_LIQUID_GLASS_REACT_CARD_RUNTIME__: {
+        constructors: Map<string, CustomElementConstructor>;
+      };
+    };
+    scope.__HA_LIQUID_GLASS_REACT_CARD_RUNTIME__.constructors.set(
+      staleTagName,
+      StaleConstructor,
+    );
+
+    const Card = defineReactCard<TestConfig>({
+      tagName: staleTagName,
+      component: ({ config }: ReactCardProps<TestConfig>) => <span>{config.label}</span>,
+    });
+
+    expect(Card).not.toBe(StaleConstructor);
+    expect(customElements.get(staleTagName)).toBe(Card);
+  });
+
+  it("keeps an element already registered by an earlier resource evaluation", () => {
+    const existingTagName = "liquid-glass-existing-adapter-test";
+    class ExistingCard extends HTMLElement {}
+    customElements.define(existingTagName, ExistingCard);
+
+    const Card = defineReactCard<TestConfig>({
+      tagName: existingTagName,
+      component: ({ config }: ReactCardProps<TestConfig>) => <span>{config.label}</span>,
+      getCardSize: () => 1,
+    });
+
+    expect(Card).toBe(ExistingCard);
+    expect(customElements.get(existingTagName)).toBe(ExistingCard);
+  });
 });
