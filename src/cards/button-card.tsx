@@ -8,7 +8,7 @@ import { glassSurfaceStyles, Icon, LiquidGlassSurface } from "../react/glass-pri
 import { useCardHost } from "../react/use-card-host";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HassEntity, HomeAssistant } from "../types";
-import { friendlyName, isUnavailable, lighten, moreInfo, pickEntity, withAlpha } from "../utils";
+import { callConfiguredService, friendlyName, isUnavailable, lighten, moreInfo, pickEntity, withAlpha } from "../utils";
 
 export interface ButtonCardConfig extends BaseCardConfig {
   /** "domain.service" to call instead of the domain's usual activation. */
@@ -144,12 +144,14 @@ function ButtonCard({ config, hass, host }: ReactCardProps<ButtonCardConfig>) {
   const domain = config.entity?.split(".")[0] ?? "";
   const spec = BUTTON_ACTIONS[domain];
   const well = wellFor(config.accent, spec?.well ?? WELLS[0]);
-  const icon = config.icon ?? (entity.attributes.icon as string | undefined) ?? spec?.icon ?? "mdi:gesture-tap-button";
+  const icon = config.icon ?? (entity.attributes.icon) ?? spec?.icon ?? "mdi:gesture-tap-button";
 
   const press = () => {
-    const [serviceDomain, service] = (config.service ?? spec?.service ?? "").split(".");
-    if (!serviceDomain || !service) return;
-    void hass?.callService(serviceDomain, service, { entity_id: config.entity, ...(config.service_data ?? {}) });
+    const dispatched = callConfiguredService(hass, config.service ?? spec?.service, {
+      entity_id: config.entity,
+      ...(config.service_data ?? {}),
+    });
+    if (!dispatched) return;
 
     setJustRan(true);
     window.clearTimeout(doneTimer.current);

@@ -25,7 +25,7 @@ import { opticsForQuality, useRefractionQuality } from "../react/refraction-qual
 import { useCardHost } from "../react/use-card-host";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HomeAssistant } from "../types";
-import { friendlyName, isUnavailable, moreInfo, pickEntity } from "../utils";
+import { callConfiguredService, friendlyName, isUnavailable, moreInfo, pickEntity } from "../utils";
 
 export interface CameraCardConfig extends BaseCardConfig {
   /** Binary sensor whose state drives the motion chip. Omit to hide it. */
@@ -383,11 +383,8 @@ function CameraCard({ config, hass, host }: ReactCardProps<CameraCardConfig>) {
     </>;
   }
 
-  const callConfigured = (service: string | undefined) => {
-    if (!service) return;
-    const [domain, name] = service.split(".");
-    void hass?.callService(domain, name, { entity_id: config.entity });
-  };
+  const callConfigured = (service: string | undefined) =>
+    callConfiguredService(hass, service, { entity_id: config.entity });
 
   const openSnapshot = () => {
     if (config.snapshot_service) {

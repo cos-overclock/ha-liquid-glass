@@ -7,7 +7,7 @@ import { glassSurfaceStyles, Icon, LiquidGlassSurface } from "../react/glass-pri
 import { useCardHost } from "../react/use-card-host";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HomeAssistant } from "../types";
-import { clamp, friendlyName, withAlpha } from "../utils";
+import { callConfiguredService, clamp, friendlyName, withAlpha } from "../utils";
 import { BUTTON_ACTIONS, WELLS, wellFor } from "./button-card";
 
 export interface SceneItem {
@@ -216,26 +216,22 @@ function SceneCard({ config, hass, host }: ReactCardProps<SceneCardConfig>) {
 
   const iconFor = (item: SceneItem): string => {
     if (item.icon) return item.icon;
-    const own = (item.entity ? hass?.states[item.entity] : undefined)?.attributes.icon as string | undefined;
+    const own = (item.entity ? hass?.states[item.entity] : undefined)?.attributes.icon;
     return own ?? BUTTON_ACTIONS[item.entity?.split(".")[0] ?? ""]?.icon ?? "mdi:palette";
   };
 
   const activate = (item: SceneItem, index: number) => {
     const call = item.service ?? BUTTON_ACTIONS[item.entity?.split(".")[0] ?? ""]?.service;
-    if (call) {
-      const [domain, service] = call.split(".");
-      void hass?.callService(domain, service, {
-        ...(item.entity ? { entity_id: item.entity } : {}),
-        ...(item.service_data ?? {}),
-      });
-    }
+    callConfiguredService(hass, call, {
+      ...(item.entity ? { entity_id: item.entity } : {}),
+      ...(item.service_data ?? {}),
+    });
     setPressed(index);
     window.clearTimeout(pressTimer.current);
     pressTimer.current = window.setTimeout(() => setPressed(undefined), PRESS_MS);
   };
 
   return <>
-    <style>{styles}</style>
     <LiquidGlassSurface
       className={`card${chips ? " chips" : ""}`}
       refraction={refraction}

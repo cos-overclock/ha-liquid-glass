@@ -11,7 +11,7 @@ import { useCardHost } from "../react/use-card-host";
 import { useOptimisticValue } from "../react/use-optimistic-value";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HomeAssistant } from "../types";
-import { clamp, friendlyName, hsToRgb, isUnavailable, moreInfo, pickEntity, rgbToHex, withAlpha } from "../utils";
+import { callConfiguredService, clamp, friendlyName, hsToRgb, isUnavailable, moreInfo, pickEntity, rgbToHex, withAlpha } from "../utils";
 
 export interface LightPreset {
   name: string;
@@ -251,8 +251,10 @@ function LightCard({ config, hass, host }: ReactCardProps<LightCardConfig>) {
       return;
     }
     if (preset.service) {
-      const [domain, service] = preset.service.split(".");
-      void hass?.callService(domain, service, { entity_id: config.entity, ...(preset.data ?? {}) });
+      callConfiguredService(hass, preset.service, {
+        entity_id: config.entity,
+        ...(preset.data ?? {}),
+      });
       return;
     }
     const data: Record<string, unknown> = { ...(preset.data ?? {}) };

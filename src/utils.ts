@@ -26,6 +26,26 @@ export function formatNumber(hass: HomeAssistant | undefined, value: number, dig
   }
 }
 
+/**
+ * Call a `"domain.service"` string from a card's config.
+ *
+ * Config is hand-written YAML, so the string can be anything. Splitting it without
+ * checking would send `callService("snapshot", undefined)` for a bare service name
+ * and fail deep inside the frontend's websocket layer instead of here.
+ *
+ * Returns whether the call was dispatched.
+ */
+export function callConfiguredService(
+  hass: HomeAssistant | undefined,
+  spec: string | undefined,
+  data?: Record<string, unknown>,
+): boolean {
+  const [domain, service] = (spec ?? "").split(".");
+  if (!domain || !service) return false;
+  void hass?.callService(domain, service, data);
+  return true;
+}
+
 export function isUnavailable(entity: HassEntity | undefined): boolean {
   return !entity || entity.state === "unavailable" || entity.state === "unknown";
 }
