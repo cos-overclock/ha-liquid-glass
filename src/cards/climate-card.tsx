@@ -15,6 +15,7 @@ import {
 } from "../react/glass-slider";
 import { animateGlass, holdWobble } from "../react/reduced-motion";
 import { useCardHost } from "../react/use-card-host";
+import { useOptimisticRecord } from "../react/use-optimistic-value";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HomeAssistant } from "../types";
 import { clamp, formatNumber, friendlyName, isUnavailable, moreInfo, pickEntity } from "../utils";
@@ -577,37 +578,21 @@ function ClimateCard({ config, hass, host }: ReactCardProps<ClimateCardConfig>) 
    * fall back to the old attribute the moment the finger lifts, and then animate from there
    * to the new value once Home Assistant answers — a bounce the user never asked for.
    */
-  const [pending, setPending] = useState<Pending>();
-  const pendingTimer = useRef<number | undefined>(undefined);
   const dialRef = useRef<HTMLDivElement>(null);
   const entity = config.entity ? hass?.states[config.entity] : undefined;
   const name = config.name ?? friendlyName(entity, config.entity ?? "");
   const attributes = entity?.attributes ?? {};
 
-  useEffect(() => () => window.clearTimeout(pendingTimer.current), []);
-
-  /** True once the entity reports something close enough to what is being held. */
   const step = (attributes.target_temp_step as number | undefined) ?? 0.5;
-  const settled = (key: Which, reported: number | undefined): boolean => {
-    const want = pending?.[key];
-    if (want === undefined) return true;
-    if (reported === undefined) return false;
-    return Math.abs(reported - want) <= Math.max(step / 2, 0.01);
+  const setpoints: Pending = {
+    single: attributes.temperature as number | undefined,
+    low: attributes.target_temp_low as number | undefined,
+    high: attributes.target_temp_high as number | undefined,
   };
-  const done = pending !== undefined
-    && settled("single", attributes.temperature as number | undefined)
-    && settled("low", attributes.target_temp_low as number | undefined)
-    && settled("high", attributes.target_temp_high as number | undefined);
-
-  useEffect(() => {
-    if (!done) return;
-    window.clearTimeout(pendingTimer.current);
-    setPending(undefined);
-  }, [done]);
+  const held = useOptimisticRecord<Which>(setpoints, Math.max(step / 2, 0.01), PENDING_MS);
 
   if (!entity || isUnavailable(entity)) {
     return <>
-      <style>{styles}</style>
       <UnavailableCard
         refraction={refraction}
         variant={config.glass_variant}
@@ -632,23 +617,17 @@ function ClimateCard({ config, hass, host }: ReactCardProps<ClimateCardConfig>) 
   const isRange = mode === "heat_cool" && attributes.target_temp_low !== undefined;
   const ratio = (value: number): number => clamp((value - min) / (max - min || 1), 0, 1);
   // The finger wins, then whatever was just sent, then what the entity reports.
-  const shownValue = (key: Which, reported: number | undefined, fallback: number): number =>
-    drag?.which === key ? drag.value : pending?.[key] ?? reported ?? fallback;
-  const single = shownValue("single", attributes.temperature as number | undefined, min);
-  const low = shownValue("low", attributes.target_temp_low as number | undefined, min);
-  const high = shownValue("high", attributes.target_temp_high as number | undefined, max);
+  const shownValue = (key: Which, fallback: number): number =>
+    drag?.which === key ? drag.value : held.value(key, fallback);
+  const single = shownValue("single", min);
+  const low = shownValue("low", min);
+  const high = shownValue("high", max);
   const theme = themeFor(mode, t);
   const modes = (config.hvac_modes ?? (attributes.hvac_modes as string[] | undefined) ?? []).filter(Boolean);
   const compact = config.design === "compact" || config.design === "a";
   const current = attributes.current_temperature as number | undefined;
 
-  const hold = (which: Which, value: number) => {
-    setPending((held) => ({ ...held, [which]: value }));
-    window.clearTimeout(pendingTimer.current);
-    // A service call that never lands would otherwise freeze the dial on a value the
-    // thermostat never took.
-    pendingTimer.current = window.setTimeout(() => setPending(undefined), PENDING_MS);
-  };
+  const hold = held.hold;
 
   const commit = (which: Which, value: number) => {
     // The knobs cannot cross, so a range end is clamped before it is sent — and what is
