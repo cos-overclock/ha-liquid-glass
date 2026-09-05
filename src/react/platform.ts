@@ -26,11 +26,19 @@ export function resolveRefraction(
   return !isEmbeddedCompanionWebView(userAgent);
 }
 
-/** Medium quality retains refraction but avoids supersampling and colour dispersion. */
+/**
+ * Medium quality retains refraction but avoids supersampling and colour dispersion.
+ *
+ * Every embedded Companion WebView picks it, not just Android's. The iOS Companion
+ * carries no `Safari` token, so the library reads it as a non-WebKit engine and
+ * honours `filterResolution` — meaning a high setting there really would supersample
+ * the filter, on the one runtime this whole path exists to spare.
+ */
 export function resolveRefractionQuality(
   setting: BaseCardConfig["refraction_quality"],
   userAgent = runtimeUserAgent,
 ): RefractionQuality {
   if (setting === "high" || setting === "medium") return setting;
-  return /Android/i.test(userAgent) ? "medium" : "high";
+  const embedded = /Android/i.test(userAgent) || isEmbeddedCompanionWebView(userAgent);
+  return embedded ? "medium" : "high";
 }

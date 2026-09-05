@@ -39,9 +39,12 @@ export function opticsForQuality(
   quality: RefractionQuality,
 ): Partial<GlassOptics> {
   if (quality !== "medium") return optics;
+  const mapSize = optics.mapSize ?? DEFAULT_MAP_SIZE;
   return {
     ...optics,
     dispersion: 0,
-    mapSize: Math.max(MIN_MAP_SIZE, (optics.mapSize ?? DEFAULT_MAP_SIZE) >> 1),
+    // `Math.min` keeps the downgrade monotonic: without it a preset already below
+    // 2 × MIN_MAP_SIZE would be raised by the floor, making medium cost more than high.
+    mapSize: Math.min(mapSize, Math.max(MIN_MAP_SIZE, mapSize >> 1)),
   };
 }
