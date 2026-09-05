@@ -451,6 +451,7 @@ src/
   react/glass-slider.tsx      Apple 風スライダー（バー＋つまみ）
   react/card-parts.tsx        アイコンウェル / タイトル / バッジなどの共通部品
   react/card-styles.ts        カード共通レイアウトのスタイルシート
+  react/reduced-motion.ts     prefers-reduced-motion を JS アニメーションへ適用
   i18n.ts                     日本語 / 英語の文言
   styles/tokens.ts            デザイントークン（design.pen の variables）
   components/lg-icon.ts       ha-icon ラッパー

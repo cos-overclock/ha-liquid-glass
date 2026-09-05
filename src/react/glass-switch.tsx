@@ -1,7 +1,6 @@
 import {
   Glass,
   GlassDiv,
-  animateGlassValue,
   cubicBezier,
   deriveGlass,
   glassValue,
@@ -22,6 +21,7 @@ import {
   opticsForQuality,
   useRefractionQuality,
 } from "./refraction-quality";
+import { animateGlass, holdWobble } from "./reduced-motion";
 
 const EASE = cubicBezier(0.34, 1.36, 0.42, 1);
 const SETTLE = cubicBezier(0.36, 0, 0.18, 1);
@@ -236,23 +236,23 @@ export function GlassSwitch({
   const [dragging, setDragging] = useState(false);
   const expand = () => {
     setExpanded(true);
-    animateGlassValue(motion.halfWidth, 1.5 * restHalfWidthRef.current, EXPAND_ANIM);
-    animateGlassValue(motion.halfHeight, 1.5 * restHalfHeightRef.current, EXPAND_ANIM);
-    animateGlassValue(motion.radius, 1.5 * restRadiusRef.current, EXPAND_ANIM);
-    animateGlassValue(motion.tintOpacity, 0, EXPAND_ANIM);
-    animateGlassValue(motion.trackScaleX, 0.95, EXPAND_ANIM);
-    animateGlassValue(motion.trackScaleY, 0.975, EXPAND_ANIM);
-    animateGlassValue(motion.shadowOpacity, 1, EXPAND_ANIM);
+    animateGlass(motion.halfWidth, 1.5 * restHalfWidthRef.current, EXPAND_ANIM);
+    animateGlass(motion.halfHeight, 1.5 * restHalfHeightRef.current, EXPAND_ANIM);
+    animateGlass(motion.radius, 1.5 * restRadiusRef.current, EXPAND_ANIM);
+    animateGlass(motion.tintOpacity, 0, EXPAND_ANIM);
+    animateGlass(motion.trackScaleX, 0.95, EXPAND_ANIM);
+    animateGlass(motion.trackScaleY, 0.975, EXPAND_ANIM);
+    animateGlass(motion.shadowOpacity, 1, EXPAND_ANIM);
   };
   const collapse = () => {
     setExpanded(false);
-    animateGlassValue(motion.halfWidth, restHalfWidthRef.current, COLLAPSE_ANIM);
-    animateGlassValue(motion.halfHeight, restHalfHeightRef.current, COLLAPSE_ANIM);
-    animateGlassValue(motion.radius, restRadiusRef.current, COLLAPSE_ANIM);
-    animateGlassValue(motion.tintOpacity, 1, COLLAPSE_ANIM);
-    animateGlassValue(motion.trackScaleX, 0.85, COLLAPSE_ANIM);
-    animateGlassValue(motion.trackScaleY, 0.525, COLLAPSE_ANIM);
-    animateGlassValue(motion.shadowOpacity, 0, COLLAPSE_ANIM);
+    animateGlass(motion.halfWidth, restHalfWidthRef.current, COLLAPSE_ANIM);
+    animateGlass(motion.halfHeight, restHalfHeightRef.current, COLLAPSE_ANIM);
+    animateGlass(motion.radius, restRadiusRef.current, COLLAPSE_ANIM);
+    animateGlass(motion.tintOpacity, 1, COLLAPSE_ANIM);
+    animateGlass(motion.trackScaleX, 0.85, COLLAPSE_ANIM);
+    animateGlass(motion.trackScaleY, 0.525, COLLAPSE_ANIM);
+    animateGlass(motion.shadowOpacity, 0, COLLAPSE_ANIM);
   };
 
   const stateRef = useRef<"idle" | "pending" | "hold" | "tap">("idle");
@@ -286,7 +286,7 @@ export function GlassSwitch({
 
   useEffect(() => {
     if (dragging || stateRef.current === "tap") return;
-    thumbAnimationRef.current = animateGlassValue(
+    thumbAnimationRef.current = animateGlass(
       motion.thumbX,
       checked ? travel : 0,
       THUMB_ANIM,
@@ -323,7 +323,7 @@ export function GlassSwitch({
     expand();
     clearTimeout(collapseTimeoutRef.current);
     collapseTimeoutRef.current = setTimeout(collapse, 290);
-    thumbAnimationRef.current = animateGlassValue(
+    thumbAnimationRef.current = animateGlass(
       motion.thumbX,
       next ? travel : 0,
       {
@@ -354,8 +354,7 @@ export function GlassSwitch({
       stateRef.current = "hold";
       thumbAnimationRef.current?.stop();
       expand();
-      holdRef.current = 0.175;
-      kickWobbleRef.current();
+      holdWobble(holdRef, kickWobbleRef);
     }, 170);
   };
 
@@ -395,7 +394,7 @@ export function GlassSwitch({
       stateRef.current = "idle";
       collapse();
       const next = Math.max(0, Math.min(travel, motion.thumbX.get())) > travel / 2;
-      thumbAnimationRef.current = animateGlassValue(
+      thumbAnimationRef.current = animateGlass(
         motion.thumbX,
         next ? travel : 0,
         THUMB_ANIM,
@@ -413,7 +412,7 @@ export function GlassSwitch({
       expand();
       clearTimeout(collapseTimeoutRef.current);
       collapseTimeoutRef.current = setTimeout(collapse, 290);
-      thumbAnimationRef.current = animateGlassValue(
+      thumbAnimationRef.current = animateGlass(
         motion.thumbX,
         checked ? 0 : travel,
         {
@@ -431,7 +430,7 @@ export function GlassSwitch({
     stateRef.current = "idle";
     holdRef.current = 0;
     collapse();
-    thumbAnimationRef.current = animateGlassValue(
+    thumbAnimationRef.current = animateGlass(
       motion.thumbX,
       checked ? travel : 0,
       THUMB_ANIM,
@@ -449,7 +448,7 @@ export function GlassSwitch({
     holdRef.current = 0;
     stateRef.current = "idle";
     collapse();
-    thumbAnimationRef.current = animateGlassValue(
+    thumbAnimationRef.current = animateGlass(
       motion.thumbX,
       checked ? travel : 0,
       THUMB_ANIM,

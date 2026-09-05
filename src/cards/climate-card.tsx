@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent } from "react";
-import { Glass, animateGlassValue, deriveGlass, glassValue, useLensWobble } from "@samasante/liquid-glass";
+import { Glass, deriveGlass, glassValue, useLensWobble } from "@samasante/liquid-glass";
 import { createTranslator, type Translator } from "../i18n";
 import { Badge, CardTitle, IconWell, UnavailableCard, type BadgeStyle, type WellStyle } from "../react/card-parts";
 import { reactCardStyles } from "../react/card-styles";
@@ -13,6 +13,7 @@ import {
   glassSliderStyles,
   useGlassSliderOptics,
 } from "../react/glass-slider";
+import { animateGlass, holdWobble } from "../react/reduced-motion";
 import { useCardHost } from "../react/use-card-host";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HomeAssistant } from "../types";
@@ -132,18 +133,17 @@ function DialGlassThumb({
     if (active === activeRef.current) return;
     activeRef.current = active;
     if (active) {
-      animateGlassValue(motion.halfW, 1.5 * DIAL_THUMB_WIDTH / 2, GLASS_SLIDER_EXPAND_ANIM);
-      animateGlassValue(motion.halfH, 1.5 * DIAL_THUMB_HEIGHT / 2, GLASS_SLIDER_EXPAND_ANIM);
-      animateGlassValue(motion.radius, 1.5 * DIAL_THUMB_WIDTH / 2, GLASS_SLIDER_EXPAND_ANIM);
-      animateGlassValue(motion.tintOpacity, 0, GLASS_SLIDER_EXPAND_ANIM);
-      holdRef.current = 0.175;
-      kickWobbleRef.current();
+      animateGlass(motion.halfW, 1.5 * DIAL_THUMB_WIDTH / 2, GLASS_SLIDER_EXPAND_ANIM);
+      animateGlass(motion.halfH, 1.5 * DIAL_THUMB_HEIGHT / 2, GLASS_SLIDER_EXPAND_ANIM);
+      animateGlass(motion.radius, 1.5 * DIAL_THUMB_WIDTH / 2, GLASS_SLIDER_EXPAND_ANIM);
+      animateGlass(motion.tintOpacity, 0, GLASS_SLIDER_EXPAND_ANIM);
+      holdWobble(holdRef, kickWobbleRef);
     } else {
       holdRef.current = 0;
-      animateGlassValue(motion.halfW, DIAL_THUMB_WIDTH / 2, GLASS_SLIDER_COLLAPSE_ANIM);
-      animateGlassValue(motion.halfH, DIAL_THUMB_HEIGHT / 2, GLASS_SLIDER_COLLAPSE_ANIM);
-      animateGlassValue(motion.radius, DIAL_THUMB_WIDTH / 2, GLASS_SLIDER_COLLAPSE_ANIM);
-      animateGlassValue(motion.tintOpacity, 1, GLASS_SLIDER_COLLAPSE_ANIM);
+      animateGlass(motion.halfW, DIAL_THUMB_WIDTH / 2, GLASS_SLIDER_COLLAPSE_ANIM);
+      animateGlass(motion.halfH, DIAL_THUMB_HEIGHT / 2, GLASS_SLIDER_COLLAPSE_ANIM);
+      animateGlass(motion.radius, DIAL_THUMB_WIDTH / 2, GLASS_SLIDER_COLLAPSE_ANIM);
+      animateGlass(motion.tintOpacity, 1, GLASS_SLIDER_COLLAPSE_ANIM);
     }
   }, [active, motion, refraction]);
 

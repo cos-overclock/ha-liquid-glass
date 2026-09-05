@@ -13,7 +13,6 @@ import {
 import {
   Glass,
   GlassDiv,
-  animateGlassValue,
   cubicBezier,
   deriveGlass,
   glassValue,
@@ -27,6 +26,7 @@ import {
   opticsForQuality,
   useRefractionQuality,
 } from "./refraction-quality";
+import { animateGlass, holdWobble } from "./reduced-motion";
 
 const RUBBER_OVERSHOOT = 0.05;
 const RUBBER_DAMPENING = 30;
@@ -475,31 +475,30 @@ export function GlassSlider({
 
   const expand = useCallback(() => {
     if (!refraction) return;
-    animateGlassValue(motion.halfW, 1.5 * geometryRef.current.thumbW / 2, GLASS_SLIDER_EXPAND_ANIM);
-    animateGlassValue(motion.halfH, 1.5 * geometryRef.current.thumbH / 2, GLASS_SLIDER_EXPAND_ANIM);
-    animateGlassValue(motion.radius, 1.5 * Math.min(geometryRef.current.thumbW, geometryRef.current.thumbH) / 2, GLASS_SLIDER_EXPAND_ANIM);
-    animateGlassValue(motion.tintOpacity, 0, GLASS_SLIDER_EXPAND_ANIM);
-    animateGlassValue(motion.trackScaleX, 0.95, GLASS_SLIDER_EXPAND_ANIM);
-    animateGlassValue(motion.trackScaleY, 0.975, GLASS_SLIDER_EXPAND_ANIM);
-    animateGlassValue(motion.shadowOpacity, 1, GLASS_SLIDER_EXPAND_ANIM);
+    animateGlass(motion.halfW, 1.5 * geometryRef.current.thumbW / 2, GLASS_SLIDER_EXPAND_ANIM);
+    animateGlass(motion.halfH, 1.5 * geometryRef.current.thumbH / 2, GLASS_SLIDER_EXPAND_ANIM);
+    animateGlass(motion.radius, 1.5 * Math.min(geometryRef.current.thumbW, geometryRef.current.thumbH) / 2, GLASS_SLIDER_EXPAND_ANIM);
+    animateGlass(motion.tintOpacity, 0, GLASS_SLIDER_EXPAND_ANIM);
+    animateGlass(motion.trackScaleX, 0.95, GLASS_SLIDER_EXPAND_ANIM);
+    animateGlass(motion.trackScaleY, 0.975, GLASS_SLIDER_EXPAND_ANIM);
+    animateGlass(motion.shadowOpacity, 1, GLASS_SLIDER_EXPAND_ANIM);
   }, [motion, refraction]);
 
   const collapse = useCallback(() => {
     if (!refraction) return;
-    animateGlassValue(motion.halfW, geometryRef.current.thumbW / 2, GLASS_SLIDER_COLLAPSE_ANIM);
-    animateGlassValue(motion.halfH, geometryRef.current.thumbH / 2, GLASS_SLIDER_COLLAPSE_ANIM);
-    animateGlassValue(motion.radius, Math.min(geometryRef.current.thumbW, geometryRef.current.thumbH) / 2, GLASS_SLIDER_COLLAPSE_ANIM);
-    animateGlassValue(motion.tintOpacity, restTintOpacityRef.current, GLASS_SLIDER_COLLAPSE_ANIM);
-    animateGlassValue(motion.trackScaleX, 0.85, GLASS_SLIDER_COLLAPSE_ANIM);
-    animateGlassValue(motion.trackScaleY, 0.525, GLASS_SLIDER_COLLAPSE_ANIM);
-    animateGlassValue(motion.shadowOpacity, 0, GLASS_SLIDER_COLLAPSE_ANIM);
+    animateGlass(motion.halfW, geometryRef.current.thumbW / 2, GLASS_SLIDER_COLLAPSE_ANIM);
+    animateGlass(motion.halfH, geometryRef.current.thumbH / 2, GLASS_SLIDER_COLLAPSE_ANIM);
+    animateGlass(motion.radius, Math.min(geometryRef.current.thumbW, geometryRef.current.thumbH) / 2, GLASS_SLIDER_COLLAPSE_ANIM);
+    animateGlass(motion.tintOpacity, restTintOpacityRef.current, GLASS_SLIDER_COLLAPSE_ANIM);
+    animateGlass(motion.trackScaleX, 0.85, GLASS_SLIDER_COLLAPSE_ANIM);
+    animateGlass(motion.trackScaleY, 0.525, GLASS_SLIDER_COLLAPSE_ANIM);
+    animateGlass(motion.shadowOpacity, 0, GLASS_SLIDER_COLLAPSE_ANIM);
   }, [motion, refraction]);
 
   const beginInteraction = useCallback(() => {
     expand();
     if (!refraction) return;
-    holdRef.current = 0.175;
-    kickWobbleRef.current();
+    holdWobble(holdRef, kickWobbleRef);
   }, [expand, refraction]);
 
   const displayedLow = drag?.handle === "low" ? drag.value : value;
@@ -555,7 +554,7 @@ export function GlassSlider({
     draggingRef.current = false;
     holdRef.current = 0;
     setDrag(undefined);
-    animateGlassValue(motion.thumbX, settledX, GLASS_SLIDER_COLLAPSE_ANIM);
+    animateGlass(motion.thumbX, settledX, GLASS_SLIDER_COLLAPSE_ANIM);
     collapse();
     onChange(next, handle);
   };

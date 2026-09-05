@@ -1,7 +1,6 @@
 import {
   Glass,
   GlassDiv,
-  animateGlassValue,
   cubicBezier,
   deriveGlass,
   glassValue,
@@ -23,6 +22,7 @@ import {
   opticsForQuality,
   useRefractionQuality,
 } from "./refraction-quality";
+import { animateGlass, holdWobble } from "./reduced-motion";
 
 const MOVE_ANIM = {
   ease: cubicBezier(0.34, 1.36, 0.42, 1),
@@ -385,7 +385,7 @@ export function GlassSegmentedControl({
       // prevents the lens appearing offset while the first measurement settles.
       motion.position.set(nextPosition);
     } else {
-      activeAnimationRef.current = animateGlassValue(
+      activeAnimationRef.current = animateGlass(
         motion.position,
         nextPosition,
         MOVE_ANIM,
@@ -428,24 +428,23 @@ export function GlassSegmentedControl({
     clearTimeout(collapseTimeoutRef.current);
     setPressed(true);
     const geometry = geometryRef.current;
-    animateGlassValue(motion.halfWidth, geometry.segmentWidth * 0.62, EXPAND_ANIM);
-    animateGlassValue(motion.halfHeight, geometry.pillHeight * 0.59, EXPAND_ANIM);
-    animateGlassValue(motion.radius, geometry.pillHeight * 0.59, EXPAND_ANIM);
-    animateGlassValue(motion.tintOpacity, 0.08, EXPAND_ANIM);
-    animateGlassValue(motion.shadowOpacity, 1, EXPAND_ANIM);
-    holdRef.current = 0.175;
-    kickWobbleRef.current();
+    animateGlass(motion.halfWidth, geometry.segmentWidth * 0.62, EXPAND_ANIM);
+    animateGlass(motion.halfHeight, geometry.pillHeight * 0.59, EXPAND_ANIM);
+    animateGlass(motion.radius, geometry.pillHeight * 0.59, EXPAND_ANIM);
+    animateGlass(motion.tintOpacity, 0.08, EXPAND_ANIM);
+    animateGlass(motion.shadowOpacity, 1, EXPAND_ANIM);
+    holdWobble(holdRef, kickWobbleRef);
   };
 
   const collapse = () => {
     setPressed(false);
     holdRef.current = 0;
     const geometry = geometryRef.current;
-    animateGlassValue(motion.halfWidth, geometry.segmentWidth / 2, COLLAPSE_ANIM);
-    animateGlassValue(motion.halfHeight, geometry.pillHeight / 2, COLLAPSE_ANIM);
-    animateGlassValue(motion.radius, geometry.pillHeight / 2, COLLAPSE_ANIM);
-    animateGlassValue(motion.tintOpacity, restTintRef.current, COLLAPSE_ANIM);
-    animateGlassValue(motion.shadowOpacity, 0, COLLAPSE_ANIM);
+    animateGlass(motion.halfWidth, geometry.segmentWidth / 2, COLLAPSE_ANIM);
+    animateGlass(motion.halfHeight, geometry.pillHeight / 2, COLLAPSE_ANIM);
+    animateGlass(motion.radius, geometry.pillHeight / 2, COLLAPSE_ANIM);
+    animateGlass(motion.tintOpacity, restTintRef.current, COLLAPSE_ANIM);
+    animateGlass(motion.shadowOpacity, 0, COLLAPSE_ANIM);
   };
 
   const settleOn = (index: number, collapseImmediately: boolean) => {
@@ -455,7 +454,7 @@ export function GlassSegmentedControl({
     setVisualIndex(nextIndex);
     setSelectionVisible(true);
     activeAnimationRef.current?.stop();
-    activeAnimationRef.current = animateGlassValue(
+    activeAnimationRef.current = animateGlass(
       motion.position,
       nextIndex * geometryRef.current.stepWidth,
       MOVE_ANIM,
@@ -543,7 +542,7 @@ export function GlassSegmentedControl({
     });
     setVisualIndex(selectedIndex);
     setSelectionVisible(hasSelectedValue);
-    activeAnimationRef.current = animateGlassValue(
+    activeAnimationRef.current = animateGlass(
       motion.position,
       selectedIndex * geometryRef.current.stepWidth,
       MOVE_ANIM,
