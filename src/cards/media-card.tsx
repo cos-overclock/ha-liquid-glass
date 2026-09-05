@@ -106,8 +106,8 @@ const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}${glassS
   }
   .media-control-glass[data-lg-static-lens=""] {
     background: rgba(255, 255, 255, 0.08);
-    -webkit-backdrop-filter: blur(3px);
-    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(5px);
+    backdrop-filter: blur(5px);
     box-shadow:
       0 5px 14px rgba(0, 0, 0, 0.22),
       inset 1px 1px 0 rgba(255, 255, 255, 0.36),
@@ -360,6 +360,7 @@ function MediaCard({ config, hass, host }: ReactCardProps<MediaCardConfig>) {
         <GlassVideoControlLens
           className="media-control-glass more-glass"
           refraction={refraction}
+          frost={5}
         >
           <button className="more" type="button" onClick={open} title="More">
             <Icon icon="mdi:dots-horizontal" />
@@ -410,6 +411,7 @@ function MediaCard({ config, hass, host }: ReactCardProps<MediaCardConfig>) {
         <GlassVideoControlLens
           className={`media-control-glass play-glass${idle ? " idle" : ""}`}
           refraction={refraction}
+          frost={5}
         >
           <button
             className="play"

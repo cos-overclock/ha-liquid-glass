@@ -270,11 +270,14 @@ interface LiquidGlassSurfaceProps extends HTMLAttributes<HTMLDivElement> {
 
 interface GlassVideoControlLensProps extends HTMLAttributes<HTMLDivElement> {
   refraction: boolean;
+  /** Frost applied to the backdrop copy. Defaults to the reference control value. */
+  frost?: number;
 }
 
 /** A clear, independently refracting control lens matching GlassVideoControls. */
 export function GlassVideoControlLens({
   refraction,
+  frost = glassVideoControlOptics.frost,
   children,
   ...props
 }: GlassVideoControlLensProps) {
@@ -282,7 +285,7 @@ export function GlassVideoControlLens({
     return <div {...props} data-lg-static-lens="">{children}</div>;
   }
 
-  return <Glass {...props} optics={glassVideoControlOptics}>{children}</Glass>;
+  return <Glass {...props} optics={{ ...glassVideoControlOptics, frost }}>{children}</Glass>;
 }
 
 /**
