@@ -269,17 +269,26 @@ export function GlassSwitch({
   const thumbAnimationRef = useRef<GlassAnimation | null>(null);
 
   useEffect(
-    () => () => {
-      mountedRef.current = false;
-      clearTimeout(holdTimeoutRef.current);
-      clearTimeout(collapseTimeoutRef.current);
-      if (pointerIdRef.current !== null && hitAreaRef.current) {
-        try {
-          hitAreaRef.current.releasePointerCapture(pointerIdRef.current);
-        } catch {
-          // The browser may already have released pointer capture.
+    () => {
+      // Re-armed on every run, not just the first: an effect that is torn down and
+      // set up again (StrictMode, a fast refresh) would otherwise leave the switch
+      // permanently "unmounted" and stop its animations from settling the state.
+      mountedRef.current = true;
+      // Captured here rather than read in the cleanup: by then React may already have
+      // detached the node, and the one holding the pointer is the one mounted now.
+      const hitArea = hitAreaRef.current;
+      return () => {
+        mountedRef.current = false;
+        clearTimeout(holdTimeoutRef.current);
+        clearTimeout(collapseTimeoutRef.current);
+        if (pointerIdRef.current !== null && hitArea) {
+          try {
+            hitArea.releasePointerCapture(pointerIdRef.current);
+          } catch {
+            // The browser may already have released pointer capture.
+          }
         }
-      }
+      };
     },
     [],
   );
