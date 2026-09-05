@@ -1,5 +1,14 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, KeyboardEvent } from "react";
 import { Icon, LiquidGlassSurface } from "./glass-primitives";
+
+/** Enter and Space activate a `role="button"`, the way a real button does. */
+function activateOnKey(onClick: () => void) {
+  return (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== " " && event.key !== "Enter") return;
+    event.preventDefault();
+    onClick();
+  };
+}
 
 /** Colours for a tinted icon well. Leave it out and the well renders idle. */
 export interface WellStyle {
@@ -16,7 +25,16 @@ export interface BadgeStyle {
   glow?: string;
 }
 
-/** The round icon at the head of a card. Tinted while active, flat while idle. */
+/**
+ * The round icon at the head of a card. Tinted while active, flat while idle.
+ *
+ * Deliberately not a button, even when it takes a click. Every well that acts is a
+ * pointer shortcut for something already reachable another way — the title opens
+ * more-info, the light card's own switch toggles — so giving it a role and a tab
+ * stop would add a second, unnamed stop for an action the header already offers.
+ * A well that ever gains an action of its own needs a label and the keyboard
+ * handling that goes with it.
+ */
 export function IconWell({
   icon,
   style,
@@ -28,21 +46,25 @@ export function IconWell({
 }) {
   return (
     <div
-      className={`icon-well${style ? "" : " idle"}`}
+      className={`icon-well${style ? "" : " idle"}${onClick ? " tappable" : ""}`}
       style={style ? {
         "--well-from": style.from,
         "--well-to": style.to,
         "--well-glow": style.glow,
       } as CSSProperties : undefined}
       onClick={onClick}
-      role={onClick ? "button" : undefined}
     >
       <Icon icon={icon} />
     </div>
   );
 }
 
-/** Entity name over its state line. */
+/**
+ * Entity name over its state line.
+ *
+ * With a click handler this is the card header's keyboard control, and its own text
+ * is the accessible name — the visible name and state read out together.
+ */
 export function CardTitle({
   name,
   state,
@@ -53,7 +75,15 @@ export function CardTitle({
   onClick?: () => void;
 }) {
   return (
-    <div className="title" onClick={onClick}>
+    <div
+      className={`title${onClick ? " tappable" : ""}`}
+      onClick={onClick}
+      {...(onClick ? {
+        role: "button",
+        tabIndex: 0,
+        onKeyDown: activateOnKey(onClick),
+      } : {})}
+    >
       <div className="name">{name}</div>
       <div className="state">{state}</div>
     </div>

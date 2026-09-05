@@ -75,7 +75,13 @@ export const reactCardStyles = `
     display: flex;
     flex-direction: column;
     gap: 2px;
-    cursor: pointer;
+  }
+  .title.tappable,
+  .icon-well.tappable { cursor: pointer; }
+  .title:focus-visible {
+    outline: 2px solid var(--lg-cool-deep);
+    outline-offset: 3px;
+    border-radius: 6px;
   }
   .name {
     font-size: var(--lg-name);
