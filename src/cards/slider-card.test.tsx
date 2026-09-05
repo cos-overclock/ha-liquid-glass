@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { shadowCss } from "../react/test-styles";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { HassEntity, HomeAssistant } from "../types";
@@ -116,7 +117,7 @@ describe("liquid-glass-slider-card", () => {
 
     const track = mockTrack(element);
     const slider = element.shadowRoot?.querySelector(".lg-react-slider");
-    const styles = element.shadowRoot?.querySelector("style")?.textContent ?? "";
+    const styles = shadowCss(element.shadowRoot);
     // The knob reads as an opaque pill until it moves, then the glass tint fades away.
     expect(element.shadowRoot?.querySelector(".slider-knob")).toBeTruthy();
     expect(element.shadowRoot?.querySelector(".slider-refraction-bar .slider-fill")).toBeTruthy();

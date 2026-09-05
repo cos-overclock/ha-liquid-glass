@@ -90,7 +90,7 @@ const INHERITED_CONFIG = [
 ] as const;
 const EMPTY_CARD_CONFIGS: LovelaceCardConfig[] = [];
 
-const styles = `${tokens}${reactCardStyles}
+const ownStyles = `
   .panel {
     --lg-group-pad: 16px;
     --lg-group-gap: 12px;
@@ -398,7 +398,6 @@ function GroupCard({ config, hass, host }: ReactCardProps<GroupCardConfig>) {
   };
 
   return <>
-    <style>{styles}</style>
     <div className="panel">
       <div
         className={`head${collapsible ? " tappable" : ""}`}
@@ -433,6 +432,7 @@ function GroupCard({ config, hass, host }: ReactCardProps<GroupCardConfig>) {
 export const LiquidGlassGroupCard = defineLiquidGlassCard<GroupCardConfig>({
   tagName: "liquid-glass-group-card",
   component: GroupCard,
+  styles: [tokens, reactCardStyles, ownStyles],
   getCardSize: (config, host) =>
     (host as GroupHost).lgGroupSize ?? (config.collapsed ? 1 : 1 + (config.cards?.length ?? 0) * 3),
   /** A fresh group is easier to understand with something already in it. */

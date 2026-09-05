@@ -66,7 +66,7 @@ const CONDITIONS: Record<string, ConditionLook> = {
 const FALLBACK: ConditionLook = { icon: "mdi:weather-cloudy", color: "#A0AEC0" };
 const REFRESH_MS = 15 * 60 * 1000;
 
-const styles = `${tokens}${reactCardStyles}${glassSurfaceStyles}
+const ownStyles = `
   .card {
     gap: 16px;
   }
@@ -479,7 +479,6 @@ function WeatherCard({ config, hass, host }: ReactCardProps<WeatherCardConfig>) 
     if (today?.temperature !== undefined) parts.push(`${t("wx_high")} ${temp(today.temperature)}`);
     if (today?.templow !== undefined) parts.push(`${t("wx_low")} ${temp(today.templow)}`);
     return <>
-      <style>{styles}</style>
       <LiquidGlassSurface
         className="card row"
         refraction={refraction}
@@ -514,7 +513,6 @@ function WeatherCard({ config, hass, host }: ReactCardProps<WeatherCardConfig>) 
   else if (amount !== undefined) tiles.push(["mdi:weather-rainy", t("wx_precip"), `${formatNumber(hass, amount, 1)} mm`]);
 
   return <>
-    <style>{styles}</style>
     <LiquidGlassSurface
       className="card"
       refraction={refraction}
@@ -595,6 +593,7 @@ function WeatherCard({ config, hass, host }: ReactCardProps<WeatherCardConfig>) 
 export const LiquidGlassWeatherCard = defineLiquidGlassCard<WeatherCardConfig>({
   tagName: "liquid-glass-weather-card",
   component: WeatherCard,
+  styles: [tokens, reactCardStyles, glassSurfaceStyles, ownStyles],
   getCardSize: (config) => {
     if (config.layout === "row") return 1;
     let size = 3;

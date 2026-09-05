@@ -45,7 +45,7 @@ function fmtTime(seconds: number): string {
     : `${minutes}:${String(rest).padStart(2, "0")}`;
 }
 
-const styles = `${tokens}${reactCardStyles}${glassSurfaceStyles}${glassSliderStyles}
+const ownStyles = `
   .card {
     gap: 16px;
   }
@@ -320,7 +320,6 @@ function MediaCard({ config, hass, host }: ReactCardProps<MediaCardConfig>) {
   const showVolume = config.show_volume !== false && supportsFeature(entity, F.VOLUME_SET);
 
   return <>
-    <style>{styles}</style>
     <LiquidGlassSurface
       className="card"
       refraction={refraction}
@@ -460,6 +459,7 @@ function MediaCard({ config, hass, host }: ReactCardProps<MediaCardConfig>) {
 export const LiquidGlassMediaCard = defineLiquidGlassCard<MediaCardConfig>({
   tagName: "liquid-glass-media-card",
   component: MediaCard,
+  styles: [tokens, reactCardStyles, glassSurfaceStyles, glassSliderStyles, ownStyles],
   getCardSize: () => 4,
   getStubConfig: (hass?: HomeAssistant, entities?: string[], entitiesFallback?: string[]) => ({
     entity: pickEntity(["media_player"], hass, entities, entitiesFallback),

@@ -197,7 +197,7 @@ function arcPath(fromDeg: number, toDeg: number): string {
   return `M ${x1} ${y1} A ${RADIUS} ${RADIUS} 0 ${large} 1 ${x2} ${y2}`;
 }
 
-const styles = `${tokens}${reactCardStyles}${glassSurfaceStyles}${glassSliderStyles}${glassSegmentedControlStyles}
+const ownStyles = `
   .dial-row {
     display: flex;
     justify-content: center;
@@ -716,7 +716,6 @@ function ClimateCard({ config, hass, host }: ReactCardProps<ClimateCardConfig>) 
     const [whole, fraction] = (Math.round(single * 10) / 10).toFixed(1).split(".");
 
     return <>
-      <style>{styles}</style>
       <LiquidGlassSurface
         className="card climate-compact"
         refraction={refraction}
@@ -813,7 +812,6 @@ function ClimateCard({ config, hass, host }: ReactCardProps<ClimateCardConfig>) 
   const showSwing = config.show_swing_mode === true;
 
   return <>
-    <style>{styles}</style>
     <LiquidGlassSurface
       className="card"
       refraction={refraction}
@@ -935,6 +933,7 @@ function ClimateCard({ config, hass, host }: ReactCardProps<ClimateCardConfig>) 
 export const LiquidGlassClimateCard = defineLiquidGlassCard<ClimateCardConfig>({
   tagName: "liquid-glass-climate-card",
   component: ClimateCard,
+  styles: [tokens, reactCardStyles, glassSurfaceStyles, glassSliderStyles, glassSegmentedControlStyles, ownStyles],
   getCardSize: () => 6,
   getStubConfig: (hass?: HomeAssistant, entities?: string[], entitiesFallback?: string[]) => ({
     entity: pickEntity(["climate"], hass, entities, entitiesFallback),

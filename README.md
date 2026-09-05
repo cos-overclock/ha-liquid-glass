@@ -461,6 +461,6 @@ src/
   cards/*.tsx                 各カード（すべて React）
 ```
 
-`base-card.ts` `styles/glass.ts` `styles/glass-defs.ts` `components/lg-slider.ts` `components/lg-glass-surface.ts` は移行前の Lit 実装で、現在どのカードからも参照されていません（ビルド成果物にも含まれません）。
+カード共通のスタイル（`styles/tokens.ts` と `react/card-styles.ts`）は、カードごとに `<style>` を複製するのではなく、構築済みの `CSSStyleSheet` を全インスタンスの Shadow Root で共有します（`react/card-sheets.ts`）。ダッシュボードに何枚並べても、共通部分のパースは1回で済みます。
 
 主なトークンに加えて、スライダーカードは `--lg-slider-accent` `--lg-slider-accent-deep` `--lg-slider-accent-light` `--lg-slider-fill-light` を使います。バーとつまみは `--lg-slider-bar-bg`（未充填部分）`--lg-slider-mark`（目盛り）`--lg-knob-solid` `--lg-knob-solid-rim`（待機中のつまみ）`--lg-knob-shadow` `--lg-knob-shadow-active`（つまみの影）で調整できます。

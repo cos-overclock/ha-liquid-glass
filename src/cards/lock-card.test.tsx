@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { shadowCss } from "../react/test-styles";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { HomeAssistant } from "../types";
@@ -97,7 +98,7 @@ describe("liquid-glass-lock-card", () => {
     expect(contentLayer?.querySelector(".slider-track lg-icon")).toBeNull();
     expect(contentLayer?.querySelector(".slider-fill")).toBeNull();
     expect(contentLayer?.querySelector(".slider-track")?.getAttribute("aria-valuetext")).toBe("施錠");
-    const css = element.shadowRoot?.querySelector("style")?.textContent ?? "";
+    const css = shadowCss(element.shadowRoot);
     expect(css).not.toContain("--lg-knob-solid: color-mix");
     expect(css).not.toContain("--lg-slider-track:");
     expect(css).toContain('.lg-liquid-card[data-liquid-glass=""] > :first-child');

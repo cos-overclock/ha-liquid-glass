@@ -20,7 +20,7 @@ const HOLD_MS = 500;
 /** Movement past this many pixels means the gesture was a scroll, not a tap. */
 const HOLD_SLOP = 10;
 
-const styles = `${tokens}${reactCardStyles}${glassSurfaceStyles}
+const ownStyles = `
   .card {
     cursor: pointer;
     user-select: none;
@@ -123,7 +123,6 @@ function SwitchCard({ config, hass, host }: ReactCardProps<SwitchCardConfig>) {
 
   if (!entity || isUnavailable(entity)) {
     return <>
-      <style>{styles}</style>
       <UnavailableCard
         refraction={refraction}
         variant={config.glass_variant}
@@ -188,7 +187,6 @@ function SwitchCard({ config, hass, host }: ReactCardProps<SwitchCardConfig>) {
       : `${t("on")} · ${t("since", { t: since })}`;
 
   return <>
-    <style>{styles}</style>
     <LiquidGlassSurface
       className={`card row${on ? " active" : ""}${changeAnimation ? ` switch-turned-${changeAnimation}` : ""}`}
       refraction={refraction}
@@ -220,6 +218,7 @@ function SwitchCard({ config, hass, host }: ReactCardProps<SwitchCardConfig>) {
 export const LiquidGlassSwitchCard = defineLiquidGlassCard<SwitchCardConfig>({
   tagName: "liquid-glass-switch-card",
   component: SwitchCard,
+  styles: [tokens, reactCardStyles, glassSurfaceStyles, ownStyles],
   getCardSize: () => 1,
   getStubConfig: (hass?: HomeAssistant, entities?: string[], entitiesFallback?: string[]) => ({
     entity: pickEntity(SWITCH_DOMAINS, hass, entities, entitiesFallback),

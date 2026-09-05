@@ -48,7 +48,7 @@ const CONTROL_SIZE = 32;
 const SNAPSHOT_SIZE = 34;
 const CONTROL_GAP = 8;
 
-const styles = `${tokens}${reactCardStyles}${glassSurfaceStyles}
+const ownStyles = `
   .card {
     padding: 0;
     gap: 0;
@@ -370,7 +370,6 @@ function CameraCard({ config, hass, host }: ReactCardProps<CameraCardConfig>) {
 
   if (!entity) {
     return <>
-      <style>{styles}</style>
       <UnavailableCard
         refraction={refraction}
         variant={config.glass_variant}
@@ -481,7 +480,6 @@ function CameraCard({ config, hass, host }: ReactCardProps<CameraCardConfig>) {
   </>;
 
   return <>
-    <style>{styles}</style>
     <LiquidGlassSurface
       className={`card${offline ? " offline" : ""}`}
       refraction={refraction}
@@ -558,6 +556,7 @@ function CameraCard({ config, hass, host }: ReactCardProps<CameraCardConfig>) {
 export const LiquidGlassCameraCard = defineLiquidGlassCard<CameraCardConfig>({
   tagName: "liquid-glass-camera-card",
   component: CameraCard,
+  styles: [tokens, reactCardStyles, glassSurfaceStyles, ownStyles],
   getCardSize: (config) => (config.show_actions === false ? 4 : 5),
   getStubConfig: (hass?: HomeAssistant, entities?: string[], entitiesFallback?: string[]) => ({
     entity: pickEntity(["camera"], hass, entities, entitiesFallback),

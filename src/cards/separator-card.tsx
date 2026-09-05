@@ -18,7 +18,7 @@ export interface SeparatorCardConfig extends BaseCardConfig {
   subtitle?: string;
 }
 
-const styles = `${tokens}${glassSurfaceStyles}
+const ownStyles = `
   * { box-sizing: border-box; }
   :host {
     display: block;
@@ -252,12 +252,13 @@ function SeparatorCard({ config, hass, host }: ReactCardProps<SeparatorCardConfi
       );
   }
 
-  return <><style>{styles}</style>{content}</>;
+  return content;
 }
 
 export const LiquidGlassSeparatorCard = defineLiquidGlassCard<SeparatorCardConfig>({
   tagName: "liquid-glass-separator-card",
   component: SeparatorCard,
+  styles: [tokens, glassSurfaceStyles, ownStyles],
   getCardSize: () => 1,
   getStubConfig: () => ({
     title: "Section",

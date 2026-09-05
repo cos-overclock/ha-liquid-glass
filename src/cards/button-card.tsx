@@ -52,7 +52,7 @@ export const BUTTON_ACTIONS: Record<string, { service: string; icon: string; wel
 /** How long the tick stays up after a press, matching the design's Done state. */
 const DONE_MS = 2600;
 
-const styles = `${tokens}${reactCardStyles}${glassSurfaceStyles}
+const ownStyles = `
   .card {
     cursor: pointer;
     user-select: none;
@@ -129,7 +129,6 @@ function ButtonCard({ config, hass, host }: ReactCardProps<ButtonCardConfig>) {
 
   if (!entity || isUnavailable(entity)) {
     return <>
-      <style>{styles}</style>
       <UnavailableCard
         refraction={refraction}
         variant={config.glass_variant}
@@ -165,7 +164,6 @@ function ButtonCard({ config, hass, host }: ReactCardProps<ButtonCardConfig>) {
   };
 
   return <>
-    <style>{styles}</style>
     <LiquidGlassSurface
       className="card row"
       refraction={refraction}
@@ -190,6 +188,7 @@ function ButtonCard({ config, hass, host }: ReactCardProps<ButtonCardConfig>) {
 export const LiquidGlassButtonCard = defineLiquidGlassCard<ButtonCardConfig>({
   tagName: "liquid-glass-button-card",
   component: ButtonCard,
+  styles: [tokens, reactCardStyles, glassSurfaceStyles, ownStyles],
   getCardSize: () => 1,
   getStubConfig: (hass?: HomeAssistant, entities?: string[], entitiesFallback?: string[]) => ({
     entity: pickEntity(BUTTON_DOMAINS, hass, entities, entitiesFallback),

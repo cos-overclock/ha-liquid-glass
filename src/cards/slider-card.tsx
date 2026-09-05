@@ -151,13 +151,13 @@ export function resolveSliderSpec(entity: HassEntity, config: SliderCardConfig):
     max: config.max ?? base.max,
     step: config.step ?? base.step,
     unit: config.unit ?? base.unit,
-    icon: config.icon ?? (attributes.icon as string | undefined) ?? base.icon,
+    icon: config.icon ?? (attributes.icon) ?? base.icon,
     value: config.attribute ? numeric(attributes[config.attribute]) : base.value,
     call,
   };
 }
 
-const styles = `${tokens}${reactCardStyles}${glassSurfaceStyles}${glassSliderStyles}
+const ownStyles = `
   .card {
     gap: 16px;
     width: 100%;
@@ -232,7 +232,6 @@ function SliderCard({ config, hass, host }: ReactCardProps<SliderCardConfig>) {
   if (!entity || isUnavailable(entity) || !spec) {
     const name = config.name ?? friendlyName(entity, config.entity ?? "");
     return <>
-      <style>{styles}</style>
       <LiquidGlassSurface
         className="card"
         refraction={refraction}
@@ -294,7 +293,6 @@ function SliderCard({ config, hass, host }: ReactCardProps<SliderCardConfig>) {
   } as CSSProperties;
 
   return <>
-    <style>{styles}</style>
     <LiquidGlassSurface
       className="card"
       refraction={refraction}
@@ -353,6 +351,7 @@ function SliderCard({ config, hass, host }: ReactCardProps<SliderCardConfig>) {
 export const LiquidGlassSliderCard = defineLiquidGlassCard<SliderCardConfig>({
   tagName: "liquid-glass-slider-card",
   component: SliderCard,
+  styles: [tokens, reactCardStyles, glassSurfaceStyles, glassSliderStyles, ownStyles],
   getCardSize: () => 2,
   getStubConfig: (hass?: HomeAssistant, entities?: string[], entitiesFallback?: string[]) => ({
     entity: pickEntity(SLIDER_DOMAINS, hass, entities, entitiesFallback),

@@ -37,7 +37,7 @@ export const DEFAULT_FAVORITES = DEFAULT_LIGHT_FAVORITES;
 
 type ColorUiMode = "color" | "color_temp";
 
-const styles = `${tokens}${reactCardStyles}${glassSurfaceStyles}${glassSliderStyles}${glassSwitchStyles}
+const ownStyles = `
   /* Brightness keeps its two lamps beside the bar, where a thin slider leaves room. */
   .brightness .bar-row {
     display: flex;
@@ -186,7 +186,6 @@ function LightCard({ config, hass, host }: ReactCardProps<LightCardConfig>) {
 
   if (!entity || isUnavailable(entity)) {
     return <>
-      <style>{styles}</style>
       <UnavailableCard
         refraction={refraction}
         variant={config.glass_variant}
@@ -265,7 +264,6 @@ function LightCard({ config, hass, host }: ReactCardProps<LightCardConfig>) {
     call("turn_on", data);
   };
   return <>
-    <style>{styles}</style>
     <LiquidGlassSurface
       className="card"
       refraction={refraction}
@@ -440,6 +438,7 @@ function LightCard({ config, hass, host }: ReactCardProps<LightCardConfig>) {
 export const LiquidGlassLightCard = defineLiquidGlassCard<LightCardConfig>({
   tagName: "liquid-glass-light-card",
   component: LightCard,
+  styles: [tokens, reactCardStyles, glassSurfaceStyles, glassSliderStyles, glassSwitchStyles, ownStyles],
   getCardSize: () => 5,
   getStubConfig: (hass?: HomeAssistant, entities?: string[], entitiesFallback?: string[]) => ({
     entity: pickEntity(

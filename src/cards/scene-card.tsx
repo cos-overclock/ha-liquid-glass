@@ -36,7 +36,7 @@ export interface SceneCardConfig extends BaseCardConfig {
 /** How long a pressed item stays lit, long enough to read as a confirmation. */
 const PRESS_MS = 900;
 
-const styles = `${tokens}${reactCardStyles}${glassSurfaceStyles}
+const ownStyles = `
   .card {
     gap: 14px;
   }
@@ -200,7 +200,6 @@ function SceneCard({ config, hass, host }: ReactCardProps<SceneCardConfig>) {
 
   if (!items.length) {
     return <>
-      <style>{styles}</style>
       <UnavailableCard
         refraction={refraction}
         variant={config.glass_variant}
@@ -290,6 +289,7 @@ function SceneCard({ config, hass, host }: ReactCardProps<SceneCardConfig>) {
 export const LiquidGlassSceneCard = defineLiquidGlassCard<SceneCardConfig>({
   tagName: "liquid-glass-scene-card",
   component: SceneCard,
+  styles: [tokens, reactCardStyles, glassSurfaceStyles, ownStyles],
   getCardSize: (config) => {
     const columns = clamp(Math.round(config.columns ?? 3), 1, 6);
     const rows = Math.ceil((config.scenes?.length ?? 0) / columns);

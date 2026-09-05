@@ -22,7 +22,7 @@ export interface CoverCardConfig extends BaseCardConfig {
 const F = { OPEN: 1, CLOSE: 2, SET_POSITION: 4, STOP: 8, SET_TILT: 128 };
 const TRACK_H = 180;
 
-const styles = `${tokens}${reactCardStyles}${glassSurfaceStyles}${glassSliderStyles}
+const ownStyles = `
   .card {
     gap: 16px;
   }
@@ -198,7 +198,6 @@ function CoverCard({ config, hass, host }: ReactCardProps<CoverCardConfig>) {
 
   if (!entity || isUnavailable(entity)) {
     return <>
-      <style>{styles}</style>
       <UnavailableCard
         refraction={refraction}
         variant={config.glass_variant}
@@ -297,7 +296,6 @@ function CoverCard({ config, hass, host }: ReactCardProps<CoverCardConfig>) {
   const panelWidth = `${(closedRatio * 100) / 2}%`;
 
   return <>
-    <style>{styles}</style>
     <LiquidGlassSurface
       className="card"
       refraction={refraction}
@@ -408,6 +406,7 @@ function CoverCard({ config, hass, host }: ReactCardProps<CoverCardConfig>) {
 export const LiquidGlassCoverCard = defineLiquidGlassCard<CoverCardConfig>({
   tagName: "liquid-glass-cover-card",
   component: CoverCard,
+  styles: [tokens, reactCardStyles, glassSurfaceStyles, glassSliderStyles, ownStyles],
   getCardSize: () => 4,
   getStubConfig: (hass?: HomeAssistant, entities?: string[], entitiesFallback?: string[]) => ({
     entity: pickEntity(

@@ -28,8 +28,6 @@ interface ClassMeta {
   accentLight: string;
 }
 
-const styles = `${tokens}${reactCardStyles}${glassSurfaceStyles}`;
-
 /** Icons, wording and accent per binary_sensor device class. */
 export function binarySensorMeta(deviceClass: string | undefined, t: Translator): ClassMeta {
   const base: ClassMeta = {
@@ -95,7 +93,6 @@ function BinarySensorCard({ config, hass, host }: ReactCardProps<BinarySensorCar
 
   if (!entity || isUnavailable(entity)) {
     return <>
-      <style>{styles}</style>
       <UnavailableCard
         refraction={refraction}
         variant={config.glass_variant}
@@ -125,7 +122,6 @@ function BinarySensorCard({ config, hass, host }: ReactCardProps<BinarySensorCar
     : `${meta.stateOff} · ${t("last_change", { t: since })}`;
 
   return <>
-    <style>{styles}</style>
     <LiquidGlassSurface
       className="card row"
       refraction={refraction}
@@ -143,6 +139,7 @@ function BinarySensorCard({ config, hass, host }: ReactCardProps<BinarySensorCar
 export const LiquidGlassBinarySensorCard = defineLiquidGlassCard<BinarySensorCardConfig>({
   tagName: "liquid-glass-binary-sensor-card",
   component: BinarySensorCard,
+  styles: [tokens, reactCardStyles, glassSurfaceStyles],
   getCardSize: () => 1,
   getStubConfig: (hass?: HomeAssistant, entities?: string[], entitiesFallback?: string[]) => ({
     entity: pickEntity(["binary_sensor"], hass, entities, entitiesFallback),

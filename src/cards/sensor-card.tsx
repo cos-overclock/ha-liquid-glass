@@ -47,7 +47,7 @@ const W = 340;
 const H = 84;
 const REFRESH_MS = 5 * 60 * 1000;
 
-const styles = `${tokens}${reactCardStyles}${glassSurfaceStyles}
+const ownStyles = `
   .card {
     gap: 16px;
   }
@@ -331,7 +331,6 @@ function SensorCard({ config, hass, host }: ReactCardProps<SensorCardConfig>) {
   </>;
 
   return <>
-    <style>{styles}</style>
     <LiquidGlassSurface
       className={`card${valueInCaption ? " row" : ""}`}
       refraction={refraction}
@@ -381,6 +380,7 @@ function SensorCard({ config, hass, host }: ReactCardProps<SensorCardConfig>) {
 export const LiquidGlassSensorCard = defineLiquidGlassCard<SensorCardConfig>({
   tagName: "liquid-glass-sensor-card",
   component: SensorCard,
+  styles: [tokens, reactCardStyles, glassSurfaceStyles, ownStyles],
   getCardSize: (config) => {
     if (config.graph === false || config.value_in_caption) return config.value_in_caption ? 1 : 2;
     return 4;

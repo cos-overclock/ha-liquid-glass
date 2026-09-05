@@ -32,7 +32,7 @@ interface LockVisual {
   state: string;
 }
 
-const styles = `${tokens}${reactCardStyles}${glassSurfaceStyles}${glassSliderStyles}
+const ownStyles = `
   .card {
     gap: 16px;
     width: 100%;
@@ -210,7 +210,6 @@ function LockCard({ config, hass, host }: ReactCardProps<LockCardConfig>) {
   if (!entity || isUnavailable(entity)) {
     const name = config.name ?? friendlyName(entity, config.entity ?? "");
     return <>
-      <style>{styles}</style>
       <LiquidGlassSurface
         className="card"
         refraction={refraction}
@@ -261,7 +260,6 @@ function LockCard({ config, hass, host }: ReactCardProps<LockCardConfig>) {
   const controlStyle = { "--thumb-color": visual.thumbColor } as CSSProperties;
 
   return <>
-    <style>{styles}</style>
     <LiquidGlassSurface
       className="card"
       refraction={refraction}
@@ -347,6 +345,7 @@ function LockCard({ config, hass, host }: ReactCardProps<LockCardConfig>) {
 export const LiquidGlassLockCard = defineLiquidGlassCard<LockCardConfig>({
   tagName: "liquid-glass-lock-card",
   component: LockCard,
+  styles: [tokens, reactCardStyles, glassSurfaceStyles, glassSliderStyles, ownStyles],
   getCardSize: () => 2,
   getStubConfig: (hass?: HomeAssistant, entities?: string[], entitiesFallback?: string[]) => ({
     entity: pickEntity(["lock"], hass, entities, entitiesFallback),
