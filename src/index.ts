@@ -52,7 +52,7 @@ type EntitySupport = (entity: HassEntity) => boolean;
 type SuggestedConfig = (entityId: string) => Record<string, unknown>;
 
 const feature = (entity: HassEntity, mask: number): boolean =>
-  Boolean(((entity.attributes.supported_features as number | undefined) ?? 0) & mask);
+  Boolean((entity.attributes.supported_features ?? 0) & mask);
 
 /**
  * Build a card-picker registration that only suggests the card for entities it can use.

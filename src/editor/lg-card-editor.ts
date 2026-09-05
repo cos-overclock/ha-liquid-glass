@@ -25,7 +25,7 @@ export class LiquidGlassCardEditor extends HTMLElement {
     const root = this.attachShadow({ mode: "open" });
     const style = document.createElement("style");
     style.textContent = ":host{display:block}";
-    this.form = document.createElement("ha-form") as HaFormElement;
+    this.form = document.createElement("ha-form");
     this.form.hidden = true;
     this.form.addEventListener("value-changed", this.valueChanged as EventListener);
     root.append(style, this.form);
@@ -51,15 +51,15 @@ export class LiquidGlassCardEditor extends HTMLElement {
     const { refraction, theme, ...rest } = config as unknown as FormData;
     const data: FormData = { ...rest };
     data.refraction = refraction === true ? "on" : refraction === false ? "off" : "auto";
-    data.refraction_quality = (rest.refraction_quality as string | undefined) ?? "auto";
+    data.refraction_quality = rest.refraction_quality ?? "auto";
     data.theme = theme ?? "auto";
-    data.glass_variant = (rest.glass_variant as string | undefined) ?? "regular";
-    if (cardKind(config.type) === "weather") data.layout = (rest.layout as string | undefined) ?? "full";
+    data.glass_variant = rest.glass_variant ?? "regular";
+    if (cardKind(config.type) === "weather") data.layout = rest.layout ?? "full";
     if (cardKind(config.type) === "climate") {
       const design = rest.design as string | undefined;
       data.design = design === "a" ? "compact" : design ?? "classic";
     }
-    if (cardKind(config.type) === "separator") data.style = (rest.style as string | undefined) ?? "pill";
+    if (cardKind(config.type) === "separator") data.style = rest.style ?? "pill";
 
     for (const name of fieldNames(schemaFor(config.type, this.t, data))) {
       if (!DEFAULT_ON.has(name)) continue;
@@ -78,6 +78,8 @@ export class LiquidGlassCardEditor extends HTMLElement {
   private fromForm(data: FormData): BaseCardConfig {
     const out: FormData = { ...data };
     const compactClimate = cardKind(out.type as string | undefined) === "climate" && (out.design === "compact" || out.design === "a");
+    // The editor is shared by every card, so the climate-only keys are not on the base type.
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- widening: tsc rejects the code without it
     const current = this.config as (BaseCardConfig & { design?: string; show_fan_mode?: boolean }) | undefined;
     const currentCompact = current?.design === "compact" || current?.design === "a";
     if (current && compactClimate !== currentCompact && current.show_fan_mode === undefined) delete out.show_fan_mode;

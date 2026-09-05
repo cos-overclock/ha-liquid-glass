@@ -105,10 +105,10 @@ function BinarySensorCard({ config, hass, host }: ReactCardProps<BinarySensorCar
   }
 
   const on = entity.state === "on";
-  const meta = binarySensorMeta(entity.attributes.device_class as string | undefined, t);
+  const meta = binarySensorMeta(entity.attributes.device_class, t);
   const accent = config.accent ?? meta.accent;
   const accentLight = config.accent ? lighten(config.accent) : meta.accentLight;
-  const configIcon = (on ? config.icon_on : config.icon_off) ?? config.icon ?? (entity.attributes.icon as string | undefined);
+  const configIcon = (on ? config.icon_on : config.icon_off) ?? config.icon ?? (entity.attributes.icon);
   const icon = configIcon ?? (on ? meta.iconOn : meta.iconOff);
   const well: WellStyle | undefined = on
     ? { from: accentLight, to: accent, glow: withAlpha(accent, 0.24) }

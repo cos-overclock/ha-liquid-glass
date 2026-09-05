@@ -275,7 +275,7 @@ function CoverCard({ config, hass, host }: ReactCardProps<CoverCardConfig>) {
     ? undefined
     : { color: "var(--lg-cover-badge)", bg: "rgba(43,179,208,0.18)", stroke: "rgba(43,179,208,0.3)" };
   const icon = config.icon
-    ?? (attributes.icon as string | undefined)
+    ?? (attributes.icon)
     ?? (isCurtain ? "mdi:curtains" : "mdi:blinds-horizontal");
   const [upIcon, downIcon] = isCurtain
     ? singleCurtain

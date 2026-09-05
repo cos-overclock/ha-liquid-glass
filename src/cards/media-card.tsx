@@ -302,10 +302,10 @@ function MediaCard({ config, hass, host }: ReactCardProps<MediaCardConfig>) {
   const paused = entity.state === "paused";
   const idle = !playing && !paused;
   const sourceColor = config.source_color ?? "#FF375F";
-  const art = idle ? undefined : (attributes.entity_picture as string | undefined);
+  const art = idle ? undefined : (attributes.entity_picture);
   const title = idle
     ? t("not_playing")
-    : (attributes.media_title as string | undefined) ?? (attributes.friendly_name as string | undefined) ?? "";
+    : (attributes.media_title as string | undefined) ?? (attributes.friendly_name) ?? "";
   const artistParts = [attributes.media_artist, attributes.media_album_name].filter(Boolean) as string[];
   const artist = idle ? t("standby") : artistParts.join(" — ") || ((attributes.source as string | undefined) ?? "");
   const source = (attributes.app_name as string | undefined) ?? (attributes.source as string | undefined);

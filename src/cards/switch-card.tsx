@@ -207,7 +207,7 @@ function SwitchCard({ config, hass, host }: ReactCardProps<SwitchCardConfig>) {
       onContextMenu={(event) => event.preventDefault()}
     >
       <IconWell
-        icon={config.icon ?? (entity.attributes.icon as string | undefined) ?? defaultIcon(config.entity)}
+        icon={config.icon ?? (entity.attributes.icon) ?? defaultIcon(config.entity)}
         style={on ? { from: "var(--lg-switch-accent-light)", to: "var(--lg-switch-accent)", glow: "rgba(10,132,255,0.24)" } : undefined}
       />
       <CardTitle name={name} state={state} />

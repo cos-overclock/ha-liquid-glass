@@ -240,7 +240,7 @@ function createElementFallback(config: LovelaceCardConfig): LovelaceCard {
   const element = document.createElement(tag) as LovelaceCard;
   const apply = () => {
     try {
-      element.setConfig?.(config as BaseCardConfig);
+      element.setConfig?.(config);
     } catch {
       /* A child that rejects its config renders its own error; the group stays up. */
     }
@@ -253,7 +253,7 @@ function createElementFallback(config: LovelaceCardConfig): LovelaceCard {
 /** The glyph for an entity with no icon of its own; binary sensors also swap on state. */
 function defaultIcon(entity: HassEntity | undefined, domain: string): string {
   if (domain === "binary_sensor") {
-    const pair = BINARY_ICONS[(entity?.attributes.device_class as string | undefined) ?? ""];
+    const pair = BINARY_ICONS[(entity?.attributes.device_class) ?? ""];
     if (pair) return entity?.state === "on" ? pair[0] : pair[1];
   }
   return DOMAIN_ICONS[domain] ?? "mdi:card-outline";
@@ -289,7 +289,7 @@ function describe(entity: HassEntity, domain: string, t: Translator): { label: s
       return { label: target === undefined ? t(`mode_${state}`) : `${target}°`, tone: "warm" };
     }
     case "binary_sensor": {
-      const deviceClass = entity.attributes.device_class as string | undefined;
+      const deviceClass = entity.attributes.device_class;
       const labels = (deviceClass && BINARY_LABELS[deviceClass]) ?? ["on", "off"];
       return on ? { label: t(labels[0]), tone: "warm" } : { label: t(labels[1]), tone: "off" };
     }
@@ -299,7 +299,7 @@ function describe(entity: HassEntity, domain: string, t: Translator): { label: s
       return { label: t("standby"), tone: "off" };
     }
     case "sensor": {
-      const unit = (entity.attributes.unit_of_measurement as string | undefined) ?? "";
+      const unit = (entity.attributes.unit_of_measurement) ?? "";
       return { label: `${state}${unit}`, tone: "off" };
     }
     default:
@@ -333,6 +333,11 @@ function GroupCard({ config, hass, host }: ReactCardProps<GroupCardConfig>) {
       if (out[key] === undefined && config[key] !== undefined) out[key] = config[key];
     }
     return out;
+    /*
+     * The inherited keys are listed one by one on purpose: `config` is a fresh object on
+     * every setConfig, so depending on it would rebuild every child card each time.
+     */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [
     cardConfigs,
     config.glass_variant,
@@ -380,7 +385,7 @@ function GroupCard({ config, hass, host }: ReactCardProps<GroupCardConfig>) {
       const entity = hass?.states[entityId];
       const domain = entityId.split(".", 1)[0];
       const icon = (card.icon as string | undefined)
-        ?? (entity?.attributes.icon as string | undefined)
+        ?? (entity?.attributes.icon)
         ?? defaultIcon(entity, domain);
       if (isUnavailable(entity)) return { icon, label: t("unavailable"), tone: "off" };
       return { icon, ...describe(entity as HassEntity, domain, t) };

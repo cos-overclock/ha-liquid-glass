@@ -118,6 +118,11 @@ function DialGlassThumb({
       lensW,
       lensH,
     };
+    /*
+     * Seeded once on purpose. The layout effect below pushes later positions in, and
+     * rebuilding these values would restart every animation mid-drag.
+     */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const holdRef = useRef(0);
   const kickWobbleRef = useRef<() => void>(() => {});

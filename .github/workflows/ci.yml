@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+
+      - name: Build
+        run: npm run build
+
+      # dist/ is committed because HACS serves it straight from the repo, so a bundle
+      # that lags behind src means users install stale cards. The build stamps the
+      # current time into itself, which is the one difference that does not count.
+      - name: Check the committed bundle is up to date
+        run: |
+          stamp='s/[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\} [0-9]\{2\}:[0-9]\{2\}/BUILD_STAMP/g'
+          git show HEAD:dist/liquid-glass-cards.js | sed "$stamp" > /tmp/committed.js
+          sed "$stamp" dist/liquid-glass-cards.js > /tmp/built.js
+          if ! diff -q /tmp/committed.js /tmp/built.js > /dev/null; then
+            echo "::error::dist/ is out of date — run 'npm run build' and commit the result."
+            exit 1
+          fi

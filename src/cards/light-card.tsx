@@ -272,7 +272,7 @@ function LightCard({ config, hass, host }: ReactCardProps<LightCardConfig>) {
       style={{ display: "flex", position: "relative" }}
     >
       <div className="header">
-        <IconWell icon={config.icon ?? (attributes.icon as string | undefined) ?? "mdi:lightbulb"} style={well} onClick={toggle} />
+        <IconWell icon={config.icon ?? (attributes.icon) ?? "mdi:lightbulb"} style={well} onClick={toggle} />
         <CardTitle name={name} state={state} onClick={open} />
         <GlassSwitch
           checked={on}

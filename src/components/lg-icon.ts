@@ -17,7 +17,7 @@ export class LgIcon extends HTMLElement {
       :host{display:inline-flex;align-items:center;justify-content:center;width:var(--mdc-icon-size,24px);height:var(--mdc-icon-size,24px);color:inherit;flex:none}
       ha-icon{display:flex;--mdc-icon-size:inherit}
     `;
-    this.haIcon = document.createElement("ha-icon") as HaIconElement;
+    this.haIcon = document.createElement("ha-icon");
     root.append(style, this.haIcon);
   }
 

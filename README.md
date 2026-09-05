@@ -433,12 +433,16 @@ liquid_glass:
 npm install
 npm run build     # 型チェック + dist/liquid-glass-cards.js を生成
 npm run watch     # 変更を監視してビルド
-npm test          # React/Custom Element 境界の単体テスト
+npm test          # 単体テスト
+npm run lint      # ESLint（React Hooks ルールと型情報を使った検査）
+npm run check     # typecheck + lint + test をまとめて実行
 npm run demo      # http://localhost:5173/ でモック hass を使ったデモを表示
 ```
 
 デモは `?theme=dark` `?lang=en` `?refraction=on` `?quality=medium` `?width=210` のクエリで表示を切り替えられます。画面上部のスライダーでカード幅を変えられるので、狭い列での見え方を確認できます。
 React版カードを個別に確認する場合は`?focus=separator`、`?focus=lock`、`?focus=slider`を使用できます。
+
+GitHub Actions（`.github/workflows/ci.yml`）が push と pull request ごとに `typecheck` / `lint` / `test` / `build` を実行します。`dist/` は HACS がリポジトリからそのまま配信するため、コミット済みのバンドルが `src` から遅れていないかも検査します（ビルド時刻のスタンプだけは差分として無視します）。
 
 `http://localhost:5173/demo/editor.html` はビジュアルエディタの確認用ページです。`?kind=cover` のようにカード種別を指定できます。Home Assistant の `ha-form` を最小限に再現したシムの上で動くため見た目は簡素ですが、スキーマ・ラベル・書き出される設定・カードへの反映を確認できます。ページ上部の Self test が全カードのエディタを自動で操作して結果を検証します。
 

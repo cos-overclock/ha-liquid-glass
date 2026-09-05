@@ -55,7 +55,7 @@ function createHass(target: HassEntity, forecasts: unknown[]): HomeAssistant {
     themes: { darkMode: false },
     callService: vi.fn(async () => ({
       response: { [target.entity_id]: { forecast: forecasts } },
-    })) as unknown as HomeAssistant["callService"],
+    })),
     callApi: async <T,>() => undefined as T,
   };
 }

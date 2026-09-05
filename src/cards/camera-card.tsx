@@ -366,6 +366,11 @@ function CameraCard({ config, hass, host }: ReactCardProps<CameraCardConfig>) {
       width,
       height,
     );
+    /*
+     * The tick is the trigger. A refreshed still arrives on the same element, so this
+     * counter is the only thing that can tell the lens a new frame is there to redraw.
+     */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [decodedStills]);
 
   if (!entity) {

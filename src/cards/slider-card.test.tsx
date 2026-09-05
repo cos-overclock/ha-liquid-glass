@@ -76,9 +76,9 @@ describe("resolveSliderSpec", () => {
     [entity("cover", "open", { current_position: 65 }), 65, 45, ["cover", "set_cover_position", { position: 45 }]],
     [entity("climate", "heat", { temperature: 22, min_temp: 7, max_temp: 35, target_temp_step: 0.5 }), 22, 22.5, ["climate", "set_temperature", { temperature: 22.5 }]],
   ])("maps domain values and service payloads", (target, expectedValue, input, expectedCall) => {
-    const spec = resolveSliderSpec(target as HassEntity, { type: "custom:test" });
+    const spec = resolveSliderSpec(target, { type: "custom:test" });
     expect(spec.value).toBe(expectedValue);
-    expect(spec.call?.(input as number)).toEqual(expectedCall);
+    expect(spec.call?.(input)).toEqual(expectedCall);
   });
 
   it("supports attribute reads and a custom service key", () => {

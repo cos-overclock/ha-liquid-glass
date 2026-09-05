@@ -298,14 +298,14 @@ function SensorCard({ config, hass, host }: ReactCardProps<SensorCardConfig>) {
   const value = Number(entity.state);
   const numeric = Number.isFinite(value);
   const decimals = config.decimals;
-  const unit = (entity.attributes.unit_of_measurement as string | undefined) ?? "";
+  const unit = (entity.attributes.unit_of_measurement) ?? "";
   const trend = numeric && config.trend !== false ? trendOver(points) : undefined;
   const spark = showGraph ? sparkPath(points) : undefined;
   const values = points.map((point) => point.v);
   const min = values.length ? Math.min(...values) : undefined;
   const max = values.length ? Math.max(...values) : undefined;
   const icon = config.icon
-    ?? (entity.attributes.icon as string | undefined)
+    ?? (entity.attributes.icon)
     ?? (entity.attributes.device_class === "humidity" ? "mdi:water-percent" : "mdi:thermometer");
   const up = (trend ?? 0) >= 0;
   // Symbols read fine inside the badge; a word like "objects" would blow it out.

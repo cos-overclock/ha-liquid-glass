@@ -142,8 +142,9 @@ export interface GlassSliderProps {
   trackContent?: ReactNode;
   /** Optional content carried by the thumb, such as an icon for a binary control. */
   thumbContent?: ReactNode;
-  onInput(value: number, handle: SliderHandle): void;
-  onChange(value: number, handle: SliderHandle): void;
+  /* Property signatures, not methods: these are callbacks, never called with a `this`. */
+  onInput: (value: number, handle: SliderHandle) => void;
+  onChange: (value: number, handle: SliderHandle) => void;
 }
 
 export const glassSliderStyles = `
