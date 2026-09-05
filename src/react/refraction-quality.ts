@@ -13,10 +13,35 @@ export function filterResolutionForQuality(quality: RefractionQuality): 1 | 2 {
   return quality === "medium" ? 1 : 2;
 }
 
-/** A zero dispersion value selects one displacement pass instead of separate RGB passes. */
+/** What the library falls back to when a preset leaves `mapSize` unset. */
+const DEFAULT_MAP_SIZE = 512;
+
+/**
+ * Below this the rounded-rect silhouette starts to feather visibly on the small
+ * control lenses, which rasterize their shape into the map (`clipToShape`).
+ */
+const MIN_MAP_SIZE = 96;
+
+/**
+ * Medium quality keeps the lens geometry and cuts only what a phone cannot resolve.
+ *
+ * - A zero dispersion value selects one displacement pass instead of separate RGB passes.
+ * - Halving `mapSize` quarters the per-instance work: the SDF is rasterized pixel by
+ *   pixel in JS, encoded as a PNG data URL and decoded again by the filter, and all
+ *   three costs scale with its area. The map is a smooth field that `feImage` samples
+ *   with `preserveAspectRatio="none"`, so bilinear upscaling reproduces it.
+ *
+ * High quality returns the input untouched, so a caller can hand a module-level
+ * constant straight through and keep its identity.
+ */
 export function opticsForQuality(
   optics: Partial<GlassOptics>,
   quality: RefractionQuality,
 ): Partial<GlassOptics> {
-  return quality === "medium" ? { ...optics, dispersion: 0 } : optics;
+  if (quality !== "medium") return optics;
+  return {
+    ...optics,
+    dispersion: 0,
+    mapSize: Math.max(MIN_MAP_SIZE, (optics.mapSize ?? DEFAULT_MAP_SIZE) >> 1),
+  };
 }

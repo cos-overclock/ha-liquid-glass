@@ -1,5 +1,6 @@
 import { Glass, type GlassOptics } from "@samasante/liquid-glass";
 import { createElement, useMemo, type HTMLAttributes, type ReactNode } from "react";
+import type { RefractionQuality } from "../types";
 import {
   filterResolutionForQuality,
   opticsForQuality,
@@ -111,7 +112,7 @@ const flat = (optics: Partial<GlassOptics>): Partial<GlassOptics> => ({
   bend: 0,
 });
 
-const opticPresets = {
+const basePresets = {
   regular: {
     card: regularCardOptics,
     compact: regularCardOptics,
@@ -124,14 +125,62 @@ const opticPresets = {
   },
 } as const;
 
+const VARIANTS = ["regular", "clear"] as const;
+const SURFACES = ["card", "compact", "control"] as const;
+
+type OpticTable = Record<GlassVariant, Record<GlassSurface, Partial<GlassOptics>>>;
+
+const deriveTable = (
+  derive: (optics: Partial<GlassOptics>) => Partial<GlassOptics>,
+): OpticTable => {
+  const table = {} as OpticTable;
+  for (const variant of VARIANTS) {
+    const surfaces = {} as Record<GlassSurface, Partial<GlassOptics>>;
+    for (const surface of SURFACES) surfaces[surface] = derive(basePresets[variant][surface]);
+    table[variant] = surfaces;
+  }
+  return table;
+};
+
+/*
+ * Each preset is derived once, at module scope, for every quality. <Glass> memoises its
+ * merged optics on the object's identity and feeds that memo to the layout effect that
+ * rebuilds the filter, so a freshly built object per render would bump the filter id and
+ * re-rasterize every surface on every Home Assistant state push.
+ */
+/*
+ * These lenses refract an owned copy of `.lg-refraction-source`: a smooth synthetic
+ * gradient, never the live backdrop. Blurring it is close to a no-op on screen, but it
+ * costs a full-surface feGaussianBlur plus a second feImage for the shape mask in every
+ * card's filter chain, on every rasterization — the only per-frame saving available.
+ *
+ * This is safe only for this route. GlassVideoControlLens takes the library's material
+ * path and the camera card the WebGL one, where frost blurs the real content behind the
+ * lens, so `opticsForQuality` itself must leave frost alone.
+ */
+const mediumSurfaceOptics = (optics: Partial<GlassOptics>): Partial<GlassOptics> => ({
+  ...opticsForQuality(optics, "medium"),
+  frost: 0,
+});
+
+const refractingPresets: Record<RefractionQuality, OpticTable> = {
+  high: deriveTable((optics) => optics),
+  medium: deriveTable(mediumSurfaceOptics),
+};
+
+const flatPresets: Record<RefractionQuality, OpticTable> = {
+  high: deriveTable(flat),
+  medium: deriveTable((optics) => flat(opticsForQuality(optics, "medium"))),
+};
+
 /** Explicit SDF optics shared by every React card. */
 export function opticsFor(
   refraction: boolean,
   variant: GlassVariant = "regular",
   surface: GlassSurface = "card",
+  quality: RefractionQuality = "high",
 ): Partial<GlassOptics> {
-  const preset = opticPresets[variant][surface];
-  return refraction ? preset : flat(preset);
+  return (refraction ? refractingPresets : flatPresets)[quality][variant][surface];
 }
 
 export const glassSurfaceStyles = `
@@ -346,7 +395,7 @@ export function LiquidGlassSurface({
     <Glass
       {...props}
       className={surfaceClass}
-      optics={opticsFor(refraction, variant, surface)}
+      optics={opticsFor(refraction, variant, surface, quality)}
       refract={source}
       behind="var(--primary-background-color, transparent)"
       filterResolution={filterResolutionForQuality(quality)}

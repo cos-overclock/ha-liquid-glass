@@ -79,4 +79,64 @@ describe("Liquid Glass optical presets", () => {
     expect(opticsForQuality(highOptics, "high")).toBe(highOptics);
     expect(mediumOptics).toMatchObject({ strength: 0.2, dispersion: 0, frost: 4 });
   });
+
+  it("halves the displacement map at medium quality, down to a legible floor", () => {
+    expect(opticsForQuality({ mapSize: 512 }, "medium").mapSize).toBe(256);
+    expect(opticsForQuality({ mapSize: 256 }, "medium").mapSize).toBe(128);
+    // The control lenses already start small; a further halving would feather
+    // their `clipToShape` silhouette.
+    expect(opticsForQuality({ mapSize: 128 }, "medium").mapSize).toBe(96);
+    // An unset mapSize follows the library's own 512 default.
+    expect(opticsForQuality({}, "medium").mapSize).toBe(256);
+  });
+
+  it("applies medium quality to card surfaces, not only to controls", () => {
+    for (const variant of ["regular", "clear"] as const) {
+      for (const surface of ["card", "compact", "control"] as const) {
+        const high = opticsFor(true, variant, surface, "high");
+        const medium = opticsFor(true, variant, surface, "medium");
+        expect(medium.mapSize).toBe((high.mapSize ?? 0) / 2);
+        // Everything that shapes the lens has to survive the downgrade.
+        expect(medium).toMatchObject({
+          strength: high.strength,
+          depth: high.depth,
+          curvature: high.curvature,
+          bend: high.bend,
+          bendWidth: high.bendWidth,
+        });
+      }
+    }
+  });
+
+  it("drops the frost blur from refracted surfaces at medium quality", () => {
+    for (const variant of ["regular", "clear"] as const) {
+      for (const surface of ["card", "compact", "control"] as const) {
+        expect(opticsFor(true, variant, surface, "high").frost).toBeGreaterThan(0);
+        expect(opticsFor(true, variant, surface, "medium").frost).toBe(0);
+      }
+    }
+  });
+
+  /*
+   * The media control lens and the camera card frost the real content behind them
+   * instead of an owned copy, so the shared downgrade must not touch frost.
+   */
+  it("leaves frost alone for lenses that blur live content", () => {
+    expect(opticsForQuality({ mapSize: 512, frost: 5 }, "medium").frost).toBe(5);
+  });
+
+  /*
+   * <Glass> memoises its merged optics on this object's identity. A new object per
+   * render bumps the filter id and re-rasterizes the surface on every state push,
+   * which costs far more than the quality downgrade saves.
+   */
+  it("returns a stable optics reference for repeated lookups", () => {
+    for (const refraction of [true, false]) {
+      for (const quality of ["high", "medium"] as const) {
+        expect(opticsFor(refraction, "regular", "card", quality)).toBe(
+          opticsFor(refraction, "regular", "card", quality),
+        );
+      }
+    }
+  });
 });
