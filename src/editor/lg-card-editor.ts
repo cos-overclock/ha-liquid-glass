@@ -1,47 +1,59 @@
-import { LitElement, html, css, nothing } from "lit";
-import { property, state } from "lit/decorators.js";
+import { DEFAULT_LIGHT_FAVORITES } from "../card-constants";
 import { createTranslator } from "../i18n";
 import type { BaseCardConfig, HomeAssistant } from "../types";
 import { fireEvent } from "../utils";
-import { DEFAULT_FAVORITES } from "../cards/light-card";
 import { cardKind, schemaFor, fieldNames, DEFAULT_ON, HELPERS, type FormSchema } from "./schema";
 
 type FormData = Record<string, unknown>;
 
-/**
- * Visual editor shared by every Liquid Glass card.
- *
- * Home Assistant hands the editor the full card config, so the form picks its own schema
- * from `config.type` and one registered element serves all eight cards.
- */
-export class LiquidGlassCardEditor extends LitElement {
-  @property({ attribute: false }) hass?: HomeAssistant;
-  @state() private config: BaseCardConfig | undefined;
+interface HaFormElement extends HTMLElement {
+  hass?: HomeAssistant;
+  data?: FormData;
+  schema?: FormSchema[];
+  computeLabel?: (schema: FormSchema) => string;
+  computeHelper?: (schema: FormSchema) => string | undefined;
+}
 
-  static override styles = css`
-    :host {
-      display: block;
-    }
-  `;
+/** Visual editor shared by every Liquid Glass card. */
+export class LiquidGlassCardEditor extends HTMLElement {
+  private hassValue?: HomeAssistant;
+  private config?: BaseCardConfig;
+  private readonly form: HaFormElement;
+
+  constructor() {
+    super();
+    const root = this.attachShadow({ mode: "open" });
+    const style = document.createElement("style");
+    style.textContent = ":host{display:block}";
+    this.form = document.createElement("ha-form") as HaFormElement;
+    this.form.hidden = true;
+    this.form.addEventListener("value-changed", this.valueChanged as EventListener);
+    root.append(style, this.form);
+  }
+
+  get hass(): HomeAssistant | undefined {
+    return this.hassValue;
+  }
+
+  set hass(value: HomeAssistant | undefined) {
+    if (this.hassValue === value) return;
+    this.hassValue = value;
+    this.updateForm();
+  }
 
   setConfig(config: BaseCardConfig): void {
     this.config = config;
+    this.updateForm();
   }
 
-  /**
-   * Config → form values. `refraction` becomes a three-way dropdown, and the favorite
-   * colors are seeded with the defaults the card actually renders so the list the editor
-   * shows matches the card.
-   */
+  /** Config → form values, including defaults that the card already renders. */
   private toForm(config: BaseCardConfig): FormData {
     const { refraction, theme, ...rest } = config as unknown as FormData;
     const data: FormData = { ...rest };
     data.refraction = refraction === true ? "on" : refraction === false ? "off" : "auto";
     data.theme = theme ?? "auto";
     data.glass_variant = (rest.glass_variant as string | undefined) ?? "regular";
-    // "full" is the weather card's default layout; show it rather than an empty dropdown.
     if (cardKind(config.type) === "weather") data.layout = (rest.layout as string | undefined) ?? "full";
-    // The original climate dial remains the default; make that explicit in the selector.
     if (cardKind(config.type) === "climate") {
       const design = rest.design as string | undefined;
       data.design = design === "a" ? "compact" : design ?? "classic";
@@ -56,23 +68,19 @@ export class LiquidGlassCardEditor extends LitElement {
 
     if (cardKind(config.type) === "light") {
       const favorites = rest.favorites as string[] | false | undefined;
-      data.favorites = favorites === false ? [] : favorites ?? DEFAULT_FAVORITES;
+      data.favorites = favorites === false ? [] : favorites ?? DEFAULT_LIGHT_FAVORITES;
     }
     return data;
   }
 
-  /** Form values → config, dropping the keys that carry no meaning. */
+  /** Form values → compact config, dropping keys that carry no meaning. */
   private fromForm(data: FormData): BaseCardConfig {
     const out: FormData = { ...data };
     const compactClimate = cardKind(out.type as string | undefined) === "climate" && (out.design === "compact" || out.design === "a");
     const current = this.config as (BaseCardConfig & { design?: string; show_fan_mode?: boolean }) | undefined;
     const currentCompact = current?.design === "compact" || current?.design === "a";
-    // ha-form includes the old design's seeded checkbox value in the same event as a
-    // design change. Do not mistake that seed for an explicit fan-control choice.
     if (current && compactClimate !== currentCompact && current.show_fan_mode === undefined) delete out.show_fan_mode;
 
-    // A toggle sitting at the card's own default carries no information. This runs before
-    // refraction becomes a boolean, since there both true and false are real choices.
     for (const [key, value] of Object.entries(out)) {
       if (typeof value !== "boolean") continue;
       if (compactClimate && key === "show_fan_mode") {
@@ -90,15 +98,11 @@ export class LiquidGlassCardEditor extends LitElement {
     if (out.layout === "full") delete out.layout;
     if (out.design === "classic") delete out.design;
     if (out.style === "pill" && cardKind(out.type as string | undefined) === "separator") delete out.style;
-    // Same for the swatches: the editor seeds them so the list is visible, but an
-    // untouched list is what the card shows anyway.
     const favorites = out.favorites;
-    if (Array.isArray(favorites) && favorites.join() === DEFAULT_FAVORITES.join()) delete out.favorites;
+    if (Array.isArray(favorites) && favorites.join() === DEFAULT_LIGHT_FAVORITES.join()) delete out.favorites;
 
     for (const [key, value] of Object.entries(out)) {
       if (value === undefined || value === null || value === "") delete out[key];
-      // An empty favorites list is a deliberate "hide the swatches"; every other empty
-      // list just means the option was never set.
       else if (Array.isArray(value) && value.length === 0 && key !== "favorites") delete out[key];
     }
     return out as unknown as BaseCardConfig;
@@ -112,24 +116,25 @@ export class LiquidGlassCardEditor extends LitElement {
   };
 
   private get t() {
-    return createTranslator(this.config?.language ?? this.hass?.locale?.language ?? this.hass?.language);
+    return createTranslator(this.config?.language ?? this.hassValue?.locale?.language ?? this.hassValue?.language);
   }
 
-  private valueChanged = (ev: CustomEvent<{ value: FormData }>): void => {
-    ev.stopPropagation();
-    fireEvent(this, "config-changed", { config: this.fromForm(ev.detail.value) });
+  private valueChanged = (event: CustomEvent<{ value: FormData }>): void => {
+    event.stopPropagation();
+    fireEvent(this, "config-changed", { config: this.fromForm(event.detail.value) });
   };
 
-  override render() {
-    if (!this.hass || !this.config) return nothing;
-    return html`<ha-form
-      .hass=${this.hass}
-      .data=${this.toForm(this.config)}
-      .schema=${schemaFor(this.config.type, this.t, this.config as unknown as FormData)}
-      .computeLabel=${this.computeLabel}
-      .computeHelper=${this.computeHelper}
-      @value-changed=${this.valueChanged}
-    ></ha-form>`;
+  private updateForm(): void {
+    const hass = this.hassValue;
+    const config = this.config;
+    this.form.hidden = !hass || !config;
+    if (!hass || !config) return;
+
+    this.form.hass = hass;
+    this.form.data = this.toForm(config);
+    this.form.schema = schemaFor(config.type, this.t, config as unknown as FormData);
+    this.form.computeLabel = this.computeLabel;
+    this.form.computeHelper = this.computeHelper;
   }
 }
 

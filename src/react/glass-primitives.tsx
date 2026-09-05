@@ -1,5 +1,5 @@
 import { Glass, type GlassOptics } from "@samasante/liquid-glass";
-import { createElement, type HTMLAttributes, type ReactNode } from "react";
+import { createElement, useMemo, type HTMLAttributes, type ReactNode } from "react";
 import { isEmbeddedCompanionWebView } from "./platform";
 
 type GlassVariant = "regular" | "clear";
@@ -281,11 +281,18 @@ export function GlassVideoControlLens({
   children,
   ...props
 }: GlassVideoControlLensProps) {
+  const optics = useMemo(
+    () => frost === glassVideoControlOptics.frost
+      ? glassVideoControlOptics
+      : { ...glassVideoControlOptics, frost },
+    [frost],
+  );
+
   if (!refraction) {
     return <div {...props} data-lg-static-lens="">{children}</div>;
   }
 
-  return <Glass {...props} optics={{ ...glassVideoControlOptics, frost }}>{children}</Glass>;
+  return <Glass {...props} optics={optics}>{children}</Glass>;
 }
 
 /**

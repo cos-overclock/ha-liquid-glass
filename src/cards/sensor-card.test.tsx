@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { act } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import type { HassEntity, HomeAssistant } from "../types";
 import { LiquidGlassSensorCard, type SensorCardConfig } from "./sensor-card";
 

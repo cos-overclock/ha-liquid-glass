@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { loadHaFormComponents } from "../editor/load";
 import { clockTime, createTranslator, relativeTime, type Translator } from "../i18n";
-import { defineReactCard, type ReactCardProps } from "../react/define-react-card";
+import { defineLiquidGlassCard, type ReactCardProps } from "../react/define-liquid-glass-card";
 import { glassSurfaceStyles, Icon, LiquidGlassSurface } from "../react/glass-primitives";
 import { GlassSlider, glassSliderStyles } from "../react/glass-slider";
 import { reactCardStyles } from "../react/card-styles";
@@ -9,7 +8,6 @@ import { useCardHost } from "../react/use-card-host";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HassEntity, HomeAssistant } from "../types";
 import { friendlyName, isUnavailable, moreInfo, pickEntity } from "../utils";
-import "../components/lg-icon";
 
 export interface LockActionButton {
   name: string;
@@ -34,7 +32,7 @@ interface LockVisual {
   state: string;
 }
 
-const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}${glassSliderStyles}
+const styles = `${tokens}${reactCardStyles}${glassSurfaceStyles}${glassSliderStyles}
   .card {
     gap: 16px;
     width: 100%;
@@ -315,7 +313,6 @@ function LockCard({ config, hass, host }: ReactCardProps<LockCardConfig>) {
           keyboardStep={1}
           disabled={jammed || busy}
           refraction={refraction}
-          glassVariant={config.glass_variant}
           scheme={isDark ? "dark" : "light"}
           label={visual.hint}
           valueText={visual.badgeLabel}
@@ -347,15 +344,10 @@ function LockCard({ config, hass, host }: ReactCardProps<LockCardConfig>) {
   </>;
 }
 
-export const LiquidGlassLockCard = defineReactCard<LockCardConfig>({
+export const LiquidGlassLockCard = defineLiquidGlassCard<LockCardConfig>({
   tagName: "liquid-glass-lock-card",
   component: LockCard,
-  normalizeConfig: (config) => ({ refraction: "auto", theme: "auto", ...config }),
   getCardSize: () => 2,
-  getConfigElement: async () => {
-    await loadHaFormComponents();
-    return document.createElement("liquid-glass-card-editor");
-  },
   getStubConfig: (hass?: HomeAssistant, entities?: string[], entitiesFallback?: string[]) => ({
     entity: pickEntity(["lock"], hass, entities, entitiesFallback),
   }),

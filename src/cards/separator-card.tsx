@@ -1,11 +1,9 @@
-import { loadHaFormComponents } from "../editor/load";
 import { createTranslator } from "../i18n";
-import { defineReactCard, type ReactCardProps } from "../react/define-react-card";
+import { defineLiquidGlassCard, type ReactCardProps } from "../react/define-liquid-glass-card";
 import { glassSurfaceStyles, Icon, LiquidGlassSurface } from "../react/glass-primitives";
 import { useCardHost } from "../react/use-card-host";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig } from "../types";
-import "../components/lg-icon";
 
 export type SeparatorStyle = "plain" | "pill" | "header";
 
@@ -20,7 +18,7 @@ export interface SeparatorCardConfig extends BaseCardConfig {
   subtitle?: string;
 }
 
-const styles = `${tokens.cssText}${glassSurfaceStyles}
+const styles = `${tokens}${glassSurfaceStyles}
   * { box-sizing: border-box; }
   :host {
     display: block;
@@ -257,15 +255,10 @@ function SeparatorCard({ config, hass, host }: ReactCardProps<SeparatorCardConfi
   return <><style>{styles}</style>{content}</>;
 }
 
-export const LiquidGlassSeparatorCard = defineReactCard<SeparatorCardConfig>({
+export const LiquidGlassSeparatorCard = defineLiquidGlassCard<SeparatorCardConfig>({
   tagName: "liquid-glass-separator-card",
   component: SeparatorCard,
-  normalizeConfig: (config) => ({ refraction: "auto", theme: "auto", ...config }),
   getCardSize: () => 1,
-  getConfigElement: async () => {
-    await loadHaFormComponents();
-    return document.createElement("liquid-glass-card-editor");
-  },
   getStubConfig: () => ({
     title: "Section",
     icon: "mdi:lightbulb-outline",

@@ -488,16 +488,19 @@ const dicts: Record<string, Dict> = { ja, en };
 
 export type Translator = (key: string, vars?: Record<string, string | number>) => string;
 
-export function createTranslator(language: string | undefined): Translator {
-  const lang = (language ?? "en").toLowerCase().split("-")[0];
-  const dict = dicts[lang] ?? en;
-  return (key, vars) => {
+const translators = Object.fromEntries(
+  Object.entries(dicts).map(([language, dict]) => [language, ((key, vars) => {
     let s = dict[key] ?? en[key] ?? key;
     if (vars) {
       for (const [k, v] of Object.entries(vars)) s = s.replace(`{${k}}`, String(v));
     }
     return s;
-  };
+  }) satisfies Translator]),
+) as Record<string, Translator>;
+
+export function createTranslator(language: string | undefined): Translator {
+  const lang = (language ?? "en").toLowerCase().split("-")[0];
+  return translators[lang] ?? translators.en;
 }
 
 export function relativeTime(iso: string | undefined, t: Translator): string {

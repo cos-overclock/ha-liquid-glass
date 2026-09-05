@@ -1,5 +1,9 @@
 import type { BaseCardConfig } from "../types";
 
+const runtimeUserAgent = typeof navigator === "undefined" ? "" : navigator.userAgent;
+const companionPattern = /(?:^|[; (])wv(?:[;) ]|$)|Home[ /]?Assistant/i;
+const runtimeIsCompanion = companionPattern.test(runtimeUserAgent);
+
 /**
  * Android's embedded WebView advertises both Chromium and the `wv` marker. The
  * Companion app has also used a Home Assistant product token in its UA. Either
@@ -7,18 +11,17 @@ import type { BaseCardConfig } from "../types";
  * the automatic setting.
  */
 export function isEmbeddedCompanionWebView(
-  userAgent = typeof navigator === "undefined" ? "" : navigator.userAgent,
+  userAgent = runtimeUserAgent,
 ): boolean {
-  return /(?:^|[; (])wv(?:[;) ]|$)|Home[ /]?Assistant/i.test(userAgent);
+  return userAgent === runtimeUserAgent ? runtimeIsCompanion : companionPattern.test(userAgent);
 }
 
 /** Explicit `true` remains an escape hatch; only `auto` adapts to the runtime. */
 export function resolveRefraction(
   setting: BaseCardConfig["refraction"],
-  userAgent = typeof navigator === "undefined" ? "" : navigator.userAgent,
+  userAgent = runtimeUserAgent,
 ): boolean {
   if (setting === true) return true;
   if (setting === false) return false;
   return !isEmbeddedCompanionWebView(userAgent);
 }
-

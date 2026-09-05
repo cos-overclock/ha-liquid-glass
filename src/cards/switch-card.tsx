@@ -1,31 +1,26 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
-import { loadHaFormComponents } from "../editor/load";
+import { SWITCH_DOMAINS } from "../card-constants";
 import { createTranslator, relativeTime } from "../i18n";
 import { CardTitle, IconWell, UnavailableCard } from "../react/card-parts";
 import { reactCardStyles } from "../react/card-styles";
-import { defineReactCard, type ReactCardProps } from "../react/define-react-card";
+import { defineLiquidGlassCard, type ReactCardProps } from "../react/define-liquid-glass-card";
 import { glassSurfaceStyles, LiquidGlassSurface } from "../react/glass-primitives";
 import { useCardHost } from "../react/use-card-host";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HomeAssistant } from "../types";
 import { formatNumber, friendlyName, isUnavailable, moreInfo, pickEntity } from "../utils";
-import "../components/lg-icon";
 
 export interface SwitchCardConfig extends BaseCardConfig {
   /** Optional power sensor shown in the state line while on. */
   power_entity?: string;
 }
 
-export const SWITCH_DOMAINS = [
-  "switch", "input_boolean", "fan", "light", "automation", "humidifier", "siren", "remote",
-];
-
 /** How long the card must be held before it opens more-info instead of toggling. */
 const HOLD_MS = 500;
 /** Movement past this many pixels means the gesture was a scroll, not a tap. */
 const HOLD_SLOP = 10;
 
-const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}
+const styles = `${tokens}${reactCardStyles}${glassSurfaceStyles}
   .card {
     cursor: pointer;
     user-select: none;
@@ -222,15 +217,10 @@ function SwitchCard({ config, hass, host }: ReactCardProps<SwitchCardConfig>) {
   </>;
 }
 
-export const LiquidGlassSwitchCard = defineReactCard<SwitchCardConfig>({
+export const LiquidGlassSwitchCard = defineLiquidGlassCard<SwitchCardConfig>({
   tagName: "liquid-glass-switch-card",
   component: SwitchCard,
-  normalizeConfig: (config) => ({ refraction: "auto", theme: "auto", ...config }),
   getCardSize: () => 1,
-  getConfigElement: async () => {
-    await loadHaFormComponents();
-    return document.createElement("liquid-glass-card-editor");
-  },
   getStubConfig: (hass?: HomeAssistant, entities?: string[], entitiesFallback?: string[]) => ({
     entity: pickEntity(SWITCH_DOMAINS, hass, entities, entitiesFallback),
   }),

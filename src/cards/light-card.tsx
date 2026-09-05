@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { loadHaFormComponents } from "../editor/load";
+import { DEFAULT_LIGHT_FAVORITES } from "../card-constants";
 import { createTranslator } from "../i18n";
 import { CardTitle, IconWell, UnavailableCard, type WellStyle } from "../react/card-parts";
 import { reactCardStyles } from "../react/card-styles";
-import { defineReactCard, type ReactCardProps } from "../react/define-react-card";
+import { defineLiquidGlassCard, type ReactCardProps } from "../react/define-liquid-glass-card";
 import { glassSurfaceStyles, Icon, LiquidGlassSurface } from "../react/glass-primitives";
 import { GlassSlider, glassSliderStyles } from "../react/glass-slider";
 import { GlassSwitch, glassSwitchStyles } from "../react/glass-switch";
@@ -12,7 +12,6 @@ import { useOptimisticValue } from "../react/use-optimistic-value";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HomeAssistant } from "../types";
 import { clamp, friendlyName, hsToRgb, isUnavailable, moreInfo, pickEntity, rgbToHex, withAlpha } from "../utils";
-import "../components/lg-icon";
 
 export interface LightPreset {
   name: string;
@@ -34,11 +33,11 @@ export interface LightCardConfig extends BaseCardConfig {
   show_color?: boolean;
 }
 
-export const DEFAULT_FAVORITES = ["#FF453A", "#FF9F0A", "#FFD60A", "#30D158", "#0A84FF", "#B15CFF", "#FF375F"];
+export const DEFAULT_FAVORITES = DEFAULT_LIGHT_FAVORITES;
 
 type ColorUiMode = "color" | "color_temp";
 
-const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}${glassSliderStyles}${glassSwitchStyles}
+const styles = `${tokens}${reactCardStyles}${glassSurfaceStyles}${glassSliderStyles}${glassSwitchStyles}
   /* Brightness keeps its two lamps beside the bar, where a thin slider leaves room. */
   .brightness .bar-row {
     display: flex;
@@ -314,7 +313,6 @@ function LightCard({ config, hass, host }: ReactCardProps<LightCardConfig>) {
             step={1}
             showFill={on}
             refraction={refraction}
-            glassVariant={config.glass_variant}
             scheme={isDark ? "dark" : "light"}
             label={t("brightness")}
             onInput={brightnessValue.setPreview}
@@ -339,7 +337,6 @@ function LightCard({ config, hass, host }: ReactCardProps<LightCardConfig>) {
           step={50}
           showFill={false}
           refraction={refraction}
-          glassVariant={config.glass_variant}
           scheme={isDark ? "dark" : "light"}
           label={t("color_temp")}
           onInput={kelvinValue.setPreview}
@@ -364,7 +361,6 @@ function LightCard({ config, hass, host }: ReactCardProps<LightCardConfig>) {
             step={1}
             showFill={false}
             refraction={refraction}
-            glassVariant={config.glass_variant}
             scheme={isDark ? "dark" : "light"}
             label={t("hue")}
             onInput={hueValue.setPreview}
@@ -390,7 +386,6 @@ function LightCard({ config, hass, host }: ReactCardProps<LightCardConfig>) {
             step={1}
             showFill={false}
             refraction={refraction}
-            glassVariant={config.glass_variant}
             scheme={isDark ? "dark" : "light"}
             label={t("saturation")}
             onInput={saturationValue.setPreview}
@@ -440,15 +435,10 @@ function LightCard({ config, hass, host }: ReactCardProps<LightCardConfig>) {
   </>;
 }
 
-export const LiquidGlassLightCard = defineReactCard<LightCardConfig>({
+export const LiquidGlassLightCard = defineLiquidGlassCard<LightCardConfig>({
   tagName: "liquid-glass-light-card",
   component: LightCard,
-  normalizeConfig: (config) => ({ refraction: "auto", theme: "auto", ...config }),
   getCardSize: () => 5,
-  getConfigElement: async () => {
-    await loadHaFormComponents();
-    return document.createElement("liquid-glass-card-editor");
-  },
   getStubConfig: (hass?: HomeAssistant, entities?: string[], entitiesFallback?: string[]) => ({
     entity: pickEntity(
       ["light"],

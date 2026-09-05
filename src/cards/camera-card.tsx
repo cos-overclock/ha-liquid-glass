@@ -10,11 +10,10 @@ import {
   useState,
   type CSSProperties,
 } from "react";
-import { loadHaFormComponents } from "../editor/load";
 import { createTranslator, relativeTime } from "../i18n";
 import { UnavailableCard } from "../react/card-parts";
 import { reactCardStyles } from "../react/card-styles";
-import { defineReactCard, type ReactCardProps } from "../react/define-react-card";
+import { defineLiquidGlassCard, type ReactCardProps } from "../react/define-liquid-glass-card";
 import {
   glassSurfaceStyles,
   glassVideoControlOptics,
@@ -25,7 +24,6 @@ import { useCardHost } from "../react/use-card-host";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HomeAssistant } from "../types";
 import { friendlyName, isUnavailable, moreInfo, pickEntity } from "../utils";
-import "../components/lg-icon";
 
 export interface CameraCardConfig extends BaseCardConfig {
   /** Binary sensor whose state drives the motion chip. Omit to hide it. */
@@ -48,7 +46,7 @@ const CONTROL_SIZE = 32;
 const SNAPSHOT_SIZE = 34;
 const CONTROL_GAP = 8;
 
-const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}
+const styles = `${tokens}${reactCardStyles}${glassSurfaceStyles}
   .card {
     padding: 0;
     gap: 0;
@@ -295,6 +293,7 @@ function CameraCard({ config, hass, host }: ReactCardProps<CameraCardConfig>) {
   const offline = isUnavailable(entity);
   const streaming = entity?.state === "streaming";
   const picture = entity?.attributes.entity_picture as string | undefined;
+  const canRefresh = Boolean(picture && !offline);
   /**
    * The still, with the tick appended so each refresh is a new URL. Home Assistant signs
    * `entity_picture` with a rotating token, so the base URL changes on its own as well.
@@ -307,10 +306,11 @@ function CameraCard({ config, hass, host }: ReactCardProps<CameraCardConfig>) {
   const [glassImage, setGlassImage] = useState<HTMLImageElement>();
 
   useEffect(() => {
+    if (!canRefresh) return;
     const seconds = Math.max(config.refresh_interval ?? DEFAULT_REFRESH, 1);
     const timer = window.setInterval(() => setTick((value) => value + 1), seconds * 1000);
     return () => window.clearInterval(timer);
-  }, [config.refresh_interval]);
+  }, [canRefresh, config.refresh_interval]);
 
   useLayoutEffect(() => {
     const feed = feedRef.current;
@@ -539,15 +539,10 @@ function CameraCard({ config, hass, host }: ReactCardProps<CameraCardConfig>) {
   </>;
 }
 
-export const LiquidGlassCameraCard = defineReactCard<CameraCardConfig>({
+export const LiquidGlassCameraCard = defineLiquidGlassCard<CameraCardConfig>({
   tagName: "liquid-glass-camera-card",
   component: CameraCard,
-  normalizeConfig: (config) => ({ refraction: "auto", theme: "auto", ...config }),
   getCardSize: (config) => (config.show_actions === false ? 4 : 5),
-  getConfigElement: async () => {
-    await loadHaFormComponents();
-    return document.createElement("liquid-glass-card-editor");
-  },
   getStubConfig: (hass?: HomeAssistant, entities?: string[], entitiesFallback?: string[]) => ({
     entity: pickEntity(["camera"], hass, entities, entitiesFallback),
   }),

@@ -1,15 +1,14 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { loadHaFormComponents } from "../editor/load";
+import { BUTTON_DOMAINS } from "../card-constants";
 import { clockTime, createTranslator, relativeTime, type Translator } from "../i18n";
 import { CardTitle, IconWell, UnavailableCard, type WellStyle } from "../react/card-parts";
 import { reactCardStyles } from "../react/card-styles";
-import { defineReactCard, type ReactCardProps } from "../react/define-react-card";
+import { defineLiquidGlassCard, type ReactCardProps } from "../react/define-liquid-glass-card";
 import { glassSurfaceStyles, Icon, LiquidGlassSurface } from "../react/glass-primitives";
 import { useCardHost } from "../react/use-card-host";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HassEntity, HomeAssistant } from "../types";
 import { friendlyName, isUnavailable, lighten, moreInfo, pickEntity, withAlpha } from "../utils";
-import "../components/lg-icon";
 
 export interface ButtonCardConfig extends BaseCardConfig {
   /** "domain.service" to call instead of the domain's usual activation. */
@@ -42,7 +41,7 @@ export function wellFor(accent: string | undefined, fallback: { from: string; to
 }
 
 /** Domains this card knows how to press, and what each one is called. */
-const ACTIVATE: Record<string, { service: string; icon: string; well: { from: string; to: string }; label: string }> = {
+export const BUTTON_ACTIONS: Record<string, { service: string; icon: string; well: { from: string; to: string }; label: string }> = {
   scene: { service: "scene.turn_on", icon: "mdi:palette", well: WELLS[0], label: "btn_scene" },
   script: { service: "script.turn_on", icon: "mdi:script-text-play", well: WELLS[1], label: "btn_script" },
   automation: { service: "automation.trigger", icon: "mdi:robot", well: WELLS[3], label: "btn_automation" },
@@ -53,7 +52,7 @@ const ACTIVATE: Record<string, { service: string; icon: string; well: { from: st
 /** How long the tick stays up after a press, matching the design's Done state. */
 const DONE_MS = 2600;
 
-const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}
+const styles = `${tokens}${reactCardStyles}${glassSurfaceStyles}
   .card {
     cursor: pointer;
     user-select: none;
@@ -107,7 +106,7 @@ function subtitleFor(
   if (config.subtitle !== undefined) return config.subtitle;
   if (justRan) return `${t("btn_done")} · ${t("just_now")}`;
 
-  const spec = ACTIVATE[domain];
+  const spec = BUTTON_ACTIONS[domain];
   const kind = spec ? t(spec.label) : domain;
   const last = lastRun(entity);
   if (!last) return kind;
@@ -143,7 +142,7 @@ function ButtonCard({ config, hass, host }: ReactCardProps<ButtonCardConfig>) {
   }
 
   const domain = config.entity?.split(".")[0] ?? "";
-  const spec = ACTIVATE[domain];
+  const spec = BUTTON_ACTIONS[domain];
   const well = wellFor(config.accent, spec?.well ?? WELLS[0]);
   const icon = config.icon ?? (entity.attributes.icon as string | undefined) ?? spec?.icon ?? "mdi:gesture-tap-button";
 
@@ -186,18 +185,11 @@ function ButtonCard({ config, hass, host }: ReactCardProps<ButtonCardConfig>) {
   </>;
 }
 
-export const LiquidGlassButtonCard = defineReactCard<ButtonCardConfig>({
+export const LiquidGlassButtonCard = defineLiquidGlassCard<ButtonCardConfig>({
   tagName: "liquid-glass-button-card",
   component: ButtonCard,
-  normalizeConfig: (config) => ({ refraction: "auto", theme: "auto", ...config }),
   getCardSize: () => 1,
-  getConfigElement: async () => {
-    await loadHaFormComponents();
-    return document.createElement("liquid-glass-card-editor");
-  },
   getStubConfig: (hass?: HomeAssistant, entities?: string[], entitiesFallback?: string[]) => ({
-    entity: pickEntity(Object.keys(ACTIVATE), hass, entities, entitiesFallback),
+    entity: pickEntity(BUTTON_DOMAINS, hass, entities, entitiesFallback),
   }),
 });
-
-export { ACTIVATE as BUTTON_DOMAINS };

@@ -1,9 +1,8 @@
 import { useEffect, useState, type CSSProperties } from "react";
-import { loadHaFormComponents } from "../editor/load";
 import { createTranslator } from "../i18n";
-import { CardTitle, UnavailableCard } from "../react/card-parts";
+import { UnavailableCard } from "../react/card-parts";
 import { reactCardStyles } from "../react/card-styles";
-import { defineReactCard, type ReactCardProps } from "../react/define-react-card";
+import { defineLiquidGlassCard, type ReactCardProps } from "../react/define-liquid-glass-card";
 import {
   glassSurfaceStyles,
   GlassVideoControlLens,
@@ -16,7 +15,6 @@ import { useOptimisticValue } from "../react/use-optimistic-value";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HassEntity, HomeAssistant } from "../types";
 import { clamp, friendlyName, isUnavailable, moreInfo, pickEntity, supportsFeature } from "../utils";
-import "../components/lg-icon";
 
 export interface MediaCardConfig extends BaseCardConfig {
   /** Color for the source / app line (default Apple Music pink). */
@@ -46,7 +44,7 @@ function fmtTime(seconds: number): string {
     : `${minutes}:${String(rest).padStart(2, "0")}`;
 }
 
-const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}${glassSliderStyles}
+const styles = `${tokens}${reactCardStyles}${glassSurfaceStyles}${glassSliderStyles}
   .card {
     gap: 16px;
   }
@@ -376,7 +374,6 @@ function MediaCard({ config, hass, host }: ReactCardProps<MediaCardConfig>) {
           step={0}
           disabled={!canSeek}
           refraction={refraction}
-          glassVariant={config.glass_variant}
           scheme={isDark ? "dark" : "light"}
           label={title}
           onInput={seekValue.setPreview}
@@ -451,7 +448,6 @@ function MediaCard({ config, hass, host }: ReactCardProps<MediaCardConfig>) {
           max={1}
           step={0.01}
           refraction={refraction}
-          glassVariant={config.glass_variant}
           scheme={isDark ? "dark" : "light"}
           label={t("ed_show_volume")}
           onInput={volumeValue.setPreview}
@@ -466,15 +462,10 @@ function MediaCard({ config, hass, host }: ReactCardProps<MediaCardConfig>) {
   </>;
 }
 
-export const LiquidGlassMediaCard = defineReactCard<MediaCardConfig>({
+export const LiquidGlassMediaCard = defineLiquidGlassCard<MediaCardConfig>({
   tagName: "liquid-glass-media-card",
   component: MediaCard,
-  normalizeConfig: (config) => ({ refraction: "auto", theme: "auto", ...config }),
   getCardSize: () => 4,
-  getConfigElement: async () => {
-    await loadHaFormComponents();
-    return document.createElement("liquid-glass-card-editor");
-  },
   getStubConfig: (hass?: HomeAssistant, entities?: string[], entitiesFallback?: string[]) => ({
     entity: pickEntity(["media_player"], hass, entities, entitiesFallback),
   }),

@@ -1,15 +1,13 @@
-import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { loadHaFormComponents } from "../editor/load";
+import { useEffect, useState, type CSSProperties } from "react";
 import { createTranslator } from "../i18n";
 import { CardTitle, UnavailableCard } from "../react/card-parts";
 import { reactCardStyles } from "../react/card-styles";
-import { defineReactCard, type ReactCardProps } from "../react/define-react-card";
+import { defineLiquidGlassCard, type ReactCardProps } from "../react/define-liquid-glass-card";
 import { glassSurfaceStyles, Icon, LiquidGlassSurface } from "../react/glass-primitives";
 import { useCardHost } from "../react/use-card-host";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HomeAssistant } from "../types";
 import { clamp, formatNumber, friendlyName, isUnavailable, moreInfo, pickEntity, withAlpha } from "../utils";
-import "../components/lg-icon";
 
 export interface WeatherCardConfig extends BaseCardConfig {
   /**
@@ -67,7 +65,7 @@ const CONDITIONS: Record<string, ConditionLook> = {
 const FALLBACK: ConditionLook = { icon: "mdi:weather-cloudy", color: "#A0AEC0" };
 const REFRESH_MS = 15 * 60 * 1000;
 
-const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}
+const styles = `${tokens}${reactCardStyles}${glassSurfaceStyles}
   .card {
     gap: 16px;
   }
@@ -396,34 +394,35 @@ function WeatherCard({ config, hass, host }: ReactCardProps<WeatherCardConfig>) 
   const t = createTranslator(config.language ?? hass?.locale?.language ?? hass?.language);
   const [daily, setDaily] = useState<Forecast[]>([]);
   const [hourly, setHourly] = useState<Forecast[]>([]);
-  const [, setRefreshTick] = useState(0);
-  const lastFetch = useRef(0);
-  const fetchedFor = useRef("");
+  const [refreshTick, setRefreshTick] = useState(0);
   const entity = config.entity ? hass?.states[config.entity] : undefined;
   const name = config.name ?? friendlyName(entity, config.entity ?? "");
   const isRow = config.layout === "row";
   const open = () => moreInfo(host, config.entity);
+  const canFetch = Boolean(hass && config.entity);
 
   useEffect(() => {
     if (!hass || !config.entity) return;
-    const stale = Date.now() - lastFetch.current > REFRESH_MS;
-    if (config.entity === fetchedFor.current && !stale) return;
-    fetchedFor.current = config.entity;
-    lastFetch.current = Date.now();
+    let cancelled = false;
     const target = config.entity;
     // Daily is fetched even when its rows are hidden: today's high and low sit in the
     // header, which the compact card still shows.
-    void fetchForecast(hass, target, "daily").then(setDaily);
-    if (!isRow && config.show_hourly !== false) void fetchForecast(hass, target, "hourly").then(setHourly);
-  });
+    void fetchForecast(hass, target, "daily").then((forecast) => {
+      if (!cancelled) setDaily(forecast);
+    });
+    if (!isRow && config.show_hourly !== false) {
+      void fetchForecast(hass, target, "hourly").then((forecast) => {
+        if (!cancelled) setHourly(forecast);
+      });
+    }
+    return () => { cancelled = true; };
+  }, [canFetch, config.entity, config.show_hourly, isRow, refreshTick]);
 
   useEffect(() => {
-    const timer = window.setInterval(() => {
-      lastFetch.current = 0;
-      setRefreshTick((tick) => tick + 1);
-    }, REFRESH_MS);
+    if (!canFetch) return;
+    const timer = window.setInterval(() => setRefreshTick((tick) => tick + 1), REFRESH_MS);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [canFetch]);
 
   if (!entity || isUnavailable(entity)) {
     return <>
@@ -594,10 +593,9 @@ function WeatherCard({ config, hass, host }: ReactCardProps<WeatherCardConfig>) 
   </>;
 }
 
-export const LiquidGlassWeatherCard = defineReactCard<WeatherCardConfig>({
+export const LiquidGlassWeatherCard = defineLiquidGlassCard<WeatherCardConfig>({
   tagName: "liquid-glass-weather-card",
   component: WeatherCard,
-  normalizeConfig: (config) => ({ refraction: "auto", theme: "auto", ...config }),
   getCardSize: (config) => {
     if (config.layout === "row") return 1;
     let size = 3;
@@ -605,10 +603,6 @@ export const LiquidGlassWeatherCard = defineReactCard<WeatherCardConfig>({
     if (config.show_daily !== false) size += 2;
     if (config.show_metrics !== false) size += 1;
     return size;
-  },
-  getConfigElement: async () => {
-    await loadHaFormComponents();
-    return document.createElement("liquid-glass-card-editor");
   },
   getStubConfig: (hass?: HomeAssistant, entities?: string[], entitiesFallback?: string[]) => ({
     entity: pickEntity(["weather"], hass, entities, entitiesFallback),

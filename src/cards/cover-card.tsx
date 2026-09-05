@@ -1,9 +1,8 @@
 import { useRef, useState, type CSSProperties, type PointerEvent } from "react";
-import { loadHaFormComponents } from "../editor/load";
 import { clockTime, createTranslator } from "../i18n";
 import { Badge, CardTitle, IconWell, UnavailableCard, type BadgeStyle, type WellStyle } from "../react/card-parts";
 import { reactCardStyles } from "../react/card-styles";
-import { defineReactCard, type ReactCardProps } from "../react/define-react-card";
+import { defineLiquidGlassCard, type ReactCardProps } from "../react/define-liquid-glass-card";
 import { glassSurfaceStyles, Icon, LiquidGlassSurface } from "../react/glass-primitives";
 import { GlassSlider, glassSliderStyles } from "../react/glass-slider";
 import { useCardHost } from "../react/use-card-host";
@@ -11,7 +10,6 @@ import { useOptimisticValue } from "../react/use-optimistic-value";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HomeAssistant } from "../types";
 import { clamp, friendlyName, isUnavailable, moreInfo, pickEntity, supportsFeature } from "../utils";
-import "../components/lg-icon";
 
 export interface CoverCardConfig extends BaseCardConfig {
   /** Visual style; defaults from device_class (curtain → curtain, else blind). */
@@ -24,7 +22,7 @@ export interface CoverCardConfig extends BaseCardConfig {
 const F = { OPEN: 1, CLOSE: 2, SET_POSITION: 4, STOP: 8, SET_TILT: 128 };
 const TRACK_H = 180;
 
-const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}${glassSliderStyles}
+const styles = `${tokens}${reactCardStyles}${glassSurfaceStyles}${glassSliderStyles}
   .card {
     gap: 16px;
   }
@@ -393,7 +391,6 @@ function CoverCard({ config, hass, host }: ReactCardProps<CoverCardConfig>) {
           fillFrom={50}
           showFill={!closed}
           refraction={refraction}
-          glassVariant={config.glass_variant}
           scheme={isDark ? "dark" : "light"}
           label={t("tilt")}
           onInput={tiltValue.setPreview}
@@ -408,15 +405,10 @@ function CoverCard({ config, hass, host }: ReactCardProps<CoverCardConfig>) {
   </>;
 }
 
-export const LiquidGlassCoverCard = defineReactCard<CoverCardConfig>({
+export const LiquidGlassCoverCard = defineLiquidGlassCard<CoverCardConfig>({
   tagName: "liquid-glass-cover-card",
   component: CoverCard,
-  normalizeConfig: (config) => ({ refraction: "auto", theme: "auto", ...config }),
   getCardSize: () => 4,
-  getConfigElement: async () => {
-    await loadHaFormComponents();
-    return document.createElement("liquid-glass-card-editor");
-  },
   getStubConfig: (hass?: HomeAssistant, entities?: string[], entitiesFallback?: string[]) => ({
     entity: pickEntity(
       ["cover"],

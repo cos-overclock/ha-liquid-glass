@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { act } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import type { HassEntity, HomeAssistant } from "../types";
 import { LiquidGlassGroupCard, type GroupCardConfig } from "./group-card";
 // The group builds children by tag name, so the child card has to be registered.

@@ -1,11 +1,9 @@
-import { css } from "lit";
-
 /**
  * Design tokens ported from pen/design.pen variables.
  * Light values live on :host, dark values are swapped in when the host has the `dark` attribute.
  * Every token can be overridden from a Home Assistant theme via the same custom property name.
  */
-export const tokens = css`
+export const tokens = `
   :host {
     --lg-text-primary: #1c1c1e;
     --lg-text-secondary: rgba(60, 60, 67, 0.65);
@@ -36,8 +34,6 @@ export const tokens = css`
     --lg-trend-down: #0a7ea4;
     --lg-trend-down-bg: rgba(43, 179, 208, 0.18);
     --lg-cover-badge: #0a7ea4;
-    /* Scales the whole shader-derived rim; see styles/rim.ts. */
-    --lg-rim-gain: 1;
     /* A tile or chip held down. */
     --lg-press-fill: rgba(255, 255, 255, 0.9);
     --lg-press-stroke: rgba(94, 92, 230, 0.65);
@@ -111,8 +107,6 @@ export const tokens = css`
     --lg-trend-down: #5dd6ee;
     --lg-trend-down-bg: rgba(93, 214, 238, 0.2);
     --lg-cover-badge: #5dd6ee;
-    /* The rim reads brighter against a dark backdrop, so it sits back a little. */
-    --lg-rim-gain: 0.8;
     --lg-press-fill: rgba(94, 92, 230, 0.35);
     --lg-press-stroke: rgba(176, 175, 255, 0.8);
     --lg-press-label: #ffffff;
@@ -128,11 +122,9 @@ export const tokens = css`
     --lg-glass-tint-alpha: 0.07;
     --lg-blur: 3px;
     --lg-saturation: 1.45;
-    --lg-rim-gain: 1.12;
   }
 
   :host([dark][glass-variant="clear"]) {
     --lg-glass-tint-alpha: 0.1;
-    --lg-rim-gain: 0.94;
   }
 `;

@@ -81,28 +81,18 @@ const SLIDER_LIGHT: Partial<GlassOptics> = {
 };
 
 const SLIDER_SAFARI: Partial<GlassOptics> = { scaleY: 0.25 };
-
-const useIsSafari = (): boolean => {
-  const [safari, setSafari] = useState(false);
-  useEffect(() => {
-    setSafari(
-      typeof navigator !== "undefined"
-      && /^((?!chrome|chromium|android).)*safari/i.test(navigator.userAgent),
-    );
-  }, []);
-  return safari;
-};
+const IS_SAFARI = typeof navigator !== "undefined"
+  && /^((?!chrome|chromium|android).)*safari/i.test(navigator.userAgent);
 
 /** The reference slider's light/dark/Safari lens recipe, shared by linear and dial controls. */
 export function useGlassSliderOptics(
   refraction: boolean,
   scheme: "light" | "dark",
 ): Partial<GlassOptics> {
-  const isSafari = useIsSafari();
   return useMemo(() => ({
     ...SLIDER_BASE,
     ...(scheme === "dark" ? SLIDER_DARK : SLIDER_LIGHT),
-    ...(isSafari ? SLIDER_SAFARI : null),
+    ...(IS_SAFARI ? SLIDER_SAFARI : null),
     ...(refraction ? null : {
       strength: 0,
       scaleX: 0,
@@ -112,7 +102,7 @@ export function useGlassSliderOptics(
       bend: 0,
     }),
     sheenDark: scheme === "light",
-  }), [isSafari, refraction, scheme]);
+  }), [refraction, scheme]);
 }
 
 /** Which handle a change came from. A single-value slider always reports "low". */
@@ -131,8 +121,6 @@ export interface GlassSliderProps {
   restTintOpacity?: number;
   disabled?: boolean;
   refraction: boolean;
-  /** Retained for card API compatibility; the reference slider owns its lens recipe. */
-  glassVariant?: "regular" | "clear";
   scheme?: "light" | "dark";
   showFill?: boolean;
   /** Keep a full-width gradient stationary and reveal it with a clip. */
@@ -503,9 +491,10 @@ export function GlassSlider({
 
   const beginInteraction = useCallback(() => {
     expand();
+    if (!refraction) return;
     holdRef.current = 0.175;
     kickWobbleRef.current();
-  }, [expand]);
+  }, [expand, refraction]);
 
   const displayedLow = drag?.handle === "low" ? drag.value : value;
   const displayedHigh = drag?.handle === "high" ? drag.value : highValue ?? value;

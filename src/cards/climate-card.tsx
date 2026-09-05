@@ -1,10 +1,9 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import { Glass, animateGlassValue, deriveGlass, glassValue, useLensWobble } from "@samasante/liquid-glass";
-import { loadHaFormComponents } from "../editor/load";
 import { createTranslator, type Translator } from "../i18n";
 import { Badge, CardTitle, IconWell, UnavailableCard, type BadgeStyle, type WellStyle } from "../react/card-parts";
 import { reactCardStyles } from "../react/card-styles";
-import { defineReactCard, type ReactCardProps } from "../react/define-react-card";
+import { defineLiquidGlassCard, type ReactCardProps } from "../react/define-liquid-glass-card";
 import { glassSurfaceStyles, Icon, LiquidGlassSurface } from "../react/glass-primitives";
 import { GlassSegmentedControl, glassSegmentedControlStyles } from "../react/glass-segmented-control";
 import {
@@ -18,7 +17,6 @@ import { useCardHost } from "../react/use-card-host";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HomeAssistant } from "../types";
 import { clamp, formatNumber, friendlyName, isUnavailable, moreInfo, pickEntity } from "../utils";
-import "../components/lg-icon";
 
 export interface ClimateCardConfig extends BaseCardConfig {
   /** Visual treatment. The original dial remains the default for backwards compatibility. */
@@ -198,7 +196,7 @@ function arcPath(fromDeg: number, toDeg: number): string {
   return `M ${x1} ${y1} A ${RADIUS} ${RADIUS} 0 ${large} 1 ${x2} ${y2}`;
 }
 
-const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}${glassSliderStyles}${glassSegmentedControlStyles}
+const styles = `${tokens}${reactCardStyles}${glassSurfaceStyles}${glassSliderStyles}${glassSegmentedControlStyles}
   .dial-row {
     display: flex;
     justify-content: center;
@@ -780,7 +778,6 @@ function ClimateCard({ config, hass, host }: ReactCardProps<ClimateCardConfig>) 
           showKnob={!off}
           clipFill
           refraction={refraction}
-          glassVariant={config.glass_variant}
           scheme={isDark ? "dark" : "light"}
           label={isRange ? t("target_range") : t("target_temp")}
           onInput={(next, handle) => setDrag({ which: isRange ? handle : "single", value: next })}
@@ -956,15 +953,10 @@ function ClimateCard({ config, hass, host }: ReactCardProps<ClimateCardConfig>) 
   </>;
 }
 
-export const LiquidGlassClimateCard = defineReactCard<ClimateCardConfig>({
+export const LiquidGlassClimateCard = defineLiquidGlassCard<ClimateCardConfig>({
   tagName: "liquid-glass-climate-card",
   component: ClimateCard,
-  normalizeConfig: (config) => ({ refraction: "auto", theme: "auto", ...config }),
   getCardSize: () => 6,
-  getConfigElement: async () => {
-    await loadHaFormComponents();
-    return document.createElement("liquid-glass-card-editor");
-  },
   getStubConfig: (hass?: HomeAssistant, entities?: string[], entitiesFallback?: string[]) => ({
     entity: pickEntity(["climate"], hass, entities, entitiesFallback),
   }),

@@ -1,31 +1,38 @@
-import { LitElement, html, css } from "lit";
-import { property } from "lit/decorators.js";
+type HaIconElement = HTMLElement & { icon?: string };
 
-/**
- * Icon wrapper. Uses Home Assistant's <ha-icon> (mdi:*) when available so icons
- * follow the frontend icon set; falls back to nothing outside HA.
- */
-export class LgIcon extends LitElement {
-  @property() icon = "";
+/** Small native wrapper around Home Assistant's icon element. */
+export class LgIcon extends HTMLElement {
+  private readonly haIcon: HaIconElement;
+  private iconValue = "";
 
-  static override styles = css`
-    :host {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: var(--mdc-icon-size, 24px);
-      height: var(--mdc-icon-size, 24px);
-      color: inherit;
-      flex: none;
-    }
-    ha-icon {
-      display: flex;
-      --mdc-icon-size: inherit;
-    }
-  `;
+  static get observedAttributes(): string[] {
+    return ["icon"];
+  }
 
-  override render() {
-    return html`<ha-icon .icon=${this.icon}></ha-icon>`;
+  constructor() {
+    super();
+    const root = this.attachShadow({ mode: "open" });
+    const style = document.createElement("style");
+    style.textContent = `
+      :host{display:inline-flex;align-items:center;justify-content:center;width:var(--mdc-icon-size,24px);height:var(--mdc-icon-size,24px);color:inherit;flex:none}
+      ha-icon{display:flex;--mdc-icon-size:inherit}
+    `;
+    this.haIcon = document.createElement("ha-icon") as HaIconElement;
+    root.append(style, this.haIcon);
+  }
+
+  get icon(): string {
+    return this.iconValue;
+  }
+
+  set icon(value: string) {
+    if (this.iconValue === value) return;
+    this.iconValue = value;
+    this.haIcon.icon = value;
+  }
+
+  attributeChangedCallback(name: string, _oldValue: string | null, value: string | null): void {
+    if (name === "icon") this.icon = value ?? "";
   }
 }
 

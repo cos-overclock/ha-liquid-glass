@@ -1,15 +1,13 @@
-import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { loadHaFormComponents } from "../editor/load";
+import { useEffect, useState, type CSSProperties } from "react";
 import { createTranslator, relativeTime, type Translator } from "../i18n";
 import { CardTitle, IconWell, UnavailableCard } from "../react/card-parts";
 import { reactCardStyles } from "../react/card-styles";
-import { defineReactCard, type ReactCardProps } from "../react/define-react-card";
+import { defineLiquidGlassCard, type ReactCardProps } from "../react/define-liquid-glass-card";
 import { glassSurfaceStyles, Icon, LiquidGlassSurface } from "../react/glass-primitives";
 import { useCardHost } from "../react/use-card-host";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HassEntity, HomeAssistant } from "../types";
 import { formatNumber, friendlyName, isUnavailable, lighten, moreInfo, pickEntity, withAlpha } from "../utils";
-import "../components/lg-icon";
 
 export interface SensorCardConfig extends BaseCardConfig {
   /**
@@ -48,7 +46,7 @@ const W = 340;
 const H = 84;
 const REFRESH_MS = 5 * 60 * 1000;
 
-const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}
+const styles = `${tokens}${reactCardStyles}${glassSurfaceStyles}
   .card {
     gap: 16px;
   }
@@ -259,30 +257,29 @@ function SensorCard({ config, hass, host }: ReactCardProps<SensorCardConfig>) {
   const { refraction } = useCardHost(host, config, hass);
   const t = createTranslator(config.language ?? hass?.locale?.language ?? hass?.language);
   const [points, setPoints] = useState<Point[]>([]);
-  const [, setRefreshTick] = useState(0);
-  const lastFetch = useRef(0);
-  const fetchedFor = useRef("");
+  const [refreshTick, setRefreshTick] = useState(0);
   const entity = config.entity ? hass?.states[config.entity] : undefined;
   const name = config.name ?? friendlyName(entity, config.entity ?? "");
   const hours = config.hours_to_show ?? 24;
   const valueInCaption = config.value_in_caption === true;
   /** A caption reading leaves a single row, which has nowhere to put a graph. */
   const showGraph = config.graph !== false && !valueInCaption;
+  const canFetch = Boolean(hass && config.entity && showGraph);
 
-  // Same cadence as the Lit card: check after every render, refetch when stale.
   useEffect(() => {
     if (!hass || !config.entity || !showGraph) return;
-    const key = `${config.entity}:${hours}`;
-    if (key === fetchedFor.current && Date.now() - lastFetch.current <= REFRESH_MS) return;
-    fetchedFor.current = key;
-    lastFetch.current = Date.now();
-    void fetchHistory(hass, config.entity, hours).then(setPoints);
-  });
+    let cancelled = false;
+    void fetchHistory(hass, config.entity, hours).then((history) => {
+      if (!cancelled) setPoints(history);
+    });
+    return () => { cancelled = true; };
+  }, [canFetch, config.entity, hours, refreshTick, showGraph]);
 
   useEffect(() => {
+    if (!canFetch) return;
     const timer = window.setInterval(() => setRefreshTick((tick) => tick + 1), REFRESH_MS);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [canFetch]);
 
   if (!entity || isUnavailable(entity)) {
     return <>
@@ -382,17 +379,12 @@ function SensorCard({ config, hass, host }: ReactCardProps<SensorCardConfig>) {
   </>;
 }
 
-export const LiquidGlassSensorCard = defineReactCard<SensorCardConfig>({
+export const LiquidGlassSensorCard = defineLiquidGlassCard<SensorCardConfig>({
   tagName: "liquid-glass-sensor-card",
   component: SensorCard,
-  normalizeConfig: (config) => ({ refraction: "auto", theme: "auto", ...config }),
   getCardSize: (config) => {
     if (config.graph === false || config.value_in_caption) return config.value_in_caption ? 1 : 2;
     return 4;
-  },
-  getConfigElement: async () => {
-    await loadHaFormComponents();
-    return document.createElement("liquid-glass-card-editor");
   },
   getStubConfig: (hass?: HomeAssistant, entities?: string[], entitiesFallback?: string[]) => ({
     entity: pickEntity(["sensor"], hass, entities, entitiesFallback, (entity) => Number.isFinite(Number(entity.state))),

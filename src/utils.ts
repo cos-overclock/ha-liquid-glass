@@ -42,7 +42,7 @@ export function supportsFeature(entity: HassEntity | undefined, feature: number)
  * can ask for an entity that shows off its controls (a dimmable light, a positionable cover).
  */
 export function pickEntity(
-  domains: string[],
+  domains: readonly string[],
   hass?: HomeAssistant,
   entities?: string[],
   fallback?: string[],

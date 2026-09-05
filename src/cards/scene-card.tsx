@@ -1,16 +1,14 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { loadHaFormComponents } from "../editor/load";
 import { createTranslator } from "../i18n";
 import { UnavailableCard } from "../react/card-parts";
 import { reactCardStyles } from "../react/card-styles";
-import { defineReactCard, type ReactCardProps } from "../react/define-react-card";
+import { defineLiquidGlassCard, type ReactCardProps } from "../react/define-liquid-glass-card";
 import { glassSurfaceStyles, Icon, LiquidGlassSurface } from "../react/glass-primitives";
 import { useCardHost } from "../react/use-card-host";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HomeAssistant } from "../types";
 import { clamp, friendlyName, withAlpha } from "../utils";
-import { BUTTON_DOMAINS, WELLS, wellFor } from "./button-card";
-import "../components/lg-icon";
+import { BUTTON_ACTIONS, WELLS, wellFor } from "./button-card";
 
 export interface SceneItem {
   /** Entity to activate. Omit when `service` carries the action instead. */
@@ -38,7 +36,7 @@ export interface SceneCardConfig extends BaseCardConfig {
 /** How long a pressed item stays lit, long enough to read as a confirmation. */
 const PRESS_MS = 900;
 
-const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}
+const styles = `${tokens}${reactCardStyles}${glassSurfaceStyles}
   .card {
     gap: 14px;
   }
@@ -219,11 +217,11 @@ function SceneCard({ config, hass, host }: ReactCardProps<SceneCardConfig>) {
   const iconFor = (item: SceneItem): string => {
     if (item.icon) return item.icon;
     const own = (item.entity ? hass?.states[item.entity] : undefined)?.attributes.icon as string | undefined;
-    return own ?? BUTTON_DOMAINS[item.entity?.split(".")[0] ?? ""]?.icon ?? "mdi:palette";
+    return own ?? BUTTON_ACTIONS[item.entity?.split(".")[0] ?? ""]?.icon ?? "mdi:palette";
   };
 
   const activate = (item: SceneItem, index: number) => {
-    const call = item.service ?? BUTTON_DOMAINS[item.entity?.split(".")[0] ?? ""]?.service;
+    const call = item.service ?? BUTTON_ACTIONS[item.entity?.split(".")[0] ?? ""]?.service;
     if (call) {
       const [domain, service] = call.split(".");
       void hass?.callService(domain, service, {
@@ -293,18 +291,13 @@ function SceneCard({ config, hass, host }: ReactCardProps<SceneCardConfig>) {
   </>;
 }
 
-export const LiquidGlassSceneCard = defineReactCard<SceneCardConfig>({
+export const LiquidGlassSceneCard = defineLiquidGlassCard<SceneCardConfig>({
   tagName: "liquid-glass-scene-card",
   component: SceneCard,
-  normalizeConfig: (config) => ({ refraction: "auto", theme: "auto", ...config }),
   getCardSize: (config) => {
     const columns = clamp(Math.round(config.columns ?? 3), 1, 6);
     const rows = Math.ceil((config.scenes?.length ?? 0) / columns);
     return 1 + rows * (config.style === "chips" ? 1 : 2);
-  },
-  getConfigElement: async () => {
-    await loadHaFormComponents();
-    return document.createElement("liquid-glass-card-editor");
   },
   getStubConfig: (hass?: HomeAssistant, entities?: string[], entitiesFallback?: string[]) => {
     const scenes = [entities, entitiesFallback, Object.keys(hass?.states ?? {})]

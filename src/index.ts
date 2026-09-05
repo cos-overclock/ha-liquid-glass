@@ -14,6 +14,7 @@ import "./cards/scene-card";
 import "./cards/camera-card";
 import "./cards/group-card";
 import "./cards/separator-card";
+import { BUTTON_DOMAINS, SLIDER_DOMAINS, SWITCH_DOMAINS } from "./card-constants";
 import type { CustomCardRegistration, HassEntity, HomeAssistant } from "./types";
 
 export { defineReactCard } from "./react/define-react-card";
@@ -61,7 +62,7 @@ function entityCard(
   type: string,
   name: string,
   description: string,
-  domains: string[],
+  domains: readonly string[],
   supports?: EntitySupport,
   config: SuggestedConfig = (entityId) => ({ entity: entityId }),
 ): CustomCardRegistration {
@@ -85,10 +86,6 @@ function entityCard(
     },
   };
 }
-
-const BUTTON_DOMAINS = ["scene", "script", "automation", "button", "input_button"];
-const SWITCH_DOMAINS = ["switch", "input_boolean", "fan", "light", "automation", "humidifier", "siren", "remote"];
-const SLIDER_DOMAINS = ["input_number", "number", "fan", "light", "media_player", "cover", "valve", "humidifier", "water_heater", "climate"];
 
 // Feature values are the corresponding Home Assistant EntityFeature flags.
 const SET_VALUE = 1;

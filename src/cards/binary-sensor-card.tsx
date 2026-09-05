@@ -1,14 +1,12 @@
-import { loadHaFormComponents } from "../editor/load";
 import { createTranslator, relativeTime, type Translator } from "../i18n";
 import { Badge, CardTitle, IconWell, UnavailableCard, type BadgeStyle, type WellStyle } from "../react/card-parts";
 import { reactCardStyles } from "../react/card-styles";
-import { defineReactCard, type ReactCardProps } from "../react/define-react-card";
+import { defineLiquidGlassCard, type ReactCardProps } from "../react/define-liquid-glass-card";
 import { glassSurfaceStyles, LiquidGlassSurface } from "../react/glass-primitives";
 import { useCardHost } from "../react/use-card-host";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HomeAssistant } from "../types";
 import { friendlyName, isUnavailable, lighten, moreInfo, pickEntity, withAlpha } from "../utils";
-import "../components/lg-icon";
 
 export interface BinarySensorCardConfig extends BaseCardConfig {
   icon_on?: string;
@@ -30,7 +28,7 @@ interface ClassMeta {
   accentLight: string;
 }
 
-const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}`;
+const styles = `${tokens}${reactCardStyles}${glassSurfaceStyles}`;
 
 /** Icons, wording and accent per binary_sensor device class. */
 export function binarySensorMeta(deviceClass: string | undefined, t: Translator): ClassMeta {
@@ -142,15 +140,10 @@ function BinarySensorCard({ config, hass, host }: ReactCardProps<BinarySensorCar
   </>;
 }
 
-export const LiquidGlassBinarySensorCard = defineReactCard<BinarySensorCardConfig>({
+export const LiquidGlassBinarySensorCard = defineLiquidGlassCard<BinarySensorCardConfig>({
   tagName: "liquid-glass-binary-sensor-card",
   component: BinarySensorCard,
-  normalizeConfig: (config) => ({ refraction: "auto", theme: "auto", ...config }),
   getCardSize: () => 1,
-  getConfigElement: async () => {
-    await loadHaFormComponents();
-    return document.createElement("liquid-glass-card-editor");
-  },
   getStubConfig: (hass?: HomeAssistant, entities?: string[], entitiesFallback?: string[]) => ({
     entity: pickEntity(["binary_sensor"], hass, entities, entitiesFallback),
   }),

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { loadHaFormComponents } from "../editor/load";
+import { SLIDER_DOMAINS } from "../card-constants";
 import { createTranslator } from "../i18n";
-import { defineReactCard, type ReactCardProps } from "../react/define-react-card";
+import { defineLiquidGlassCard, type ReactCardProps } from "../react/define-liquid-glass-card";
 import { glassSurfaceStyles, Icon, LiquidGlassSurface } from "../react/glass-primitives";
 import { GlassSlider, glassSliderStyles } from "../react/glass-slider";
 import { reactCardStyles } from "../react/card-styles";
@@ -9,7 +9,6 @@ import { useCardHost } from "../react/use-card-host";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HassEntity, HomeAssistant } from "../types";
 import { clamp, darken, formatNumber, friendlyName, isUnavailable, lighten, moreInfo, pickEntity, withAlpha } from "../utils";
-import "../components/lg-icon";
 
 export interface SliderCardConfig extends BaseCardConfig {
   min?: number;
@@ -42,10 +41,6 @@ export interface SliderSpec {
   value: number | undefined;
   call?: (value: number) => [domain: string, service: string, data: Record<string, unknown>];
 }
-
-export const SLIDER_DOMAINS = [
-  "input_number", "number", "fan", "light", "media_player", "cover", "valve", "humidifier", "water_heater", "climate",
-];
 
 const numeric = (value: unknown): number | undefined =>
   value !== null && value !== "" && Number.isFinite(Number(value)) ? Number(value) : undefined;
@@ -162,7 +157,7 @@ export function resolveSliderSpec(entity: HassEntity, config: SliderCardConfig):
   };
 }
 
-const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}${glassSliderStyles}
+const styles = `${tokens}${reactCardStyles}${glassSurfaceStyles}${glassSliderStyles}
   .card {
     gap: 16px;
     width: 100%;
@@ -338,7 +333,6 @@ function SliderCard({ config, hass, host }: ReactCardProps<SliderCardConfig>) {
           step={spec.step}
           disabled={!spec.call}
           refraction={refraction}
-          glassVariant={config.glass_variant}
           scheme={isDark ? "dark" : "light"}
           showFill={!zero}
           ticks={tickCount}
@@ -356,15 +350,10 @@ function SliderCard({ config, hass, host }: ReactCardProps<SliderCardConfig>) {
   </>;
 }
 
-export const LiquidGlassSliderCard = defineReactCard<SliderCardConfig>({
+export const LiquidGlassSliderCard = defineLiquidGlassCard<SliderCardConfig>({
   tagName: "liquid-glass-slider-card",
   component: SliderCard,
-  normalizeConfig: (config) => ({ refraction: "auto", theme: "auto", ...config }),
   getCardSize: () => 2,
-  getConfigElement: async () => {
-    await loadHaFormComponents();
-    return document.createElement("liquid-glass-card-editor");
-  },
   getStubConfig: (hass?: HomeAssistant, entities?: string[], entitiesFallback?: string[]) => ({
     entity: pickEntity(SLIDER_DOMAINS, hass, entities, entitiesFallback),
   }),

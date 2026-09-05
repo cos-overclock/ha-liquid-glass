@@ -1,6 +1,5 @@
 import type { Translator } from "../i18n";
-import { SLIDER_DOMAINS } from "../cards/slider-card";
-import { BUTTON_DOMAINS } from "../cards/button-card";
+import { BUTTON_DOMAINS, SLIDER_DOMAINS } from "../card-constants";
 
 /**
  * Schema entries consumed by Home Assistant's `<ha-form>`.
@@ -22,7 +21,7 @@ const bool = (name: string): FormSchema => ({ name, selector: { boolean: {} } })
 const icon = (name: string): FormSchema => ({ name, selector: { icon: {} } });
 const object = (name: string): FormSchema => ({ name, selector: { object: {} } });
 const grid = (schema: FormSchema[]): FormSchema => ({ name: "", type: "grid", schema });
-const entity = (name: string, domain: string | string[], required = false): FormSchema => ({
+const entity = (name: string, domain: string | readonly string[], required = false): FormSchema => ({
   name,
   required,
   selector: { entity: { domain } },
@@ -37,7 +36,7 @@ const select = (name: string, options: Array<{ value: string; label: string }>, 
 });
 
 /** Entity picker plus the name / icon pair that every card shares. */
-function head(domain: string | string[]): FormSchema[] {
+function head(domain: string | readonly string[]): FormSchema[] {
   return [entity("entity", domain, true), grid([text("name"), icon("icon")])];
 }
 
@@ -208,7 +207,7 @@ export function schemaFor(type: string | undefined, t: Translator, data?: Record
 
     case "button":
       return [
-        ...head(Object.keys(BUTTON_DOMAINS)),
+        ...head(BUTTON_DOMAINS),
         text("subtitle"),
         text("accent"),
         {

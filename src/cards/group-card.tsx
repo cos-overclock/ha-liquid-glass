@@ -1,15 +1,13 @@
-import { useEffect, useRef, useState } from "react";
-import { loadHaFormComponents } from "../editor/load";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createTranslator, type Translator } from "../i18n";
 import { IconWell } from "../react/card-parts";
 import { reactCardStyles } from "../react/card-styles";
-import { defineReactCard, type ReactCardProps } from "../react/define-react-card";
+import { defineLiquidGlassCard, type ReactCardProps } from "../react/define-liquid-glass-card";
 import { Icon } from "../react/glass-primitives";
 import { useCardHost } from "../react/use-card-host";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HassEntity, HomeAssistant, LovelaceCard, LovelaceCardConfig } from "../types";
 import { isUnavailable } from "../utils";
-import "../components/lg-icon";
 
 export interface GroupCardConfig extends BaseCardConfig {
   title?: string;
@@ -83,7 +81,10 @@ const STUB_CARDS: Array<[string, string]> = [
   ["sensor", "custom:liquid-glass-sensor-card"],
 ];
 
-const styles = `${tokens.cssText}${reactCardStyles}
+const INHERITED_CONFIG = ["theme", "refraction", "language", "glass_variant"] as const;
+const EMPTY_CARD_CONFIGS: LovelaceCardConfig[] = [];
+
+const styles = `${tokens}${reactCardStyles}
   .panel {
     --lg-group-pad: 16px;
     --lg-group-gap: 12px;
@@ -313,22 +314,20 @@ function GroupCard({ config, hass, host }: ReactCardProps<GroupCardConfig>) {
   const [open, setOpen] = useState(config.collapsed !== true);
   const [elements, setElements] = useState<LovelaceCard[]>([]);
   const mount = useRef<HTMLDivElement>(null);
-  const cardConfigs = config.cards ?? [];
+  const cardConfigs = config.cards ?? EMPTY_CARD_CONFIGS;
   const collapsible = config.collapsible !== false;
   /**
    * Our own cards inherit the group's appearance settings unless they set their own, so a
    * group forced to dark does not end up holding light cards.
    */
-  const inherited = ["theme", "refraction", "language", "glass_variant"] as const;
-  const childConfigs = cardConfigs.map((card) => {
+  const childConfigs = useMemo(() => cardConfigs.map((card) => {
     if (!String(card.type ?? "").startsWith("custom:liquid-glass-")) return card;
     const out = { ...card };
-    for (const key of inherited) {
+    for (const key of INHERITED_CONFIG) {
       if (out[key] === undefined && config[key] !== undefined) out[key] = config[key];
     }
     return out;
-  });
-  const childKey = JSON.stringify(childConfigs);
+  }), [cardConfigs, config.glass_variant, config.language, config.refraction, config.theme]);
 
   useEffect(() => setOpen(config.collapsed !== true), [config.collapsed]);
 
@@ -338,7 +337,7 @@ function GroupCard({ config, hass, host }: ReactCardProps<GroupCardConfig>) {
     void (async () => {
       const helpers = await window.loadCardHelpers?.().catch(() => undefined);
       if (cancelled) return;
-      setElements((JSON.parse(childKey) as LovelaceCardConfig[]).map((card) => {
+      setElements(childConfigs.map((card) => {
         try {
           return helpers ? helpers.createCardElement(card) : createElementFallback(card);
         } catch {
@@ -347,7 +346,7 @@ function GroupCard({ config, hass, host }: ReactCardProps<GroupCardConfig>) {
       }));
     })();
     return () => { cancelled = true; };
-  }, [childKey]);
+  }, [childConfigs]);
 
   useEffect(() => {
     mount.current?.replaceChildren(...elements);
@@ -418,16 +417,11 @@ function GroupCard({ config, hass, host }: ReactCardProps<GroupCardConfig>) {
   </>;
 }
 
-export const LiquidGlassGroupCard = defineReactCard<GroupCardConfig>({
+export const LiquidGlassGroupCard = defineLiquidGlassCard<GroupCardConfig>({
   tagName: "liquid-glass-group-card",
   component: GroupCard,
-  normalizeConfig: (config) => ({ refraction: "auto", theme: "auto", ...config }),
   getCardSize: (config, host) =>
     (host as GroupHost).lgGroupSize ?? (config.collapsed ? 1 : 1 + (config.cards?.length ?? 0) * 3),
-  getConfigElement: async () => {
-    await loadHaFormComponents();
-    return document.createElement("liquid-glass-card-editor");
-  },
   /** A fresh group is easier to understand with something already in it. */
   getStubConfig: (hass?: HomeAssistant, entities?: string[], entitiesFallback?: string[]) => {
     const pool = [entities, entitiesFallback, Object.keys(hass?.states ?? {})].find((list) => list?.length) ?? [];
