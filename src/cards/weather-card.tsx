@@ -5,6 +5,7 @@ import { reactCardStyles } from "../react/card-styles";
 import { defineLiquidGlassCard, type ReactCardProps } from "../react/define-liquid-glass-card";
 import { glassSurfaceStyles, Icon, LiquidGlassSurface } from "../react/glass-primitives";
 import { useCardHost } from "../react/use-card-host";
+import { useVisibleTick } from "../react/use-visible-tick";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HomeAssistant } from "../types";
 import { clamp, formatNumber, friendlyName, isUnavailable, moreInfo, pickEntity, withAlpha } from "../utils";
@@ -394,12 +395,12 @@ function WeatherCard({ config, hass, host }: ReactCardProps<WeatherCardConfig>) 
   const t = createTranslator(config.language ?? hass?.locale?.language ?? hass?.language);
   const [daily, setDaily] = useState<Forecast[]>([]);
   const [hourly, setHourly] = useState<Forecast[]>([]);
-  const [refreshTick, setRefreshTick] = useState(0);
   const entity = config.entity ? hass?.states[config.entity] : undefined;
   const name = config.name ?? friendlyName(entity, config.entity ?? "");
   const isRow = config.layout === "row";
   const open = () => moreInfo(host, config.entity);
   const canFetch = Boolean(hass && config.entity);
+  const refreshTick = useVisibleTick(host, REFRESH_MS, canFetch);
 
   useEffect(() => {
     if (!hass || !config.entity) return;
@@ -416,17 +417,15 @@ function WeatherCard({ config, hass, host }: ReactCardProps<WeatherCardConfig>) 
       });
     }
     return () => { cancelled = true; };
+    /*
+     * `hass` is left out deliberately. Its identity changes on every state push, and the
+     * forecast is meant to refetch on the tick, not on each reading.
+     */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canFetch, config.entity, config.show_hourly, isRow, refreshTick]);
-
-  useEffect(() => {
-    if (!canFetch) return;
-    const timer = window.setInterval(() => setRefreshTick((tick) => tick + 1), REFRESH_MS);
-    return () => window.clearInterval(timer);
-  }, [canFetch]);
 
   if (!entity || isUnavailable(entity)) {
     return <>
-      <style>{styles}</style>
       <UnavailableCard
         refraction={refraction}
         variant={config.glass_variant}

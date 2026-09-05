@@ -23,6 +23,7 @@ import {
 } from "../react/glass-primitives";
 import { opticsForQuality, useRefractionQuality } from "../react/refraction-quality";
 import { useCardHost } from "../react/use-card-host";
+import { useVisibleTick } from "../react/use-visible-tick";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HomeAssistant } from "../types";
 import { callConfiguredService, friendlyName, isUnavailable, moreInfo, pickEntity } from "../utils";
@@ -292,15 +293,19 @@ function CameraCard({ config, hass, host }: ReactCardProps<CameraCardConfig>) {
     [quality],
   );
   const t = createTranslator(config.language ?? hass?.locale?.language ?? hass?.language);
-  /** Bumped on a timer to force the browser to re-request the still. */
-  const [tick, setTick] = useState(0);
   const entity = config.entity ? hass?.states[config.entity] : undefined;
   const name = config.name ?? friendlyName(entity, config.entity ?? "");
   const open = () => moreInfo(host, config.entity);
   const offline = isUnavailable(entity);
   const streaming = entity?.state === "streaming";
-  const picture = entity?.attributes.entity_picture as string | undefined;
+  const picture = entity?.attributes.entity_picture;
   const canRefresh = Boolean(picture && !offline);
+  /** Bumped on a timer to force the browser to re-request the still. */
+  const tick = useVisibleTick(
+    host,
+    Math.max(config.refresh_interval ?? DEFAULT_REFRESH, 1) * 1000,
+    canRefresh,
+  );
   /**
    * The still, with the tick appended so each refresh is a new URL. Home Assistant signs
    * `entity_picture` with a rotating token, so the base URL changes on its own as well.
@@ -311,13 +316,6 @@ function CameraCard({ config, hass, host }: ReactCardProps<CameraCardConfig>) {
   const feedRef = useRef<HTMLDivElement>(null);
   const [feedSize, setFeedSize] = useState({ width: 0, height: 0 });
   const [glassImage, setGlassImage] = useState<HTMLImageElement>();
-
-  useEffect(() => {
-    if (!canRefresh) return;
-    const seconds = Math.max(config.refresh_interval ?? DEFAULT_REFRESH, 1);
-    const timer = window.setInterval(() => setTick((value) => value + 1), seconds * 1000);
-    return () => window.clearInterval(timer);
-  }, [canRefresh, config.refresh_interval]);
 
   useLayoutEffect(() => {
     const feed = feedRef.current;

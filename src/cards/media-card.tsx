@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from "react";
+import { type CSSProperties } from "react";
 import { createTranslator } from "../i18n";
 import { UnavailableCard } from "../react/card-parts";
 import { reactCardStyles } from "../react/card-styles";
@@ -11,6 +11,7 @@ import {
 } from "../react/glass-primitives";
 import { GlassSlider, glassSliderStyles } from "../react/glass-slider";
 import { useCardHost } from "../react/use-card-host";
+import { useVisibleTick } from "../react/use-visible-tick";
 import { useOptimisticValue } from "../react/use-optimistic-value";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HassEntity, HomeAssistant } from "../types";
@@ -268,11 +269,12 @@ function position(entity: HassEntity, playing: boolean): { pos: number; duration
 function MediaCard({ config, hass, host }: ReactCardProps<MediaCardConfig>) {
   const { isDark, refraction } = useCardHost(host, config, hass);
   const t = createTranslator(config.language ?? hass?.locale?.language ?? hass?.language);
-  const [, setTick] = useState(0);
   const entity = config.entity ? hass?.states[config.entity] : undefined;
   const name = config.name ?? friendlyName(entity, config.entity ?? "");
   const open = () => moreInfo(host, config.entity);
   const playing = entity?.state === "playing" || entity?.state === "buffering";
+  // Redraws the progress bar each second, but only while the card is on screen.
+  useVisibleTick(host, 1000, playing);
   const reportedProgress = entity ? position(entity, playing) : undefined;
   const seekValue = useOptimisticValue(
     reportedProgress ? reportedProgress.pos / reportedProgress.duration : undefined,
@@ -280,15 +282,8 @@ function MediaCard({ config, hass, host }: ReactCardProps<MediaCardConfig>) {
   );
   const volumeValue = useOptimisticValue(entity?.attributes.volume_level as number | undefined, 0.005);
 
-  useEffect(() => {
-    if (!playing) return;
-    const timer = window.setInterval(() => setTick((value) => value + 1), 1000);
-    return () => window.clearInterval(timer);
-  }, [playing]);
-
   if (!entity || isUnavailable(entity)) {
     return <>
-      <style>{styles}</style>
       <UnavailableCard
         refraction={refraction}
         variant={config.glass_variant}

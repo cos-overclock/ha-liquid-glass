@@ -5,6 +5,7 @@ import { reactCardStyles } from "../react/card-styles";
 import { defineLiquidGlassCard, type ReactCardProps } from "../react/define-liquid-glass-card";
 import { glassSurfaceStyles, Icon, LiquidGlassSurface } from "../react/glass-primitives";
 import { useCardHost } from "../react/use-card-host";
+import { useVisibleTick } from "../react/use-visible-tick";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HassEntity, HomeAssistant } from "../types";
 import { formatNumber, friendlyName, isUnavailable, lighten, moreInfo, pickEntity, withAlpha } from "../utils";
@@ -257,7 +258,6 @@ function SensorCard({ config, hass, host }: ReactCardProps<SensorCardConfig>) {
   const { refraction } = useCardHost(host, config, hass);
   const t = createTranslator(config.language ?? hass?.locale?.language ?? hass?.language);
   const [points, setPoints] = useState<Point[]>([]);
-  const [refreshTick, setRefreshTick] = useState(0);
   const entity = config.entity ? hass?.states[config.entity] : undefined;
   const name = config.name ?? friendlyName(entity, config.entity ?? "");
   const hours = config.hours_to_show ?? 24;
@@ -265,6 +265,7 @@ function SensorCard({ config, hass, host }: ReactCardProps<SensorCardConfig>) {
   /** A caption reading leaves a single row, which has nowhere to put a graph. */
   const showGraph = config.graph !== false && !valueInCaption;
   const canFetch = Boolean(hass && config.entity && showGraph);
+  const refreshTick = useVisibleTick(host, REFRESH_MS, canFetch);
 
   useEffect(() => {
     if (!hass || !config.entity || !showGraph) return;
@@ -273,17 +274,15 @@ function SensorCard({ config, hass, host }: ReactCardProps<SensorCardConfig>) {
       if (!cancelled) setPoints(history);
     });
     return () => { cancelled = true; };
+    /*
+     * `hass` is left out deliberately. Its identity changes on every state push, and the
+     * history is meant to refetch on the tick, not on each reading.
+     */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canFetch, config.entity, hours, refreshTick, showGraph]);
-
-  useEffect(() => {
-    if (!canFetch) return;
-    const timer = window.setInterval(() => setRefreshTick((tick) => tick + 1), REFRESH_MS);
-    return () => window.clearInterval(timer);
-  }, [canFetch]);
 
   if (!entity || isUnavailable(entity)) {
     return <>
-      <style>{styles}</style>
       <UnavailableCard
         refraction={refraction}
         variant={config.glass_variant}
