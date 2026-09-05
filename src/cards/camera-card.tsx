@@ -4,7 +4,6 @@ import {
 } from "@samasante/liquid-glass";
 import {
   useCallback,
-  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -60,8 +59,20 @@ const styles = `${tokens}${reactCardStyles}${glassSurfaceStyles}
     aspect-ratio: var(--lg-cam-ratio, 16 / 9);
     overflow: hidden;
     background: #0e1014;
-    background-size: cover;
-    background-position: center;
+  }
+  /*
+   * The still is an element rather than a CSS background so the lens can reuse the
+   * very same decode. A background image is fetched in no-cors mode, which cannot
+   * share a cache entry with the cors-mode load a canvas needs — the camera would be
+   * pulled twice per refresh.
+   */
+  .still {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
   /* Darkens the top and bottom just enough for white text to hold up. */
   .scrim {
@@ -315,7 +326,12 @@ function CameraCard({ config, hass, host }: ReactCardProps<CameraCardConfig>) {
     : `${picture}${picture.includes("?") ? "&" : "?"}_=${tick}`;
   const feedRef = useRef<HTMLDivElement>(null);
   const [feedSize, setFeedSize] = useState({ width: 0, height: 0 });
-  const [glassImage, setGlassImage] = useState<HTMLImageElement>();
+  const stillRef = useRef<HTMLImageElement>(null);
+  /**
+   * Counts decoded stills. The lens reads the pixels off `stillRef`, so it needs a
+   * changing value — not a changing element — to know a new frame has arrived.
+   */
+  const [decodedStills, setDecodedStills] = useState(0);
 
   useLayoutEffect(() => {
     const feed = feedRef.current;
@@ -327,35 +343,20 @@ function CameraCard({ config, hass, host }: ReactCardProps<CameraCardConfig>) {
     return () => observer.disconnect();
   }, []);
 
-  useEffect(() => {
-    if (!refraction || !still) {
-      setGlassImage(undefined);
-      return;
-    }
-    let stale = false;
-    const image = new Image();
-    image.crossOrigin = "anonymous";
-    image.onload = () => {
-      if (!stale) setGlassImage(image);
-    };
-    image.src = still;
-    return () => {
-      stale = true;
-    };
-  }, [refraction, still]);
-
+  // Redraws whenever a new still has decoded; the element itself is stable across refreshes.
   const drawStill = useCallback((context: CanvasRenderingContext2D) => {
-    if (!glassImage || !glassImage.naturalWidth || !glassImage.naturalHeight) return;
+    const image = stillRef.current;
+    if (!image || !image.naturalWidth || !image.naturalHeight) return;
     const width = context.canvas.width;
     const height = context.canvas.height;
-    const scale = Math.max(width / glassImage.naturalWidth, height / glassImage.naturalHeight);
+    const scale = Math.max(width / image.naturalWidth, height / image.naturalHeight);
     const sourceWidth = width / scale;
     const sourceHeight = height / scale;
-    const sourceX = (glassImage.naturalWidth - sourceWidth) / 2;
-    const sourceY = (glassImage.naturalHeight - sourceHeight) / 2;
+    const sourceX = (image.naturalWidth - sourceWidth) / 2;
+    const sourceY = (image.naturalHeight - sourceHeight) / 2;
     context.clearRect(0, 0, width, height);
     context.drawImage(
-      glassImage,
+      image,
       sourceX,
       sourceY,
       sourceWidth,
@@ -365,7 +366,7 @@ function CameraCard({ config, hass, host }: ReactCardProps<CameraCardConfig>) {
       width,
       height,
     );
-  }, [glassImage]);
+  }, [decodedStills]);
 
   if (!entity) {
     return <>
@@ -395,7 +396,7 @@ function CameraCard({ config, hass, host }: ReactCardProps<CameraCardConfig>) {
   const motion = config.motion_entity ? hass?.states[config.motion_entity] : undefined;
   const detected = motion?.state === "on";
   const glassReady = Boolean(
-    refraction && glassImage && feedSize.width > 0 && feedSize.height > 0,
+    refraction && still && decodedStills > 0 && feedSize.width > 0 && feedSize.height > 0,
   );
   const compact = feedSize.width <= 260;
   const barHeight = compact ? 46 : 56;
@@ -497,8 +498,21 @@ function CameraCard({ config, hass, host }: ReactCardProps<CameraCardConfig>) {
       <div
         ref={feedRef}
         className={`feed${glassReady ? " glass-active" : ""}`}
-        style={still ? { backgroundImage: `url("${still}")` } : undefined}
       >
+        {still && <img
+          ref={stillRef}
+          className="still"
+          src={still}
+          /*
+           * Only when the lens will read the pixels back: a cors-mode request is what
+           * keeps the canvas untainted, and asking for it otherwise would fail on a
+           * cross-origin `entity_picture` that serves no CORS headers.
+           */
+          crossOrigin={refraction ? "anonymous" : undefined}
+          alt=""
+          decoding="async"
+          onLoad={() => setDecodedStills((count) => count + 1)}
+        />}
         {glassReady ? <Glass
           className="camera-glass-stage"
           draw={drawStill}

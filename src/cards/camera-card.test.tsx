@@ -66,7 +66,7 @@ describe("liquid-glass-camera-card", () => {
 
     await act(async () => document.body.append(element));
     const root = element.shadowRoot!;
-    expect(root.querySelector<HTMLElement>(".feed")?.style.backgroundImage).toContain("/api/camera_proxy/camera.porch");
+    expect(root.querySelector<HTMLImageElement>(".still")?.getAttribute("src")).toContain("/api/camera_proxy/camera.porch");
     expect(root.querySelector(".live-label")?.textContent).toBe("ライブ");
     expect(root.querySelector(".motion")?.textContent).toContain("検知");
     expect(root.querySelectorAll(".lens-control")).toHaveLength(2);
@@ -86,6 +86,53 @@ describe("liquid-glass-camera-card", () => {
     const root = element.shadowRoot!;
     expect(root.querySelector(".card")?.classList.contains("offline")).toBe(true);
     expect(root.querySelector(".nosignal")).toBeTruthy();
+    expect(root.querySelector(".still")).toBeNull();
+  });
+
+  /*
+   * The still used to be a CSS background *and* a `new Image()` with
+   * `crossOrigin`. Those are no-cors and cors requests for the same URL, which the
+   * HTTP cache keeps apart, so every refresh pulled the camera down twice.
+   */
+  it("loads each still exactly once, in the mode the lens needs", async () => {
+    const camera = entity("camera.porch", "idle", {
+      friendly_name: "玄関",
+      entity_picture: "/api/camera_proxy/camera.porch?token=abc",
+    });
+    const element = document.createElement("liquid-glass-camera-card") as CardElement;
+    element.setConfig({
+      type: "custom:liquid-glass-camera-card",
+      entity: camera.entity_id,
+      refraction: true,
+    });
+    element.hass = createHass([camera], async () => undefined);
+
+    await act(async () => document.body.append(element));
+    const root = element.shadowRoot!;
+
+    const stills = root.querySelectorAll<HTMLImageElement>(".still");
+    expect(stills).toHaveLength(1);
+    expect(stills[0].crossOrigin).toBe("anonymous");
+    // No second, background-image copy of the same frame.
     expect(root.querySelector<HTMLElement>(".feed")?.style.backgroundImage).toBe("");
+  });
+
+  it("keeps the still out of cors mode when nothing reads its pixels", async () => {
+    const camera = entity("camera.porch", "idle", {
+      friendly_name: "玄関",
+      entity_picture: "/api/camera_proxy/camera.porch?token=abc",
+    });
+    const element = document.createElement("liquid-glass-camera-card") as CardElement;
+    element.setConfig({
+      type: "custom:liquid-glass-camera-card",
+      entity: camera.entity_id,
+      refraction: false,
+    });
+    element.hass = createHass([camera], async () => undefined);
+
+    await act(async () => document.body.append(element));
+    const still = element.shadowRoot!.querySelector<HTMLImageElement>(".still");
+    expect(still).toBeTruthy();
+    expect(still?.crossOrigin).toBeNull();
   });
 });
