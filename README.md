@@ -1,7 +1,7 @@
 # Liquid Glass Cards for Home Assistant
 
 `pen/design.pen` の Liquid Glass デザインを、Home Assistant のダッシュボードに追加できるカスタムカード群として実装したものです。
-Vite + React + TypeScript への段階的な移行を進めており、Home Assistant 向けには単一ファイル `dist/liquid-glass-cards.js` にバンドルされます。Separator / Lock / Slider Card は React と `@samasante/liquid-glass`、その他の既存カードは移行期間中の Lit 実装です。
+Vite + React + TypeScript で実装し、Home Assistant 向けには単一ファイル `dist/liquid-glass-cards.js` にバンドルされます。全カードが React と `@samasante/liquid-glass` で書かれており、Home Assistant へは Custom Element のアダプター（`react/define-react-card.tsx`）を通して公開されます。
 
 React版カードは屈折対象となる背景レイヤーもReactで所有し、`Glass`の`refract`へ複製して渡します。これにより`backdrop-filter: url()`へ依存せず、Chromium / Safari / Firefoxで共通のSVG `filter: url()`経路を使用します。任意のHA壁紙そのものではなく、カード内の光学背景を屈折する方式です。
 

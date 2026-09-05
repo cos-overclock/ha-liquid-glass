@@ -1,8 +1,8 @@
 /** Shared layout styles for React cards.
  *
- * Keep this separate from the Lit glass surface stylesheet: selectors such as
- * `.card > *` also match the internal layers created by `<Glass>` and can put
- * the optical copy in front of the card contents.
+ * Keep this separate from `glassSurfaceStyles`: selectors such as `.card > *` also
+ * match the internal layers created by `<Glass>` and can put the optical copy in
+ * front of the card contents.
  */
 export const reactCardStyles = `
   * { box-sizing: border-box; }

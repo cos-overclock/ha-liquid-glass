@@ -8,8 +8,6 @@
     "noImplicitOverride": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "experimentalDecorators": true,
-    "useDefineForClassFields": false,
     "skipLibCheck": true,
     "noEmit": true,
     "resolveJsonModule": true,
