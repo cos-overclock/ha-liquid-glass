@@ -1,10 +1,26 @@
-import { useEffect, useState, type CSSProperties } from "react";
+import {
+  Glass,
+  type GlassSurfaceLens,
+} from "@samasante/liquid-glass";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import { loadHaFormComponents } from "../editor/load";
 import { createTranslator, relativeTime } from "../i18n";
 import { UnavailableCard } from "../react/card-parts";
 import { reactCardStyles } from "../react/card-styles";
 import { defineReactCard, type ReactCardProps } from "../react/define-react-card";
-import { glassSurfaceStyles, Icon, LiquidGlassSurface } from "../react/glass-primitives";
+import {
+  glassSurfaceStyles,
+  glassVideoControlOptics,
+  Icon,
+  LiquidGlassSurface,
+} from "../react/glass-primitives";
 import { useCardHost } from "../react/use-card-host";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HomeAssistant } from "../types";
@@ -28,6 +44,9 @@ export interface CameraCardConfig extends BaseCardConfig {
 }
 
 const DEFAULT_REFRESH = 10;
+const CONTROL_SIZE = 32;
+const SNAPSHOT_SIZE = 34;
+const CONTROL_GAP = 8;
 
 const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}
   .card {
@@ -79,10 +98,7 @@ const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}
     gap: 8px;
   }
 
-  /*
-   * Controls floating on the feed carry their own dark glass. They sit over a photo,
-   * so they blur the real image rather than a stand-in copy of it.
-   */
+  /* Display-only badges retain their lightweight translucent treatment. */
   .float {
     position: relative;
     overflow: hidden;
@@ -92,21 +108,48 @@ const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}
     background: rgba(11, 11, 15, 0.34);
     -webkit-backdrop-filter: blur(5px) saturate(1.35);
     backdrop-filter: blur(5px) saturate(1.35);
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+    box-shadow:
+      0 4px 12px rgba(0, 0, 0, 0.2),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.18);
   }
   .round {
     width: 32px;
     height: 32px;
+    border: 0;
     border-radius: 50%;
+    padding: 0;
+    color: #fff;
     display: grid;
     place-items: center;
     cursor: pointer;
     --mdc-icon-size: 15px;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
+    transition: transform 120ms ease, opacity 160ms ease;
+  }
+  .round:active {
+    transform: scale(0.9);
   }
   .round.big {
     width: 34px;
     height: 34px;
     --mdc-icon-size: 16px;
+  }
+  /*
+   * Like GlassVideoControls, the WebGL surface paints the lens underneath while
+   * the actual control stays crisp and has no fill of its own.
+   */
+  .feed.glass-active .lens-control {
+    overflow: visible;
+    background: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    box-shadow: none;
+  }
+  .camera-glass-stage {
+    position: absolute !important;
+    inset: 0;
+    width: 100%;
+    height: 100%;
   }
   .live {
     display: inline-flex;
@@ -249,12 +292,75 @@ function CameraCard({ config, hass, host }: ReactCardProps<CameraCardConfig>) {
   const entity = config.entity ? hass?.states[config.entity] : undefined;
   const name = config.name ?? friendlyName(entity, config.entity ?? "");
   const open = () => moreInfo(host, config.entity);
+  const offline = isUnavailable(entity);
+  const streaming = entity?.state === "streaming";
+  const picture = entity?.attributes.entity_picture as string | undefined;
+  /**
+   * The still, with the tick appended so each refresh is a new URL. Home Assistant signs
+   * `entity_picture` with a rotating token, so the base URL changes on its own as well.
+   */
+  const still = offline || !picture
+    ? undefined
+    : `${picture}${picture.includes("?") ? "&" : "?"}_=${tick}`;
+  const feedRef = useRef<HTMLDivElement>(null);
+  const [feedSize, setFeedSize] = useState({ width: 0, height: 0 });
+  const [glassImage, setGlassImage] = useState<HTMLImageElement>();
 
   useEffect(() => {
     const seconds = Math.max(config.refresh_interval ?? DEFAULT_REFRESH, 1);
     const timer = window.setInterval(() => setTick((value) => value + 1), seconds * 1000);
     return () => window.clearInterval(timer);
   }, [config.refresh_interval]);
+
+  useLayoutEffect(() => {
+    const feed = feedRef.current;
+    if (!feed) return;
+    const measure = () => setFeedSize({ width: feed.clientWidth, height: feed.clientHeight });
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(feed);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!refraction || !still) {
+      setGlassImage(undefined);
+      return;
+    }
+    let stale = false;
+    const image = new Image();
+    image.crossOrigin = "anonymous";
+    image.onload = () => {
+      if (!stale) setGlassImage(image);
+    };
+    image.src = still;
+    return () => {
+      stale = true;
+    };
+  }, [refraction, still]);
+
+  const drawStill = useCallback((context: CanvasRenderingContext2D) => {
+    if (!glassImage || !glassImage.naturalWidth || !glassImage.naturalHeight) return;
+    const width = context.canvas.width;
+    const height = context.canvas.height;
+    const scale = Math.max(width / glassImage.naturalWidth, height / glassImage.naturalHeight);
+    const sourceWidth = width / scale;
+    const sourceHeight = height / scale;
+    const sourceX = (glassImage.naturalWidth - sourceWidth) / 2;
+    const sourceY = (glassImage.naturalHeight - sourceHeight) / 2;
+    context.clearRect(0, 0, width, height);
+    context.drawImage(
+      glassImage,
+      sourceX,
+      sourceY,
+      sourceWidth,
+      sourceHeight,
+      0,
+      0,
+      width,
+      height,
+    );
+  }, [glassImage]);
 
   if (!entity) {
     return <>
@@ -269,17 +375,6 @@ function CameraCard({ config, hass, host }: ReactCardProps<CameraCardConfig>) {
       />
     </>;
   }
-
-  const offline = isUnavailable(entity);
-  const streaming = entity.state === "streaming";
-  const picture = entity.attributes.entity_picture as string | undefined;
-  /**
-   * The still, with the tick appended so each refresh is a new URL. Home Assistant signs
-   * `entity_picture` with a rotating token, so the base URL changes on its own as well.
-   */
-  const still = offline || !picture
-    ? undefined
-    : `${picture}${picture.includes("?") ? "&" : "?"}_=${tick}`;
 
   const callConfigured = (service: string | undefined) => {
     if (!service) return;
@@ -297,6 +392,90 @@ function CameraCard({ config, hass, host }: ReactCardProps<CameraCardConfig>) {
 
   const motion = config.motion_entity ? hass?.states[config.motion_entity] : undefined;
   const detected = motion?.state === "on";
+  const glassReady = Boolean(
+    refraction && glassImage && feedSize.width > 0 && feedSize.height > 0,
+  );
+  const compact = feedSize.width <= 260;
+  const barHeight = compact ? 46 : 56;
+  const sidePadding = compact ? 10 : 14;
+  const expandX = feedSize.width - sidePadding - CONTROL_SIZE / 2;
+  const lenses: GlassSurfaceLens[] = [
+    {
+      x: expandX / feedSize.width,
+      y: barHeight / 2 / feedSize.height,
+      w: CONTROL_SIZE,
+      h: CONTROL_SIZE,
+      radius: CONTROL_SIZE / 2,
+    },
+    ...(config.show_mic ? [{
+      x: (expandX - CONTROL_SIZE - CONTROL_GAP) / feedSize.width,
+      y: barHeight / 2 / feedSize.height,
+      w: CONTROL_SIZE,
+      h: CONTROL_SIZE,
+      radius: CONTROL_SIZE / 2,
+    }] : []),
+    {
+      x: (feedSize.width - sidePadding - SNAPSHOT_SIZE / 2) / feedSize.width,
+      y: (feedSize.height - barHeight / 2) / feedSize.height,
+      w: SNAPSHOT_SIZE,
+      h: SNAPSHOT_SIZE,
+      radius: SNAPSHOT_SIZE / 2,
+    },
+  ];
+
+  const feedContents = <>
+    <div className="scrim" />
+
+    <div className="bar top">
+      {offline ? <span /> : <span
+        className="live float"
+        style={streaming
+          ? { "--dot": "#FF453A", "--dot-glow": "#FF453A" } as CSSProperties
+          : { "--dot": "#8E8E93" } as CSSProperties}
+      >
+        <span className="dot" />
+        <span className="live-label">{t(streaming ? "cam_live" : "cam_still")}</span>
+      </span>}
+      <div className={`trail${offline ? " dimmed" : ""}`}>
+        {config.show_mic && <button
+          className="round float lens-control"
+          type="button"
+          onClick={() => callConfigured(config.mic_service)}
+          title={t("cam_mic")}
+        >
+          <Icon icon="mdi:microphone-off" />
+        </button>}
+        <button
+          className="round float lens-control"
+          type="button"
+          onClick={open}
+          title={t("cam_expand")}
+        >
+          <Icon icon="mdi:arrow-expand" />
+        </button>
+      </div>
+    </div>
+
+    {offline && <div className="nosignal">
+      <Icon icon="mdi:video-off" />
+      <span>{t("cam_no_signal")}</span>
+    </div>}
+
+    <div className="bar bottom">
+      <div className="name" onClick={open}>
+        <span className="who">{name}</span>
+        <span className="when">{offline ? t("cam_offline_state") : relativeTime(entity.last_updated, t)}</span>
+      </div>
+      <button
+        className={`round big float lens-control${offline ? " dimmed" : ""}`}
+        type="button"
+        onClick={openSnapshot}
+        title={t("cam_snapshot")}
+      >
+        <Icon icon="mdi:camera" />
+      </button>
+    </div>
+  </>;
 
   return <>
     <style>{styles}</style>
@@ -313,51 +492,20 @@ function CameraCard({ config, hass, host }: ReactCardProps<CameraCardConfig>) {
         "--lg-cam-ratio": String(config.aspect_ratio ?? 16 / 9),
       } as CSSProperties}
     >
-      <div className="feed" style={still ? { backgroundImage: `url("${still}")` } : undefined}>
-        <div className="scrim" />
-
-        <div className="bar top">
-          {offline ? <span /> : <span
-            className="live float"
-            style={streaming
-              ? { "--dot": "#FF453A", "--dot-glow": "#FF453A" } as CSSProperties
-              : { "--dot": "#8E8E93" } as CSSProperties}
-          >
-            <span className="dot" />
-            <span className="live-label">{t(streaming ? "cam_live" : "cam_still")}</span>
-          </span>}
-          <div className={`trail${offline ? " dimmed" : ""}`}>
-            {config.show_mic && <button
-              className="round float"
-              onClick={() => callConfigured(config.mic_service)}
-              title={t("cam_mic")}
-            >
-              <Icon icon="mdi:microphone-off" />
-            </button>}
-            <button className="round float" onClick={open} title={t("cam_expand")}>
-              <Icon icon="mdi:arrow-expand" />
-            </button>
-          </div>
-        </div>
-
-        {offline && <div className="nosignal">
-          <Icon icon="mdi:video-off" />
-          <span>{t("cam_no_signal")}</span>
-        </div>}
-
-        <div className="bar bottom">
-          <div className="name" onClick={open}>
-            <span className="who">{name}</span>
-            <span className="when">{offline ? t("cam_offline_state") : relativeTime(entity.last_updated, t)}</span>
-          </div>
-          <button
-            className={`round big float${offline ? " dimmed" : ""}`}
-            onClick={openSnapshot}
-            title={t("cam_snapshot")}
-          >
-            <Icon icon="mdi:camera" />
-          </button>
-        </div>
+      <div
+        ref={feedRef}
+        className={`feed${glassReady ? " glass-active" : ""}`}
+        style={still ? { backgroundImage: `url("${still}")` } : undefined}
+      >
+        {glassReady ? <Glass
+          className="camera-glass-stage"
+          draw={drawStill}
+          optics={glassVideoControlOptics}
+          lenses={lenses}
+          maxDpr={2}
+        >
+          {feedContents}
+        </Glass> : feedContents}
       </div>
 
       {config.show_actions !== false && <div className="actions">

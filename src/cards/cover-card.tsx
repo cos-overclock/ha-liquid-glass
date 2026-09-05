@@ -7,6 +7,7 @@ import { defineReactCard, type ReactCardProps } from "../react/define-react-card
 import { glassSurfaceStyles, Icon, LiquidGlassSurface } from "../react/glass-primitives";
 import { GlassSlider, glassSliderStyles } from "../react/glass-slider";
 import { useCardHost } from "../react/use-card-host";
+import { useOptimisticValue } from "../react/use-optimistic-value";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HomeAssistant } from "../types";
 import { clamp, friendlyName, isUnavailable, moreInfo, pickEntity, supportsFeature } from "../utils";
@@ -188,11 +189,12 @@ function CoverCard({ config, hass, host }: ReactCardProps<CoverCardConfig>) {
   const { isDark, refraction } = useCardHost(host, config, hass);
   const t = createTranslator(config.language ?? hass?.locale?.language ?? hass?.language);
   const [dragPos, setDragPos] = useState<number>();
-  const [tiltPreview, setTiltPreview] = useState<number>();
   /** Which panel of a double curtain the pointer grabbed, held for the whole drag. */
   const dragSide = useRef<"left" | "right">("left");
   const trackRef = useRef<HTMLDivElement>(null);
   const entity = config.entity ? hass?.states[config.entity] : undefined;
+  const positionValue = useOptimisticValue(entity?.attributes.current_position as number | undefined, 1);
+  const tiltValue = useOptimisticValue(entity?.attributes.current_tilt_position as number | undefined, 1);
   const name = config.name ?? friendlyName(entity, config.entity ?? "");
   const open = () => moreInfo(host, config.entity);
 
@@ -214,7 +216,7 @@ function CoverCard({ config, hass, host }: ReactCardProps<CoverCardConfig>) {
     void hass?.callService("cover", service, { entity_id: config.entity, ...data });
 
   const attributes = entity.attributes;
-  const position = dragPos ?? (attributes.current_position as number | undefined) ?? (entity.state === "closed" ? 0 : 100);
+  const position = dragPos ?? positionValue.value ?? (entity.state === "closed" ? 0 : 100);
   const isCurtain = (config.style ?? (attributes.device_class === "curtain" ? "curtain" : "blind")) === "curtain";
   const singleCurtain = isCurtain && (config.curtain ?? "double") === "single";
   const moving = entity.state === "opening" || entity.state === "closing" ? entity.state : undefined;
@@ -263,6 +265,7 @@ function CoverCard({ config, hass, host }: ReactCardProps<CoverCardConfig>) {
     if (dragPos === undefined) return;
     const next = posFromEvent(event);
     setDragPos(undefined);
+    positionValue.commit(next);
     call("set_cover_position", { position: next });
   };
 
@@ -292,7 +295,7 @@ function CoverCard({ config, hass, host }: ReactCardProps<CoverCardConfig>) {
   // so the text has to flip to the dark ink that reads against the fabric.
   const overlayOnFabric = closed || (!isCurtain && moving === "opening" && position < 60);
   const overlayTop = !isCurtain && moving === "opening" && position < 60 && !closed;
-  const tilt = tiltPreview ?? ((attributes.current_tilt_position as number | undefined) ?? 50);
+  const tilt = tiltValue.value ?? 50;
   const panelWidth = `${(closedRatio * 100) / 2}%`;
 
   return <>
@@ -393,9 +396,9 @@ function CoverCard({ config, hass, host }: ReactCardProps<CoverCardConfig>) {
           glassVariant={config.glass_variant}
           scheme={isDark ? "dark" : "light"}
           label={t("tilt")}
-          onInput={setTiltPreview}
+          onInput={tiltValue.setPreview}
           onChange={(next) => {
-            setTiltPreview(undefined);
+            tiltValue.commit(next);
             call("set_cover_tilt_position", { tilt_position: Math.round(next) });
           }}
         />

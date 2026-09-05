@@ -8,6 +8,7 @@ import {
   type CSSProperties,
   type KeyboardEvent,
   type PointerEvent,
+  type ReactNode,
 } from "react";
 import {
   Glass,
@@ -124,6 +125,10 @@ export interface GlassSliderProps {
   min: number;
   max: number;
   step: number;
+  /** Optional coarser keyboard increment for controls whose drag range is continuous. */
+  keyboardStep?: number;
+  /** Thumb tint opacity while idle. Defaults to the solid reference-slider appearance. */
+  restTintOpacity?: number;
   disabled?: boolean;
   refraction: boolean;
   /** Retained for card API compatibility; the reference slider owns its lens recipe. */
@@ -139,6 +144,11 @@ export interface GlassSliderProps {
   /** Step marks drawn along the bar. 0 draws none. */
   ticks?: number;
   label: string;
+  valueText?: string;
+  /** Decorative, non-interactive content rendered inside the slider track. */
+  trackContent?: ReactNode;
+  /** Optional content carried by the thumb, such as an icon for a binary control. */
+  thumbContent?: ReactNode;
   onInput(value: number, handle: SliderHandle): void;
   onChange(value: number, handle: SliderHandle): void;
 }
@@ -309,6 +319,8 @@ export function GlassSlider({
   min,
   max,
   step,
+  keyboardStep,
+  restTintOpacity = 1,
   disabled = false,
   refraction,
   scheme = "light",
@@ -318,6 +330,9 @@ export function GlassSlider({
   fillFrom,
   ticks = 0,
   label,
+  valueText,
+  trackContent,
+  thumbContent,
   onInput,
   onChange,
 }: GlassSliderProps) {
@@ -334,6 +349,8 @@ export function GlassSlider({
   const geometryRef = useRef(DEFAULT_GEOMETRY);
   const valuesRef = useRef({ value, highValue, min, max, step });
   valuesRef.current = { value, highValue, min, max, step };
+  const restTintOpacityRef = useRef(restTintOpacity);
+  restTintOpacityRef.current = restTintOpacity;
 
   const [geometry, setGeometry] = useState(DEFAULT_GEOMETRY);
   const [activeHandle, setActiveHandle] = useState<SliderHandle>("low");
@@ -368,7 +385,7 @@ export function GlassSlider({
     const halfW = glassValue(DEFAULT_GEOMETRY.thumbW / 2);
     const halfH = glassValue(DEFAULT_GEOMETRY.thumbH / 2);
     const radius = glassValue(Math.min(DEFAULT_GEOMETRY.thumbW, DEFAULT_GEOMETRY.thumbH) / 2);
-    const tintOpacity = glassValue(1);
+    const tintOpacity = glassValue(restTintOpacityRef.current);
     const trackScaleX = glassValue(0.85);
     const trackScaleY = glassValue(0.525);
     const shadowOpacity = glassValue(0);
@@ -478,7 +495,7 @@ export function GlassSlider({
     animateGlassValue(motion.halfW, geometryRef.current.thumbW / 2, GLASS_SLIDER_COLLAPSE_ANIM);
     animateGlassValue(motion.halfH, geometryRef.current.thumbH / 2, GLASS_SLIDER_COLLAPSE_ANIM);
     animateGlassValue(motion.radius, Math.min(geometryRef.current.thumbW, geometryRef.current.thumbH) / 2, GLASS_SLIDER_COLLAPSE_ANIM);
-    animateGlassValue(motion.tintOpacity, 1, GLASS_SLIDER_COLLAPSE_ANIM);
+    animateGlassValue(motion.tintOpacity, restTintOpacityRef.current, GLASS_SLIDER_COLLAPSE_ANIM);
     animateGlassValue(motion.trackScaleX, 0.85, GLASS_SLIDER_COLLAPSE_ANIM);
     animateGlassValue(motion.trackScaleY, 0.525, GLASS_SLIDER_COLLAPSE_ANIM);
     animateGlassValue(motion.shadowOpacity, 0, GLASS_SLIDER_COLLAPSE_ANIM);
@@ -550,7 +567,7 @@ export function GlassSlider({
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (disabled || !showKnob || isRange) return;
-    const increment = step > 0 ? step : (max - min) / 20;
+    const increment = keyboardStep ?? (step > 0 ? step : (max - min) / 20);
     let next = value;
     if (event.key === "ArrowRight" || event.key === "ArrowUp") next += increment;
     else if (event.key === "ArrowLeft" || event.key === "ArrowDown") next -= increment;
@@ -607,7 +624,7 @@ export function GlassSlider({
       aria-valuemin={min}
       aria-valuemax={max}
       aria-valuenow={isRange ? undefined : displayedHigh}
-      aria-valuetext={isRange ? `${displayedLow}-${displayedHigh}` : undefined}
+      aria-valuetext={valueText ?? (isRange ? `${displayedLow}-${displayedHigh}` : undefined)}
       aria-disabled={disabled}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -619,6 +636,7 @@ export function GlassSlider({
       <div className="slider-bar">
         {showFill && <div className={`slider-fill${clipFill ? " clipped" : ""}`} style={fillStyle} />}
       </div>
+      {trackContent}
       {anchor !== undefined && <div className="slider-anchor" style={{ left: centre(anchor) }} aria-hidden="true" />}
       {ticks > 0 && <div className="marks" aria-hidden="true">
         {Array.from({ length: ticks }, (_, index) => <span key={index} />)}
@@ -632,14 +650,14 @@ export function GlassSlider({
             className="slider-knob static"
             style={{ left: `calc(${travelCss} * ${ratio})` }}
             aria-hidden="true"
-          />
+          >{thumbContent}</div>
         ))}
       {showKnob && (
         <GlassDiv
           x={motion.thumbX}
           className={`slider-knob moving${refraction ? "" : " static"}`}
           aria-hidden="true"
-        />
+        >{thumbContent}</GlassDiv>
       )}
     </div>
   );

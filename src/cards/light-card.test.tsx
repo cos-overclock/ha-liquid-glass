@@ -80,12 +80,18 @@ describe("liquid-glass-light-card", () => {
 
     await act(async () => document.body.append(element));
     const root = element.shadowRoot!;
-    expect(root.querySelector(".toggle")?.classList.contains("on")).toBe(true);
+    const toggle = root.querySelector<HTMLElement>(".toggle");
+    const toggleInput = toggle?.querySelector<HTMLInputElement>('input[role="switch"]');
+    expect(toggle?.classList.contains("on")).toBe(true);
+    expect(toggle?.style.width).toBe("74px");
+    expect(toggle?.style.height).toBe("28px");
+    expect(toggleInput?.checked).toBe(true);
+    expect(toggleInput?.getAttribute("aria-label")).toBe("リビング");
     expect(root.querySelector(".brightness .value")?.textContent).toBe("72%");
     expect(root.querySelector(".temp .value")?.textContent).toBe("3200K");
     expect(element.getCardSize()).toBe(5);
 
-    await act(async () => root.querySelector<HTMLElement>(".toggle")?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    await act(async () => toggle?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
     expect(callService).toHaveBeenCalledWith("light", "toggle", { entity_id: target.entity_id });
 
     const track = mockTrack(root.querySelector<HTMLElement>(".brightness .slider-track")!);
@@ -95,6 +101,9 @@ describe("liquid-glass-light-card", () => {
       entity_id: target.entity_id,
       brightness_pct: 50,
     });
+    // The old HA attribute is still 72%, but pointerup must keep the submitted value.
+    expect(root.querySelector(".brightness .value")?.textContent).toBe("50%");
+    expect(track.getAttribute("aria-valuenow")).toBe("50");
   });
 
   it("switches to the colour section and applies a favourite", async () => {
@@ -114,6 +123,16 @@ describe("liquid-glass-light-card", () => {
     expect(root.querySelector(".hue .value")?.textContent).toBe("280°");
     expect(root.querySelector(".sat .value")?.textContent).toBe("85%");
 
+    const hue = mockTrack(root.querySelector<HTMLElement>(".hue .slider-track")!);
+    await act(async () => hue.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, button: 0, clientX: 100 })));
+    await act(async () => hue.dispatchEvent(new MouseEvent("pointerup", { bubbles: true, button: 0, clientX: 100 })));
+    expect(root.querySelector(".hue .value")?.textContent).toBe("180°");
+
+    const saturation = mockTrack(root.querySelector<HTMLElement>(".sat .slider-track")!);
+    await act(async () => saturation.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, button: 0, clientX: 200 })));
+    await act(async () => saturation.dispatchEvent(new MouseEvent("pointerup", { bubbles: true, button: 0, clientX: 200 })));
+    expect(root.querySelector(".sat .value")?.textContent).toBe("100%");
+
     await act(async () => root.querySelector<HTMLElement>(".swatch")?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
     expect(callService).toHaveBeenCalledWith("light", "turn_on", {
       entity_id: target.entity_id,
@@ -123,5 +142,10 @@ describe("liquid-glass-light-card", () => {
     await act(async () => root.querySelectorAll<HTMLElement>(".segment > button")[1].dispatchEvent(new MouseEvent("click", { bubbles: true })));
     expect(root.querySelector(".temp")).toBeTruthy();
     expect(root.querySelector(".hue")).toBeNull();
+
+    const temperature = mockTrack(root.querySelector<HTMLElement>(".temp .slider-track")!);
+    await act(async () => temperature.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, button: 0, clientX: 200 })));
+    await act(async () => temperature.dispatchEvent(new MouseEvent("pointerup", { bubbles: true, button: 0, clientX: 200 })));
+    expect(root.querySelector(".temp .value")?.textContent).toBe("6500K");
   });
 });

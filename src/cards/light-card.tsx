@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { loadHaFormComponents } from "../editor/load";
 import { createTranslator } from "../i18n";
 import { CardTitle, IconWell, UnavailableCard, type WellStyle } from "../react/card-parts";
@@ -6,7 +6,9 @@ import { reactCardStyles } from "../react/card-styles";
 import { defineReactCard, type ReactCardProps } from "../react/define-react-card";
 import { glassSurfaceStyles, Icon, LiquidGlassSurface } from "../react/glass-primitives";
 import { GlassSlider, glassSliderStyles } from "../react/glass-slider";
+import { GlassSwitch, glassSwitchStyles } from "../react/glass-switch";
 import { useCardHost } from "../react/use-card-host";
+import { useOptimisticValue } from "../react/use-optimistic-value";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HomeAssistant } from "../types";
 import { clamp, friendlyName, hsToRgb, isUnavailable, moreInfo, pickEntity, rgbToHex, withAlpha } from "../utils";
@@ -36,7 +38,7 @@ export const DEFAULT_FAVORITES = ["#FF453A", "#FF9F0A", "#FFD60A", "#30D158", "#
 
 type ColorUiMode = "color" | "color_temp";
 
-const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}${glassSliderStyles}
+const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}${glassSliderStyles}${glassSwitchStyles}
   /* Brightness keeps its two lamps beside the bar, where a thin slider leaves room. */
   .brightness .bar-row {
     display: flex;
@@ -164,13 +166,20 @@ function LightCard({ config, hass, host }: ReactCardProps<LightCardConfig>) {
   const { isDark, refraction } = useCardHost(host, config, hass);
   const t = createTranslator(config.language ?? hass?.locale?.language ?? hass?.language);
   const [uiMode, setUiMode] = useState<ColorUiMode>();
-  const [preview, setPreview] = useState<{ brightness?: number; kelvin?: number; hue?: number; sat?: number }>({});
   const lastBrightness = useRef<number | undefined>(undefined);
   const entity = config.entity ? hass?.states[config.entity] : undefined;
   const name = config.name ?? friendlyName(entity, config.entity ?? "");
   const open = () => moreInfo(host, config.entity);
   const on = entity?.state === "on";
   const rawBrightness = entity?.attributes.brightness as number | undefined;
+  const rawHs = entity?.attributes.hs_color as [number, number] | undefined;
+  const brightnessValue = useOptimisticValue(
+    on && rawBrightness !== undefined ? Math.round((rawBrightness / 255) * 100) : 0,
+    1,
+  );
+  const kelvinValue = useOptimisticValue(entity?.attributes.color_temp_kelvin as number | undefined, 25);
+  const hueValue = useOptimisticValue(rawHs?.[0], 1);
+  const saturationValue = useOptimisticValue(rawHs?.[1], 1);
 
   useEffect(() => {
     if (on && rawBrightness !== undefined) lastBrightness.current = Math.round((rawBrightness / 255) * 100);
@@ -201,17 +210,17 @@ function LightCard({ config, hass, host }: ReactCardProps<LightCardConfig>) {
     ?? (!supportsColor ? "color_temp" : !supportsColorTemp ? "color" : attributes.color_mode === "color_temp" ? "color_temp" : "color");
   const colorLike = supportsColor && mode === "color";
 
-  const brightnessPct = preview.brightness ?? (on && rawBrightness !== undefined ? Math.round((rawBrightness / 255) * 100) : 0);
+  const brightnessPct = brightnessValue.value ?? 0;
   const kelvinRange: [number, number] = [
     (attributes.min_color_temp_kelvin as number | undefined) ?? 2000,
     (attributes.max_color_temp_kelvin as number | undefined) ?? 6500,
   ];
-  const kelvin = preview.kelvin ?? ((attributes.color_temp_kelvin as number | undefined) ?? kelvinRange[0]);
+  const kelvin = kelvinValue.value ?? kelvinRange[0];
   const baseHs = (attributes.hs_color as [number, number] | undefined) ?? [280, 85];
-  const hue = preview.hue ?? baseHs[0];
-  const sat = preview.sat ?? baseHs[1];
+  const hue = hueValue.value ?? baseHs[0];
+  const sat = saturationValue.value ?? baseHs[1];
   const rgb = attributes.rgb_color as [number, number, number] | undefined;
-  const colorHex = preview.hue === undefined && preview.sat === undefined && rgb
+  const colorHex = !hueValue.optimistic && !saturationValue.optimistic && rgb
     ? rgbToHex(rgb)
     : rgbToHex(hsToRgb(hue, sat));
   const accent = colorLike ? colorHex : "var(--lg-accent)";
@@ -254,12 +263,6 @@ function LightCard({ config, hass, host }: ReactCardProps<LightCardConfig>) {
     if (preset.hs_color) data.hs_color = preset.hs_color;
     call("turn_on", data);
   };
-  const onToggleKey = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key !== " " && event.key !== "Enter") return;
-    event.preventDefault();
-    toggle();
-  };
-
   return <>
     <style>{styles}</style>
     <LiquidGlassSurface
@@ -272,17 +275,14 @@ function LightCard({ config, hass, host }: ReactCardProps<LightCardConfig>) {
       <div className="header">
         <IconWell icon={config.icon ?? (attributes.icon as string | undefined) ?? "mdi:lightbulb"} style={well} onClick={toggle} />
         <CardTitle name={name} state={state} onClick={open} />
-        <div
-          className={`toggle${on ? " on" : ""}`}
-          style={{ "--toggle-color": accent } as CSSProperties}
-          role="switch"
-          aria-checked={on}
-          tabIndex={0}
-          onClick={toggle}
-          onKeyDown={onToggleKey}
-        >
-          <div className="knob-dot" />
-        </div>
+        <GlassSwitch
+          checked={on}
+          onCheckedChange={toggle}
+          ariaLabel={name}
+          activeColor={accent}
+          refraction={refraction}
+          scheme={isDark ? "dark" : "light"}
+        />
       </div>
 
       {supportsColor && supportsColorTemp && <div className="segment">
@@ -317,9 +317,9 @@ function LightCard({ config, hass, host }: ReactCardProps<LightCardConfig>) {
             glassVariant={config.glass_variant}
             scheme={isDark ? "dark" : "light"}
             label={t("brightness")}
-            onInput={(next) => setPreview((current) => ({ ...current, brightness: next }))}
+            onInput={brightnessValue.setPreview}
             onChange={(next) => {
-              setPreview({});
+              brightnessValue.commit(next);
               call("turn_on", { brightness_pct: Math.round(next) });
             }}
           />
@@ -342,9 +342,9 @@ function LightCard({ config, hass, host }: ReactCardProps<LightCardConfig>) {
           glassVariant={config.glass_variant}
           scheme={isDark ? "dark" : "light"}
           label={t("color_temp")}
-          onInput={(next) => setPreview((current) => ({ ...current, kelvin: next }))}
+          onInput={kelvinValue.setPreview}
           onChange={(next) => {
-            setPreview({});
+            kelvinValue.commit(next);
             call("turn_on", { color_temp_kelvin: Math.round(next) });
           }}
         />
@@ -367,9 +367,9 @@ function LightCard({ config, hass, host }: ReactCardProps<LightCardConfig>) {
             glassVariant={config.glass_variant}
             scheme={isDark ? "dark" : "light"}
             label={t("hue")}
-            onInput={(next) => setPreview((current) => ({ ...current, hue: next }))}
+            onInput={hueValue.setPreview}
             onChange={(next) => {
-              setPreview({});
+              hueValue.commit(next);
               call("turn_on", { hs_color: [Math.round(next), Math.round(sat)] });
             }}
           />
@@ -393,9 +393,9 @@ function LightCard({ config, hass, host }: ReactCardProps<LightCardConfig>) {
             glassVariant={config.glass_variant}
             scheme={isDark ? "dark" : "light"}
             label={t("saturation")}
-            onInput={(next) => setPreview((current) => ({ ...current, sat: next }))}
+            onInput={saturationValue.setPreview}
             onChange={(next) => {
-              setPreview({});
+              saturationValue.commit(next);
               call("turn_on", { hs_color: [Math.round(hue), Math.round(next)] });
             }}
           />

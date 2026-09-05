@@ -85,6 +85,27 @@ describe("liquid-glass-switch-card", () => {
     expect(callService).toHaveBeenCalledWith("homeassistant", "toggle", { entity_id: target.entity_id });
   });
 
+  it("animates only after the switch state changes", async () => {
+    const callService = vi.fn<HomeAssistant["callService"]>(async () => undefined);
+    const target = entity("switch.desk", "off", { friendly_name: "デスク" });
+    const element = document.createElement("liquid-glass-switch-card") as CardElement;
+    element.setConfig({ type: "custom:liquid-glass-switch-card", entity: target.entity_id });
+    element.hass = createHass([target], callService);
+
+    await act(async () => document.body.append(element));
+    expect(element.shadowRoot?.querySelector(".card")?.classList.contains("switch-turned-off")).toBe(false);
+
+    await act(async () => {
+      element.hass = createHass([{ ...target, state: "on" }], callService);
+    });
+    expect(element.shadowRoot?.querySelector(".card")?.classList.contains("switch-turned-on")).toBe(true);
+
+    await act(async () => {
+      element.hass = createHass([{ ...target, state: "off" }], callService);
+    });
+    expect(element.shadowRoot?.querySelector(".card")?.classList.contains("switch-turned-off")).toBe(true);
+  });
+
   it("opens more-info on hold instead of toggling", async () => {
     vi.useFakeTimers();
     const callService = vi.fn<HomeAssistant["callService"]>(async () => undefined);

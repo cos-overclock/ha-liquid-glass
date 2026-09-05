@@ -94,6 +94,8 @@ describe("liquid-glass-climate-card", () => {
     expect((dialLens.children[1] as HTMLElement).style.transform).not.toContain("scale(");
     expect(root.querySelector(".dial")?.classList.contains("dragging")).toBe(false);
     expect(root.querySelectorAll(".segment.modes > button")).toHaveLength(4);
+    expect(root.querySelector(".segment.modes .lg-segment-lens")).toBeTruthy();
+    expect(root.querySelector(".segment.modes .seg-pill")).toBeNull();
     expect(element.getCardSize()).toBe(6);
 
     // Straight up from the centre is the top of the 270° sweep, i.e. the midpoint.
@@ -134,6 +136,36 @@ describe("liquid-glass-climate-card", () => {
     expect(callService).toHaveBeenCalledWith("climate", "set_fan_mode", {
       entity_id: target.entity_id,
       fan_mode: "high",
+    });
+  });
+
+  it("drags the glass mode lens and supports arrow-key selection", async () => {
+    const callService = vi.fn<HomeAssistant["callService"]>(async () => undefined);
+    const target = thermostat("heat");
+    const element = document.createElement("liquid-glass-climate-card") as CardElement;
+    element.setConfig({ type: "custom:liquid-glass-climate-card", entity: target.entity_id });
+    element.hass = createHass(target, callService);
+
+    await act(async () => document.body.append(element));
+    const root = element.shadowRoot!;
+    const modes = mockRect(root.querySelector<HTMLElement>(".segment.modes")!, { width: 300, height: 50 });
+
+    await act(async () => {
+      modes.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, button: 0, clientX: 188 }));
+      modes.dispatchEvent(new MouseEvent("pointermove", { bubbles: true, button: 0, clientX: 108 }));
+      modes.dispatchEvent(new MouseEvent("pointerup", { bubbles: true, button: 0, clientX: 108 }));
+    });
+    expect(callService).toHaveBeenCalledWith("climate", "set_hvac_mode", {
+      entity_id: target.entity_id,
+      hvac_mode: "cool",
+    });
+
+    callService.mockClear();
+    const heatButton = root.querySelectorAll<HTMLButtonElement>(".segment.modes > button")[2];
+    await act(async () => heatButton.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "ArrowRight" })));
+    expect(callService).toHaveBeenCalledWith("climate", "set_hvac_mode", {
+      entity_id: target.entity_id,
+      hvac_mode: "off",
     });
   });
 

@@ -74,6 +74,29 @@ const clearControlOptics: Partial<GlassOptics> = {
   saturate: 1.45,
 };
 
+/** Exact optics from the package's GlassVideoControls reference. */
+export const glassVideoControlOptics: Partial<GlassOptics> = {
+  mapSize: 512,
+  clipToShape: true,
+  softEdge: true,
+  strength: 0.16,
+  depth: 0.2,
+  curvature: 0.55,
+  bend: 0.25,
+  bendWidth: 0.08,
+  dispersion: 0.15,
+  specular: 1,
+  sheenAngle: 50,
+  glow: 0.15,
+  glowSpread: 1,
+  glowFalloff: 1.5,
+  sheen: 0.95,
+  sheenWidth: 2,
+  sheenFalloff: 1.5,
+  frost: 3,
+  brightness: 0,
+};
+
 const flat = (optics: Partial<GlassOptics>): Partial<GlassOptics> => ({
   ...optics,
   strength: 0,
@@ -243,6 +266,23 @@ interface LiquidGlassSurfaceProps extends HTMLAttributes<HTMLDivElement> {
   sourceAccent?: string;
   sourceBackground?: string;
   children?: ReactNode;
+}
+
+interface GlassVideoControlLensProps extends HTMLAttributes<HTMLDivElement> {
+  refraction: boolean;
+}
+
+/** A clear, independently refracting control lens matching GlassVideoControls. */
+export function GlassVideoControlLens({
+  refraction,
+  children,
+  ...props
+}: GlassVideoControlLensProps) {
+  if (!refraction) {
+    return <div {...props} data-lg-static-lens="">{children}</div>;
+  }
+
+  return <Glass {...props} optics={glassVideoControlOptics}>{children}</Glass>;
 }
 
 /**

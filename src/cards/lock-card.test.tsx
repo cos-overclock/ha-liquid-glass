@@ -44,16 +44,25 @@ function createHass(state: string, callService: HomeAssistant["callService"]): H
 }
 
 function mockSlideGeometry(element: LockElement): HTMLElement {
-  const slide = element.shadowRoot?.querySelector<HTMLElement>(".slide");
-  const thumb = element.shadowRoot?.querySelector<HTMLElement>(".thumb");
-  expect(slide).toBeTruthy();
-  expect(thumb).toBeTruthy();
-  Object.defineProperty(slide, "getBoundingClientRect", {
-    value: () => ({ left: 0, width: 320, right: 320, top: 0, bottom: 64, height: 64, x: 0, y: 0, toJSON: () => ({}) }),
+  const wrapper = element.shadowRoot?.querySelector<HTMLElement>(".lg-react-slider");
+  const track = element.shadowRoot?.querySelector<HTMLElement>(".slider-track");
+  const probe = element.shadowRoot?.querySelector<HTMLElement>(".knob-probe");
+  expect(wrapper).toBeTruthy();
+  expect(track).toBeTruthy();
+  expect(probe).toBeTruthy();
+  Object.defineProperty(wrapper, "getBoundingClientRect", {
+    value: () => ({ left: 0, width: 320, right: 320, top: 0, bottom: 44, height: 44, x: 0, y: 0, toJSON: () => ({}) }),
   });
-  Object.defineProperty(slide, "setPointerCapture", { value: () => undefined });
-  Object.defineProperty(thumb, "offsetWidth", { value: 64 });
-  return slide!;
+  Object.defineProperty(track, "getBoundingClientRect", {
+    value: () => ({ left: 0, width: 320, right: 320, top: 0, bottom: 44, height: 44, x: 0, y: 0, toJSON: () => ({}) }),
+  });
+  Object.defineProperty(track, "setPointerCapture", { value: () => undefined });
+  Object.defineProperty(probe, "getBoundingClientRect", {
+    value: () => ({ left: 0, width: 48, right: 48, top: 0, bottom: 34, height: 34, x: 0, y: 0, toJSON: () => ({}) }),
+  });
+  Object.defineProperty(probe, "offsetWidth", { value: 48 });
+  Object.defineProperty(probe, "offsetHeight", { value: 34 });
+  return track!;
 }
 
 afterEach(() => {
@@ -83,8 +92,14 @@ describe("liquid-glass-lock-card", () => {
     const card = element.shadowRoot?.querySelector<HTMLElement>(".card[data-liquid-glass='']");
     const contentLayer = card?.firstElementChild;
     expect(contentLayer?.querySelector(".header")).toBeTruthy();
-    expect(contentLayer?.querySelector(".slide")).toBeTruthy();
+    expect(contentLayer?.querySelector(".lock-control .lg-react-slider")).toBeTruthy();
+    expect(contentLayer?.querySelector(".slider-knob lg-icon")).toBeNull();
+    expect(contentLayer?.querySelector(".slider-track lg-icon")).toBeNull();
+    expect(contentLayer?.querySelector(".slider-fill")).toBeNull();
+    expect(contentLayer?.querySelector(".slider-track")?.getAttribute("aria-valuetext")).toBe("施錠");
     const css = element.shadowRoot?.querySelector("style")?.textContent ?? "";
+    expect(css).not.toContain("--lg-knob-solid: color-mix");
+    expect(css).not.toContain("--lg-slider-track:");
     expect(css).toContain('.lg-liquid-card[data-liquid-glass=""] > :first-child');
     expect(css).not.toContain(".card > *");
     expect(element.getCardSize()).toBe(2);
@@ -93,12 +108,19 @@ describe("liquid-glass-lock-card", () => {
     const slide = mockSlideGeometry(element);
 
     await act(async () => {
-      slide?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, button: 0, clientX: 32 }));
+      slide.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, button: 0, clientX: 24 }));
+      slide.dispatchEvent(new MouseEvent("pointermove", { bubbles: true, button: 0, clientX: 180 }));
+      slide.dispatchEvent(new MouseEvent("pointerup", { bubbles: true, button: 0, clientX: 180 }));
     });
+    expect(callService).not.toHaveBeenCalled();
+
     await act(async () => {
-      slide?.dispatchEvent(new MouseEvent("pointerup", { bubbles: true, button: 0, clientX: 288 }));
+      slide.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, button: 0, clientX: 24 }));
+      slide.dispatchEvent(new MouseEvent("pointermove", { bubbles: true, button: 0, clientX: 296 }));
+      slide.dispatchEvent(new MouseEvent("pointerup", { bubbles: true, button: 0, clientX: 296 }));
     });
     expect(callService).toHaveBeenCalledWith("lock", "unlock", { entity_id: "lock.front_door" });
+    expect(slide.getAttribute("aria-valuenow")).toBe("1");
 
     await act(async () => {
       element.shadowRoot?.querySelector<HTMLButtonElement>(".chip-button")?.click();
@@ -121,10 +143,11 @@ describe("liquid-glass-lock-card", () => {
     await act(async () => document.body.append(element));
     const slide = mockSlideGeometry(element);
     await act(async () => {
-      slide.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, button: 0, clientX: 288 }));
+      slide.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, button: 0, clientX: 296 }));
+      slide.dispatchEvent(new MouseEvent("pointermove", { bubbles: true, button: 0, clientX: 24 }));
     });
     await act(async () => {
-      slide.dispatchEvent(new MouseEvent("pointerup", { bubbles: true, button: 0, clientX: 32 }));
+      slide.dispatchEvent(new MouseEvent("pointerup", { bubbles: true, button: 0, clientX: 24 }));
     });
 
     expect(callService).toHaveBeenCalledWith("lock", "lock", { entity_id: "lock.front_door" });
@@ -141,10 +164,10 @@ describe("liquid-glass-lock-card", () => {
     element.hass = createHass("jammed", callService);
 
     await act(async () => document.body.append(element));
-    expect(element.shadowRoot?.querySelector(".slide")?.classList.contains("disabled")).toBe(true);
-    expect(element.shadowRoot?.querySelector(".hint")?.textContent).toContain("操作できません");
+    expect(element.shadowRoot?.querySelector(".lg-react-slider")?.classList.contains("disabled")).toBe(true);
+    expect(element.shadowRoot?.querySelector(".lock-instruction")?.textContent).toContain("操作できません");
     expect(element.hasAttribute("refraction")).toBe(false);
-    expect(element.shadowRoot?.querySelectorAll("[data-lg-static-glass]").length).toBeGreaterThanOrEqual(2);
+    expect(element.shadowRoot?.querySelectorAll("[data-lg-static-glass]").length).toBeGreaterThanOrEqual(1);
     expect(element.shadowRoot?.querySelector("[data-liquid-glass]")).toBeNull();
     expect(callService).not.toHaveBeenCalled();
   });

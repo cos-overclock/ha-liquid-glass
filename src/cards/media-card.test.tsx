@@ -86,6 +86,7 @@ describe("liquid-glass-media-card", () => {
     expect(root.querySelector(".name")?.textContent).toBe("Midnight City");
     expect(root.querySelector(".times span")?.textContent).toBe("1:00");
     expect(root.querySelector(".progress .slider-knob.moving")).toBeTruthy();
+    expect(root.querySelectorAll('.media-control-glass[data-liquid-glass="material"]')).toHaveLength(2);
     expect(element.getCardSize()).toBe(4);
 
     const track = mockTrack(root.querySelector<HTMLElement>(".progress .slider-track")!);
@@ -96,6 +97,8 @@ describe("liquid-glass-media-card", () => {
       entity_id: target.entity_id,
       seek_position: 120,
     });
+    expect(root.querySelector(".times span")?.textContent).toBe("2:00");
+    expect(track.getAttribute("aria-valuenow")).toBe("0.5");
   });
 
   it("keeps the volume slider and play button working while paused", async () => {
@@ -119,5 +122,6 @@ describe("liquid-glass-media-card", () => {
       entity_id: target.entity_id,
       volume_level: 1,
     });
+    expect(volume.getAttribute("aria-valuenow")).toBe("1");
   });
 });

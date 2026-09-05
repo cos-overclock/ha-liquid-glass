@@ -4,9 +4,15 @@ import { createTranslator } from "../i18n";
 import { CardTitle, UnavailableCard } from "../react/card-parts";
 import { reactCardStyles } from "../react/card-styles";
 import { defineReactCard, type ReactCardProps } from "../react/define-react-card";
-import { glassSurfaceStyles, Icon, LiquidGlassSurface } from "../react/glass-primitives";
+import {
+  glassSurfaceStyles,
+  GlassVideoControlLens,
+  Icon,
+  LiquidGlassSurface,
+} from "../react/glass-primitives";
 import { GlassSlider, glassSliderStyles } from "../react/glass-slider";
 import { useCardHost } from "../react/use-card-host";
+import { useOptimisticValue } from "../react/use-optimistic-value";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HassEntity, HomeAssistant } from "../types";
 import { clamp, friendlyName, isUnavailable, moreInfo, pickEntity, supportsFeature } from "../utils";
@@ -91,20 +97,43 @@ const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}${glassS
   .source.muted-text {
     color: var(--lg-text-secondary);
   }
-  .more {
+  .media-control-glass {
     flex: none;
+    border-radius: 50%;
+    overflow: hidden;
+    background: none;
+    box-shadow: none;
+  }
+  .media-control-glass[data-lg-static-lens=""] {
+    background: rgba(255, 255, 255, 0.08);
+    -webkit-backdrop-filter: blur(3px);
+    backdrop-filter: blur(3px);
+    box-shadow:
+      0 5px 14px rgba(0, 0, 0, 0.22),
+      inset 1px 1px 0 rgba(255, 255, 255, 0.36),
+      inset -1px -1px 0 rgba(0, 0, 0, 0.14);
+  }
+  .more-glass {
     width: 36px;
     height: 36px;
+  }
+  .more {
+    width: 100%;
+    height: 100%;
     border: 0;
-    border-radius: 18px;
+    border-radius: inherit;
     padding: 0;
     display: grid;
     place-items: center;
-    background: var(--lg-track-bg);
-    box-shadow: inset 0 0 0 1px var(--lg-glass-stroke);
+    background: transparent;
     color: var(--lg-text-primary);
     cursor: pointer;
     --mdc-icon-size: 18px;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.32));
+    transition: transform 120ms ease;
+  }
+  .more:active {
+    transform: scale(0.9);
   }
   .progress {
     display: flex;
@@ -168,21 +197,25 @@ const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}${glassS
   .transport .skip {
     --mdc-icon-size: var(--lg-skip, 32px);
   }
-  .play {
+  .play-glass {
     flex: none;
     width: var(--lg-play, 68px);
     height: var(--lg-play, 68px);
     border-radius: 50%;
+    color: var(--lg-text-primary);
+  }
+  .play {
+    width: 100%;
+    height: 100%;
+    border-radius: inherit;
     display: grid;
     place-items: center;
     cursor: pointer;
-    color: var(--lg-text-primary);
+    color: inherit;
     --mdc-icon-size: calc(var(--lg-play, 68px) * 0.44);
-    box-shadow:
-      0 6px 16px rgba(0, 0, 0, 0.22),
-      inset 0 0 0 1.5px rgba(255, 255, 255, 0.6);
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.32));
   }
-  .play.idle {
+  .play-glass.idle {
     color: var(--lg-text-secondary);
   }
   .volume {
@@ -238,12 +271,16 @@ function MediaCard({ config, hass, host }: ReactCardProps<MediaCardConfig>) {
   const { isDark, refraction } = useCardHost(host, config, hass);
   const t = createTranslator(config.language ?? hass?.locale?.language ?? hass?.language);
   const [, setTick] = useState(0);
-  const [seekPreview, setSeekPreview] = useState<number>();
-  const [volumePreview, setVolumePreview] = useState<number>();
   const entity = config.entity ? hass?.states[config.entity] : undefined;
   const name = config.name ?? friendlyName(entity, config.entity ?? "");
   const open = () => moreInfo(host, config.entity);
   const playing = entity?.state === "playing" || entity?.state === "buffering";
+  const reportedProgress = entity ? position(entity, playing) : undefined;
+  const seekValue = useOptimisticValue(
+    reportedProgress ? reportedProgress.pos / reportedProgress.duration : undefined,
+    reportedProgress ? Math.max(1 / reportedProgress.duration, 0.005) : 0.005,
+  );
+  const volumeValue = useOptimisticValue(entity?.attributes.volume_level as number | undefined, 0.005);
 
   useEffect(() => {
     if (!playing) return;
@@ -279,11 +316,11 @@ function MediaCard({ config, hass, host }: ReactCardProps<MediaCardConfig>) {
   const artistParts = [attributes.media_artist, attributes.media_album_name].filter(Boolean) as string[];
   const artist = idle ? t("standby") : artistParts.join(" — ") || ((attributes.source as string | undefined) ?? "");
   const source = (attributes.app_name as string | undefined) ?? (attributes.source as string | undefined);
-  const progress = position(entity, playing);
-  const seekRatio = seekPreview ?? (progress ? progress.pos / progress.duration : 0);
-  const elapsed = progress ? (seekPreview !== undefined ? seekPreview * progress.duration : progress.pos) : 0;
+  const progress = reportedProgress;
+  const seekRatio = seekValue.value ?? 0;
+  const elapsed = progress ? seekRatio * progress.duration : 0;
   const remaining = progress ? progress.duration - elapsed : 0;
-  const volume = volumePreview ?? ((attributes.volume_level as number | undefined) ?? 0.5);
+  const volume = volumeValue.value ?? 0.5;
   const shuffle = Boolean(attributes.shuffle);
   const repeat = (attributes.repeat as string | undefined) ?? "off";
   const canSeek = supportsFeature(entity, F.SEEK) && Boolean(progress) && !idle;
@@ -320,7 +357,14 @@ function MediaCard({ config, hass, host }: ReactCardProps<MediaCardConfig>) {
               ? <div className="source"><Icon icon="mdi:waveform" /><span>{source}</span></div>
               : null}
         </div>
-        <button className="more" onClick={open} title="More"><Icon icon="mdi:dots-horizontal" /></button>
+        <GlassVideoControlLens
+          className="media-control-glass more-glass"
+          refraction={refraction}
+        >
+          <button className="more" type="button" onClick={open} title="More">
+            <Icon icon="mdi:dots-horizontal" />
+          </button>
+        </GlassVideoControlLens>
       </div>
 
       <div className={`progress${idle ? " dim" : ""}`}>
@@ -334,9 +378,9 @@ function MediaCard({ config, hass, host }: ReactCardProps<MediaCardConfig>) {
           glassVariant={config.glass_variant}
           scheme={isDark ? "dark" : "light"}
           label={title}
-          onInput={setSeekPreview}
+          onInput={seekValue.setPreview}
           onChange={(next) => {
-            setSeekPreview(undefined);
+            seekValue.commit(next);
             if (progress) call("media_seek", { seek_position: Math.round(next * progress.duration) });
           }}
         />
@@ -363,22 +407,22 @@ function MediaCard({ config, hass, host }: ReactCardProps<MediaCardConfig>) {
         >
           <Icon icon="mdi:skip-previous-outline" />
         </button>
-        <LiquidGlassSurface
-          className={`play${idle ? " idle" : ""}`}
+        <GlassVideoControlLens
+          className={`media-control-glass play-glass${idle ? " idle" : ""}`}
           refraction={refraction}
-          variant={config.glass_variant}
-          surface="control"
-          sourceAccent={sourceColor}
-          style={{ display: "grid" }}
-          role="button"
-          title="Play / Pause"
-          onClick={() => {
-            if (idle && !supportsFeature(entity, F.PLAY)) return;
-            call("media_play_pause");
-          }}
         >
-          <Icon icon={playing ? "mdi:pause" : "mdi:play-outline"} />
-        </LiquidGlassSurface>
+          <button
+            className="play"
+            type="button"
+            title="Play / Pause"
+            onClick={() => {
+              if (idle && !supportsFeature(entity, F.PLAY)) return;
+              call("media_play_pause");
+            }}
+          >
+            <Icon icon={playing ? "mdi:pause" : "mdi:play-outline"} />
+          </button>
+        </GlassVideoControlLens>
         <button
           className={`skip${idle ? " fade" : ""}`}
           disabled={!supportsFeature(entity, F.NEXT)}
@@ -408,9 +452,9 @@ function MediaCard({ config, hass, host }: ReactCardProps<MediaCardConfig>) {
           glassVariant={config.glass_variant}
           scheme={isDark ? "dark" : "light"}
           label={t("ed_show_volume")}
-          onInput={setVolumePreview}
+          onInput={volumeValue.setPreview}
           onChange={(next) => {
-            setVolumePreview(undefined);
+            volumeValue.commit(next);
             call("volume_set", { volume_level: Math.round(next * 100) / 100 });
           }}
         />

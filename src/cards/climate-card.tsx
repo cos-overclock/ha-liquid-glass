@@ -6,6 +6,7 @@ import { Badge, CardTitle, IconWell, UnavailableCard, type BadgeStyle, type Well
 import { reactCardStyles } from "../react/card-styles";
 import { defineReactCard, type ReactCardProps } from "../react/define-react-card";
 import { glassSurfaceStyles, Icon, LiquidGlassSurface } from "../react/glass-primitives";
+import { GlassSegmentedControl, glassSegmentedControlStyles } from "../react/glass-segmented-control";
 import {
   GlassSlider,
   GLASS_SLIDER_COLLAPSE_ANIM,
@@ -197,7 +198,7 @@ function arcPath(fromDeg: number, toDeg: number): string {
   return `M ${x1} ${y1} A ${RADIUS} ${RADIUS} 0 ${large} 1 ${x2} ${y2}`;
 }
 
-const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}${glassSliderStyles}
+const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}${glassSliderStyles}${glassSegmentedControlStyles}
   .dial-row {
     display: flex;
     justify-content: center;
@@ -414,55 +415,6 @@ const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}${glassS
     letter-spacing: -0.2px;
     font-variant-numeric: tabular-nums;
   }
-  .tile-modes {
-    position: relative;
-    display: flex;
-    height: 40px;
-    box-sizing: border-box;
-    gap: 2px;
-    padding: 3px;
-    border-radius: 20px;
-    background: var(--lg-track-bg);
-    box-shadow: inset 0 0 0 1px var(--lg-glass-stroke);
-  }
-  .tile-mode-pill {
-    --seg-w: calc((100% - 6px - (var(--n) - 1) * 2px) / var(--n));
-    position: absolute;
-    top: 3px;
-    bottom: 3px;
-    left: calc(3px + var(--i) * (var(--seg-w) + 2px));
-    width: var(--seg-w);
-    border-radius: 17px;
-    background: var(--lg-segment-selected);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.14);
-    transition: left 0.32s cubic-bezier(0.3, 0.8, 0.3, 1), opacity 0.2s ease;
-    pointer-events: none;
-  }
-    .tile-modes button {
-    position: relative;
-    z-index: 1;
-    flex: 1;
-    min-width: 0;
-    min-height: 0;
-    height: 34px;
-    display: grid;
-    place-items: center;
-    padding: 0;
-    border: 0;
-    border-radius: 17px;
-    color: var(--lg-text-secondary);
-    background: transparent;
-    cursor: pointer;
-  }
-  .tile-modes lg-icon {
-    --mdc-icon-size: 17px;
-    width: 17px;
-    height: 17px;
-    transition: color 0.32s ease;
-  }
-  .tile-modes button.selected lg-icon {
-    color: var(--selected-color);
-  }
   @supports (container-type: inline-size) {
     .card {
       --lg-temp: clamp(34px, 14.2cqi, 54px);
@@ -478,54 +430,6 @@ const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}${glassS
       --lg-tile-fraction: clamp(17px, 6.3cqi, 24px);
       --lg-tile-room: clamp(13px, 4.5cqi, 17px);
     }
-  }
-  .segment.modes {
-    position: relative;
-    border-radius: 20px;
-  }
-  /*
-   * The buttons are flex: 1 inside 3px of padding with a 2px gap, so one button is
-   * (width - 6px - gaps) / n and the pill's offset is that plus a gap, per button.
-   * Deriving it here keeps the pill on the button without measuring anything.
-   */
-  .seg-pill {
-    --seg-w: calc((100% - 6px - (var(--n) - 1) * 2px) / var(--n));
-    position: absolute;
-    top: 3px;
-    bottom: 3px;
-    left: calc(3px + var(--i) * (var(--seg-w) + 2px));
-    width: var(--seg-w);
-    border-radius: 17px;
-    background: var(--lg-segment-selected);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.14);
-    transition: left 0.32s cubic-bezier(0.3, 0.8, 0.3, 1), opacity 0.2s ease;
-    pointer-events: none;
-  }
-  .segment.modes > button {
-    position: relative;
-    height: clamp(44px, 14cqi, 54px);
-    border-radius: 17px;
-    font-size: var(--lg-tick);
-    padding: 0 2px;
-  }
-  /* The pill draws the selection now, so the button underneath must not draw it too. */
-  .segment.modes > button.selected {
-    background: transparent;
-    box-shadow: none;
-  }
-  .segment.modes lg-icon {
-    transition: color 0.32s ease;
-  }
-  .segment.modes > button > span {
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .segment.modes lg-icon {
-    --mdc-icon-size: clamp(15px, 4.7cqi, 18px);
-  }
-  .segment.modes > button.selected lg-icon {
-    color: var(--selected-color);
   }
   .details {
     display: flex;
@@ -887,33 +791,24 @@ function ClimateCard({ config, hass, host }: ReactCardProps<ClimateCardConfig>) 
           }}
         />
 
-        {modes.length > 0 && <div
+        {modes.length > 0 && <GlassSegmentedControl
           className="tile-modes"
-          style={{
-            "--selected-color": theme.selectedColor,
-            "--n": String(modes.length),
-            "--i": String(Math.max(modes.indexOf(mode), 0)),
-          } as CSSProperties}
-        >
-          <div className="tile-mode-pill" style={{ opacity: modes.includes(mode) ? 1 : 0 }} />
-          {modes.map((option) => {
+          compact
+          items={modes.map((option) => {
             const meta = modeMeta(option, t);
-            // The compact source artwork uses the plain circular-arrows glyph, without an A.
-            const icon = option === "auto" ? "mdi:refresh" : meta.icon;
-            return (
-              <button
-                key={option}
-                className={option === mode ? "selected" : undefined}
-                title={meta.label}
-                aria-label={meta.label}
-                aria-pressed={option === mode}
-                onClick={() => call("set_hvac_mode", { hvac_mode: option })}
-              >
-                <Icon icon={icon} />
-              </button>
-            );
+            return {
+              value: option,
+              label: meta.label,
+              // The compact source artwork uses plain circular arrows, without an A.
+              icon: option === "auto" ? "mdi:refresh" : meta.icon,
+            };
           })}
-        </div>}
+          value={mode}
+          selectedColor={theme.selectedColor}
+          refraction={refraction}
+          scheme={isDark ? "dark" : "light"}
+          onValueChange={(option) => call("set_hvac_mode", { hvac_mode: option })}
+        />}
 
         {config.show_fan_mode === true && <div className={`details${off ? " muted" : ""}`}>
           {detail("fan_mode", "mdi:weather-windy")}
@@ -1042,35 +937,15 @@ function ClimateCard({ config, hass, host }: ReactCardProps<ClimateCardConfig>) 
         </div>
       </div>
 
-      {modes.length > 0 && <div
+      {modes.length > 0 && <GlassSegmentedControl
         className="segment modes"
-        style={{
-          "--selected-color": theme.selectedColor,
-          "--n": String(modes.length),
-          "--i": String(Math.max(modes.indexOf(mode), 0)),
-        } as CSSProperties}
-      >
-        {/*
-          One pill that slides between the buttons, rather than a background that appears on
-          the newly selected button and vanishes from the old one. Only a single element can
-          travel; two cross-fading ones read as a blink. An unlisted mode leaves nothing
-          selected, so the pill sits out.
-        */}
-        <div className="seg-pill" style={{ opacity: modes.includes(mode) ? 1 : 0 }} />
-        {modes.map((option) => {
-          const meta = modeMeta(option, t);
-          return (
-            <button
-              key={option}
-              className={option === mode ? "selected" : undefined}
-              onClick={() => call("set_hvac_mode", { hvac_mode: option })}
-            >
-              <Icon icon={meta.icon} />
-              <span>{meta.label}</span>
-            </button>
-          );
-        })}
-      </div>}
+        items={modes.map((option) => ({ value: option, ...modeMeta(option, t) }))}
+        value={mode}
+        selectedColor={theme.selectedColor}
+        refraction={refraction}
+        scheme={isDark ? "dark" : "light"}
+        onValueChange={(option) => call("set_hvac_mode", { hvac_mode: option })}
+      />}
 
       {(showFan || showPreset || showSwing) && <div className={`details${off ? " muted" : ""}`}>
         {showFan && detail("fan_mode", "mdi:weather-windy")}

@@ -1,13 +1,14 @@
-import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { loadHaFormComponents } from "../editor/load";
 import { clockTime, createTranslator, relativeTime, type Translator } from "../i18n";
 import { defineReactCard, type ReactCardProps } from "../react/define-react-card";
 import { glassSurfaceStyles, Icon, LiquidGlassSurface } from "../react/glass-primitives";
+import { GlassSlider, glassSliderStyles } from "../react/glass-slider";
 import { reactCardStyles } from "../react/card-styles";
 import { useCardHost } from "../react/use-card-host";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HassEntity, HomeAssistant } from "../types";
-import { clamp, friendlyName, isUnavailable, moreInfo, pickEntity } from "../utils";
+import { friendlyName, isUnavailable, moreInfo, pickEntity } from "../utils";
 import "../components/lg-icon";
 
 export interface LockActionButton {
@@ -33,75 +34,63 @@ interface LockVisual {
   state: string;
 }
 
-const THUMB = 64;
-const PAD = 0;
-
-const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}
+const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}${glassSliderStyles}
   .card {
     gap: 16px;
     width: 100%;
   }
-  .slide {
-    --thumb: ${THUMB}px;
+  .lock-control {
     position: relative;
-    height: calc(var(--thumb) + ${PAD * 2}px);
-    border-radius: 999px;
-    padding: ${PAD}px;
-    background: var(--lg-track-bg);
+    display: grid;
+    gap: 6px;
+    --lg-slider-height: var(--lg-lock-track-h, 54px);
+    --lg-slider-bar-height: var(--lg-lock-bar-h, 42px);
+    --lg-slider-thumb-width: var(--lg-lock-thumb-w, 58px);
+    --lg-slider-thumb-height: var(--lg-lock-thumb-h, 44px);
+  }
+  .lock-control .slider-track:focus-visible {
+    outline-color: var(--thumb-color);
+  }
+  .lock-control .slider-anchor { display: none; }
+  .lock-control .slider-bar,
+  .lock-control .slider-refraction-bar {
+    border: 1px solid var(--lg-glass-stroke);
     box-shadow:
-      0 2px 4px rgba(0, 0, 0, 0.14),
-      inset 0 0 0 1px var(--lg-glass-stroke);
-    touch-action: none;
-    user-select: none;
-    -webkit-user-select: none;
-    overflow: hidden;
+      inset 0 1px 0 rgba(255,255,255,0.46),
+      inset 0 -1px 0 rgba(255,255,255,0.1),
+      0 4px 14px rgba(0,0,0,0.05);
+    -webkit-backdrop-filter: blur(10px) saturate(1.25);
+    backdrop-filter: blur(10px) saturate(1.25);
   }
-  .slide.disabled {
-    opacity: 0.55;
-    pointer-events: none;
-  }
-  .hint {
-    position: absolute;
-    inset: 0;
+  .lock-instruction {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 6px;
-    padding: 0 var(--thumb);
     font-size: var(--lg-hint, 14px);
-    font-weight: 500;
+    line-height: 20px;
+    font-weight: 600;
     color: var(--lg-text-secondary);
     pointer-events: none;
-    transition: opacity 0.15s ease;
     white-space: nowrap;
   }
-  .hint > span {
+  .lock-instruction::before {
+    content: "";
+    width: 5px;
+    height: 5px;
+    flex: none;
+    border-radius: 50%;
+    background: var(--thumb-color);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--thumb-color) 70%, transparent);
+  }
+  .lock-instruction > span {
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .hint lg-icon {
+  .lock-instruction lg-icon {
     flex: none;
-    --mdc-icon-size: 18px;
-  }
-  .thumb {
-    top: ${PAD}px;
-    width: var(--thumb);
-    height: var(--thumb);
-    border-radius: 50%;
-    place-items: center;
-    cursor: grab;
-    color: var(--thumb-color);
-    transition: left 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
-    --mdc-icon-size: calc(var(--thumb) * 0.43);
-  }
-  .thumb.dragging {
-    transition: none;
-    cursor: grabbing;
-  }
-  .thumb lg-icon {
-    position: relative;
-    z-index: 1;
+    --mdc-icon-size: 16px;
   }
   .chips .chip {
     flex: 1;
@@ -139,11 +128,16 @@ const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}
     height: clamp(15px, 4.7cqi, 18px);
   }
   @container (max-width: 300px) {
-    .hint lg-icon { display: none; }
+    .lock-instruction lg-icon { display: none; }
   }
   @supports (container-type: inline-size) {
-    .slide { --thumb: clamp(40px, 16.8cqi, ${THUMB}px); }
-    .card { --lg-hint: clamp(11.5px, 3.7cqi, 14px); }
+    .card {
+      --lg-hint: clamp(11.5px, 3.7cqi, 14px);
+      --lg-lock-track-h: clamp(48px, 14.2cqi, 54px);
+      --lg-lock-bar-h: clamp(38px, 11.1cqi, 42px);
+      --lg-lock-thumb-w: clamp(52px, 15.3cqi, 58px);
+      --lg-lock-thumb-h: clamp(40px, 11.6cqi, 44px);
+    }
   }
 `;
 
@@ -160,7 +154,7 @@ function visualFor(entity: HassEntity, locked: boolean, jammed: boolean, t: Tran
         glow: "var(--lg-warn)",
       },
       badgeLabel: t("jammed"),
-      thumbColor: "var(--lg-warn-text)",
+      thumbColor: "var(--lg-warn)",
       hint: t("cannot_operate"),
       state: t("jammed_state"),
     };
@@ -175,7 +169,7 @@ function visualFor(entity: HassEntity, locked: boolean, jammed: boolean, t: Tran
         stroke: "rgba(30,158,74,0.3)",
       },
       badgeLabel: t("locked"),
-      thumbColor: "var(--lg-lock-locked-deep)",
+      thumbColor: "var(--lg-lock-locked)",
       hint: t("slide_to_unlock"),
       state: entity.state === "locking"
         ? t("locking")
@@ -191,23 +185,29 @@ function visualFor(entity: HassEntity, locked: boolean, jammed: boolean, t: Tran
       stroke: "rgba(255,59,48,0.3)",
     },
     badgeLabel: t("unlocked"),
-    thumbColor: "var(--lg-lock-unlocked-deep)",
+    thumbColor: "var(--lg-lock-unlocked)",
     hint: t("slide_to_lock"),
     state: entity.state === "unlocking" ? t("unlocking") : `${t("is_unlocked")} · ${rel}`,
   };
 }
 
 function LockCard({ config, hass, host }: ReactCardProps<LockCardConfig>) {
-  const { refraction } = useCardHost(host, config, hass);
-  const [dragRatio, setDragRatio] = useState<number>();
-  const [pending, setPending] = useState(false);
+  const { isDark, refraction } = useCardHost(host, config, hass);
+  const [preview, setPreview] = useState<number>();
+  const [pending, setPending] = useState<"lock" | "unlock">();
   const pendingTimer = useRef<number | undefined>(undefined);
-  const trackRef = useRef<HTMLDivElement>(null);
   const language = config.language ?? hass?.locale?.language ?? hass?.language;
   const t = createTranslator(language);
   const entity = config.entity ? hass?.states[config.entity] : undefined;
+  const lockState = entity?.state;
 
   useEffect(() => () => window.clearTimeout(pendingTimer.current), []);
+  useEffect(() => {
+    if ((pending === "lock" && lockState === "locked") || (pending === "unlock" && lockState === "unlocked")) {
+      window.clearTimeout(pendingTimer.current);
+      setPending(undefined);
+    }
+  }, [lockState, pending]);
 
   if (!entity || isUnavailable(entity)) {
     const name = config.name ?? friendlyName(entity, config.entity ?? "");
@@ -233,51 +233,23 @@ function LockCard({ config, hass, host }: ReactCardProps<LockCardConfig>) {
     </>;
   }
 
-  const lockState = entity.state;
-  const locked = lockState === "locked" || lockState === "locking";
-  const jammed = lockState === "jammed";
-  const busy = pending || lockState === "locking" || lockState === "unlocking";
+  const locked = entity.state === "locked" || entity.state === "locking";
+  const jammed = entity.state === "jammed";
+  const busy = pending !== undefined || entity.state === "locking" || entity.state === "unlocking";
   const visual = visualFor(entity, locked, jammed, t);
-  const dragging = dragRatio !== undefined;
-  const ratio = dragging ? dragRatio : locked ? 0 : 1;
-  const hintOpacity = dragging ? 1 - Math.abs(ratio - (locked ? 0 : 1)) * 1.6 : 1;
-
-  const ratioFromPointer = (clientX: number): number => {
-    const track = trackRef.current;
-    if (!track) return 0;
-    const rect = track.getBoundingClientRect();
-    const thumb = (track.querySelector<HTMLElement>(".thumb")?.offsetWidth) || THUMB;
-    const usable = rect.width - PAD * 2 - thumb;
-    if (usable <= 0) return 0;
-    return clamp((clientX - rect.left - PAD - thumb / 2) / usable, 0, 1);
-  };
 
   const trigger = (service: "lock" | "unlock") => {
     if (!hass || !config.entity) return;
-    setPending(true);
+    setPending(service);
     void hass.callService("lock", service, { entity_id: config.entity });
     window.clearTimeout(pendingTimer.current);
-    pendingTimer.current = window.setTimeout(() => setPending(false), 4000);
+    pendingTimer.current = window.setTimeout(() => setPending(undefined), 4000);
   };
 
-  const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (jammed || busy || event.button !== 0) return;
-    event.preventDefault();
-    event.currentTarget.setPointerCapture?.(event.pointerId);
-    setDragRatio(ratioFromPointer(event.clientX));
-  };
-
-  const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (dragRatio === undefined) return;
-    setDragRatio(ratioFromPointer(event.clientX));
-  };
-
-  const onPointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (dragRatio === undefined) return;
-    const finalRatio = ratioFromPointer(event.clientX);
-    setDragRatio(undefined);
-    if (locked && finalRatio >= 0.8) trigger("unlock");
-    else if (!locked && finalRatio <= 0.2) trigger("lock");
+  const commit = (value: number) => {
+    setPreview(undefined);
+    if (locked && value >= 0.8) trigger("unlock");
+    else if (!locked && value <= 0.2) trigger("lock");
   };
 
   const runButton = (button: LockActionButton) => {
@@ -288,12 +260,7 @@ function LockCard({ config, hass, host }: ReactCardProps<LockCardConfig>) {
     void hass.callService(domain, service, { entity_id: config.entity, ...(button.data ?? {}) });
   };
 
-  const thumbStyle: CSSProperties & Record<"--thumb-color", string> = {
-    display: "grid",
-    position: "absolute",
-    left: `calc(${PAD}px + (100% - ${PAD * 2}px - var(--thumb)) * ${ratio})`,
-    "--thumb-color": visual.thumbColor,
-  };
+  const controlStyle = { "--thumb-color": visual.thumbColor } as CSSProperties;
 
   return <>
     <style>{styles}</style>
@@ -334,29 +301,28 @@ function LockCard({ config, hass, host }: ReactCardProps<LockCardConfig>) {
         </div>
       </div>
 
-      <div
-        ref={trackRef}
-        className={`slide${jammed || busy ? " disabled" : ""}`}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
-      >
-        <div className="hint" style={{ opacity: clamp(hintOpacity, 0, 1) }}>
+      <div className={`lock-control ${locked ? "locked" : "unlocked"}${jammed ? " jammed" : ""}`} style={controlStyle}>
+        <div className="lock-instruction" aria-hidden="true">
           {!locked && !jammed && <Icon icon="mdi:chevron-double-left" />}
           <span>{visual.hint}</span>
           {locked && !jammed && <Icon icon="mdi:chevron-double-right" />}
         </div>
-        <LiquidGlassSurface
-          className={`thumb${dragging ? " dragging" : ""}`}
+        <GlassSlider
+          value={preview ?? (pending === "unlock" ? 1 : pending === "lock" ? 0 : locked ? 0 : 1)}
+          min={0}
+          max={1}
+          step={0.01}
+          keyboardStep={1}
+          disabled={jammed || busy}
           refraction={refraction}
-          variant={config.glass_variant}
-          surface="control"
-          sourceBackground={`linear-gradient(90deg, var(--lg-track-bg), color-mix(in srgb, ${visual.thumbColor} 72%, transparent))`}
-          style={thumbStyle}
-        >
-          <Icon icon={visual.icon} />
-        </LiquidGlassSurface>
+          glassVariant={config.glass_variant}
+          scheme={isDark ? "dark" : "light"}
+          label={visual.hint}
+          valueText={visual.badgeLabel}
+          showFill={false}
+          onInput={setPreview}
+          onChange={commit}
+        />
       </div>
 
       {config.buttons?.length ? <div className="chips">

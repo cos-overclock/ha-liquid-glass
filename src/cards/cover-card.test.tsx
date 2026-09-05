@@ -90,6 +90,7 @@ describe("liquid-glass-cover-card", () => {
       entity_id: target.entity_id,
       position: 75,
     });
+    expect(root.querySelector(".pv")?.textContent).toBe("75%");
 
     await act(async () => root.querySelectorAll<HTMLElement>(".round-btn")[1].dispatchEvent(new MouseEvent("click", { bubbles: true })));
     expect(callService).toHaveBeenCalledWith("cover", "stop_cover", { entity_id: target.entity_id });
@@ -114,5 +115,7 @@ describe("liquid-glass-cover-card", () => {
       entity_id: target.entity_id,
       tilt_position: 100,
     });
+    expect(root.querySelector(".label-row .value")?.textContent).toBe("90°");
+    expect(slider.getAttribute("aria-valuenow")).toBe("100");
   });
 });

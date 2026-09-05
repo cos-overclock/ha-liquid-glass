@@ -1,4 +1,4 @@
-import { useEffect, useRef, type KeyboardEvent, type PointerEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { loadHaFormComponents } from "../editor/load";
 import { createTranslator, relativeTime } from "../i18n";
 import { CardTitle, IconWell, UnavailableCard } from "../react/card-parts";
@@ -30,6 +30,9 @@ const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}
     cursor: pointer;
     user-select: none;
     -webkit-user-select: none;
+    transition:
+      background-color 0.38s ease,
+      box-shadow 0.38s ease;
   }
   .card:focus-visible {
     outline: 2px solid var(--lg-switch-accent);
@@ -38,6 +41,45 @@ const styles = `${tokens.cssText}${reactCardStyles}${glassSurfaceStyles}
   /* The whole card is the control, so the title must not look separately clickable. */
   .title {
     cursor: inherit;
+  }
+  .card.switch-turned-on {
+    animation: lg-switch-card-on 0.48s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .card.switch-turned-off {
+    animation: lg-switch-card-off 0.36s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .card.switch-turned-on .icon-well {
+    animation: lg-switch-icon-on 0.48s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .card.switch-turned-off .icon-well {
+    animation: lg-switch-icon-off 0.36s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .card.switch-turned-on .state,
+  .card.switch-turned-off .state {
+    animation: lg-switch-state-change 0.32s ease-out;
+  }
+  @keyframes lg-switch-card-on {
+    0% { transform: scale(0.985); }
+    58% { transform: scale(1.008); }
+    100% { transform: scale(1); }
+  }
+  @keyframes lg-switch-card-off {
+    0% { transform: scale(1.006); }
+    100% { transform: scale(1); }
+  }
+  @keyframes lg-switch-icon-on {
+    0% { transform: scale(0.78) rotate(-8deg); }
+    62% { transform: scale(1.1) rotate(2deg); }
+    100% { transform: scale(1) rotate(0); }
+  }
+  @keyframes lg-switch-icon-off {
+    0% { transform: scale(1.08); }
+    55% { transform: scale(0.92); }
+    100% { transform: scale(1); }
+  }
+  @keyframes lg-switch-state-change {
+    0% { opacity: 0; transform: translateY(3px); }
+    100% { opacity: 1; transform: translateY(0); }
   }
 `;
 
@@ -59,6 +101,9 @@ function SwitchCard({ config, hass, host }: ReactCardProps<SwitchCardConfig>) {
   const holdTimer = useRef<number | undefined>(undefined);
   const holdOrigin = useRef<{ x: number; y: number } | undefined>(undefined);
   const heldOpen = useRef(false);
+  const previousOn = useRef<boolean | undefined>(undefined);
+  const [changeAnimation, setChangeAnimation] = useState<"on" | "off" | undefined>();
+  const availableOn = entity && !isUnavailable(entity) ? entity.state === "on" : undefined;
 
   const cancelHold = () => {
     window.clearTimeout(holdTimer.current);
@@ -67,6 +112,19 @@ function SwitchCard({ config, hass, host }: ReactCardProps<SwitchCardConfig>) {
   };
 
   useEffect(() => () => window.clearTimeout(holdTimer.current), []);
+
+  useEffect(() => {
+    if (availableOn === undefined) {
+      previousOn.current = undefined;
+      setChangeAnimation(undefined);
+      return;
+    }
+
+    if (previousOn.current !== undefined && previousOn.current !== availableOn) {
+      setChangeAnimation(availableOn ? "on" : "off");
+    }
+    previousOn.current = availableOn;
+  }, [availableOn]);
 
   if (!entity || isUnavailable(entity)) {
     return <>
@@ -82,7 +140,7 @@ function SwitchCard({ config, hass, host }: ReactCardProps<SwitchCardConfig>) {
     </>;
   }
 
-  const on = entity.state === "on";
+  const on = availableOn ?? false;
 
   const toggle = () => {
     if (!config.entity || !hass) return;
@@ -137,7 +195,7 @@ function SwitchCard({ config, hass, host }: ReactCardProps<SwitchCardConfig>) {
   return <>
     <style>{styles}</style>
     <LiquidGlassSurface
-      className={`card row${on ? " active" : ""}`}
+      className={`card row${on ? " active" : ""}${changeAnimation ? ` switch-turned-${changeAnimation}` : ""}`}
       refraction={refraction}
       variant={config.glass_variant}
       sourceAccent={on ? "var(--lg-switch-accent)" : undefined}

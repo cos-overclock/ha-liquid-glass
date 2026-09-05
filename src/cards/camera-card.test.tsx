@@ -69,6 +69,7 @@ describe("liquid-glass-camera-card", () => {
     expect(root.querySelector<HTMLElement>(".feed")?.style.backgroundImage).toContain("/api/camera_proxy/camera.porch");
     expect(root.querySelector(".live-label")?.textContent).toBe("ライブ");
     expect(root.querySelector(".motion")?.textContent).toContain("検知");
+    expect(root.querySelectorAll(".lens-control")).toHaveLength(2);
     expect(element.getCardSize()).toBe(5);
 
     await act(async () => root.querySelector<HTMLElement>(".round.big")?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
