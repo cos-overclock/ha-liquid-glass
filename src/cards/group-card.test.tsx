@@ -58,6 +58,7 @@ describe("liquid-glass-group-card", () => {
       type: "custom:liquid-glass-group-card",
       title: "寝室",
       theme: "dark",
+      refraction_quality: "medium",
       cards: [{ type: "custom:liquid-glass-switch-card", entity: light.entity_id }],
     });
     element.hass = hass;
@@ -74,6 +75,7 @@ describe("liquid-glass-group-card", () => {
     // The child owns a React root of its own, so its first paint lands a tick later.
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
     expect(child?.hasAttribute("dark")).toBe(true);
+    expect(child?.getAttribute("refraction-quality")).toBe("medium");
   });
 
   it("collapses to summary chips and reports a smaller size", async () => {

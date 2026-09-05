@@ -81,7 +81,13 @@ const STUB_CARDS: Array<[string, string]> = [
   ["sensor", "custom:liquid-glass-sensor-card"],
 ];
 
-const INHERITED_CONFIG = ["theme", "refraction", "language", "glass_variant"] as const;
+const INHERITED_CONFIG = [
+  "theme",
+  "refraction",
+  "refraction_quality",
+  "language",
+  "glass_variant",
+] as const;
 const EMPTY_CARD_CONFIGS: LovelaceCardConfig[] = [];
 
 const styles = `${tokens}${reactCardStyles}
@@ -327,7 +333,14 @@ function GroupCard({ config, hass, host }: ReactCardProps<GroupCardConfig>) {
       if (out[key] === undefined && config[key] !== undefined) out[key] = config[key];
     }
     return out;
-  }), [cardConfigs, config.glass_variant, config.language, config.refraction, config.theme]);
+  }), [
+    cardConfigs,
+    config.glass_variant,
+    config.language,
+    config.refraction,
+    config.refraction_quality,
+    config.theme,
+  ]);
 
   useEffect(() => setOpen(config.collapsed !== true), [config.collapsed]);
 

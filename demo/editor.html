@@ -355,7 +355,7 @@
 
         let cfg = await apply({ name: "テスト" });
         check(`${kind}: name is written`, cfg.name === "テスト", JSON.stringify(cfg));
-        check(`${kind}: defaults stay out of the config`, !("theme" in cfg) && !("refraction" in cfg) && !("favorites" in cfg), Object.keys(cfg).join(", "));
+        check(`${kind}: defaults stay out of the config`, !("theme" in cfg) && !("refraction" in cfg) && !("refraction_quality" in cfg) && !("favorites" in cfg), Object.keys(cfg).join(", "));
 
         editor.setConfig({ type: `custom:${tag}`, ...cfg });
         await editor.updateComplete;
@@ -379,6 +379,11 @@
         check(`${kind}: refraction round-trips`, editor.shadowRoot.querySelector("ha-form")._data.refraction === "off");
         cfg = await apply({ refraction: "auto" });
         check(`${kind}: refraction auto drops the key`, !("refraction" in cfg));
+
+        cfg = await apply({ refraction_quality: "medium" });
+        check(`${kind}: medium quality round-trips`, cfg.refraction_quality === "medium");
+        cfg = await apply({ refraction_quality: "auto" });
+        check(`${kind}: quality auto drops the key`, !("refraction_quality" in cfg));
 
         editor.remove();
       }

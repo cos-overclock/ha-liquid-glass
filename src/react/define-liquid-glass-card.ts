@@ -1,4 +1,5 @@
 import "../components/lg-icon";
+import { createElement } from "react";
 import { loadHaFormComponents } from "../editor/load";
 import type { BaseCardConfig } from "../types";
 import {
@@ -6,6 +7,8 @@ import {
   type ReactCardConstructor,
   type ReactCardDefinition,
 } from "./define-react-card";
+import { resolveRefractionQuality } from "./platform";
+import { RefractionQualityContext } from "./refraction-quality";
 
 export type { ReactCardProps } from "./define-react-card";
 
@@ -23,9 +26,20 @@ const createConfigElement = async (): Promise<HTMLElement> => {
 export function defineLiquidGlassCard<C extends BaseCardConfig>(
   definition: LiquidGlassCardDefinition<C>,
 ): ReactCardConstructor<C> {
+  const CardComponent = definition.component;
   return defineReactCard({
     ...definition,
-    normalizeConfig: (config) => ({ refraction: "auto", theme: "auto", ...config }),
+    component: (props) => createElement(
+      RefractionQualityContext.Provider,
+      { value: resolveRefractionQuality(props.config.refraction_quality) },
+      createElement(CardComponent, props),
+    ),
+    normalizeConfig: (config) => ({
+      refraction: "auto",
+      refraction_quality: "auto",
+      theme: "auto",
+      ...config,
+    }),
     getConfigElement: createConfigElement,
   });
 }

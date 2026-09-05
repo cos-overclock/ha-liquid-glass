@@ -17,6 +17,11 @@ import React, {
   useRef,
   useState,
 } from "react";
+import {
+  filterResolutionForQuality,
+  opticsForQuality,
+  useRefractionQuality,
+} from "./refraction-quality";
 
 const EASE = cubicBezier(0.34, 1.36, 0.42, 1);
 const SETTLE = cubicBezier(0.36, 0, 0.18, 1);
@@ -136,6 +141,7 @@ export function GlassSwitch({
   activeColor,
   surface,
 }: GlassSwitchProps) {
+  const quality = useRefractionQuality();
   const isDark = scheme === "dark";
   const thumbWidth = Math.round(0.6 * switchWidth);
   const thumbHeight = switchHeight - 6;
@@ -300,12 +306,12 @@ export function GlassSwitch({
   }, [motion.thumbX]);
 
   const optics = useMemo(
-    () => ({
+    () => opticsForQuality({
       ...SWITCH_OPTICS,
       ...(isDark ? SWITCH_DARK : SWITCH_LIGHT),
       sheenDark: !isDark,
-    }),
-    [isDark],
+    }, quality),
+    [isDark, quality],
   );
 
   const handleChange = (next: boolean) => {
@@ -564,7 +570,7 @@ export function GlassSwitch({
             restShadowOpacity: motion.restShadowOpacity,
             edgeBias: motion.edgeBias,
           }}
-          filterResolution={2}
+          filterResolution={filterResolutionForQuality(quality)}
           behind={resolvedSurface}
           style={{
             width: fullWidth,

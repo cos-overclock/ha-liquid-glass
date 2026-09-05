@@ -18,6 +18,11 @@ import React, {
   useState,
 } from "react";
 import { Icon } from "./glass-primitives";
+import {
+  filterResolutionForQuality,
+  opticsForQuality,
+  useRefractionQuality,
+} from "./refraction-quality";
 
 const MOVE_ANIM = {
   ease: cubicBezier(0.34, 1.36, 0.42, 1),
@@ -242,6 +247,7 @@ export function GlassSegmentedControl({
   className,
   ariaLabel,
 }: GlassSegmentedControlProps) {
+  const quality = useRefractionQuality();
   const selectedItemIndex = items.findIndex((item) => item.value === value);
   const hasSelectedValue = selectedItemIndex >= 0;
   const selectedIndex = Math.max(selectedItemIndex, 0);
@@ -410,12 +416,12 @@ export function GlassSegmentedControl({
   );
 
   const optics = useMemo(
-    () => ({
+    () => opticsForQuality({
       ...SEGMENT_OPTICS,
       ...(scheme === "dark" ? SEGMENT_DARK : SEGMENT_LIGHT),
       sheenDark: scheme !== "dark",
-    }),
-    [scheme],
+    }, quality),
+    [quality, scheme],
   );
 
   const expand = () => {
@@ -594,7 +600,7 @@ export function GlassSegmentedControl({
             shadowOpacity: motion.shadowOpacity,
             restShadowOpacity: motion.restShadowOpacity,
           }}
-          filterResolution={2}
+          filterResolution={filterResolutionForQuality(quality)}
           behind={scheme === "dark" ? "#1f1f24" : "#ffffff"}
           style={{
             left: -lensPad,

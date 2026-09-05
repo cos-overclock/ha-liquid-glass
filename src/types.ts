@@ -16,6 +16,9 @@ export interface HassEntity {
   last_updated: string;
 }
 
+/** Rendering quality used while refraction is enabled. */
+export type RefractionQuality = "medium" | "high";
+
 export interface HomeAssistant {
   states: Record<string, HassEntity>;
   language: string;
@@ -44,6 +47,8 @@ export interface BaseCardConfig {
   icon?: string;
   /** "auto" | true | false: auto disables costly refraction in embedded WebViews. */
   refraction?: "auto" | boolean;
+  /** Auto uses medium quality on Android and high quality elsewhere. */
+  refraction_quality?: "auto" | RefractionQuality;
   /** Force theme: "auto" | "light" | "dark". */
   theme?: "auto" | "light" | "dark";
   /** Optical material: regular for legibility, clear for media-rich backgrounds. */

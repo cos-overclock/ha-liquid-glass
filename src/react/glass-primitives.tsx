@@ -1,6 +1,10 @@
 import { Glass, type GlassOptics } from "@samasante/liquid-glass";
 import { createElement, useMemo, type HTMLAttributes, type ReactNode } from "react";
-import { isEmbeddedCompanionWebView } from "./platform";
+import {
+  filterResolutionForQuality,
+  opticsForQuality,
+  useRefractionQuality,
+} from "./refraction-quality";
 
 type GlassVariant = "regular" | "clear";
 type GlassSurface = "card" | "compact" | "control";
@@ -281,11 +285,15 @@ export function GlassVideoControlLens({
   children,
   ...props
 }: GlassVideoControlLensProps) {
+  const quality = useRefractionQuality();
   const optics = useMemo(
-    () => frost === glassVideoControlOptics.frost
-      ? glassVideoControlOptics
-      : { ...glassVideoControlOptics, frost },
-    [frost],
+    () => opticsForQuality(
+      frost === glassVideoControlOptics.frost
+        ? glassVideoControlOptics
+        : { ...glassVideoControlOptics, frost },
+      quality,
+    ),
+    [frost, quality],
   );
 
   if (!refraction) {
@@ -309,6 +317,7 @@ export function LiquidGlassSurface({
   children,
   ...props
 }: LiquidGlassSurfaceProps) {
+  const quality = useRefractionQuality();
   const source = refraction ? (
     <div
       aria-hidden="true"
@@ -340,7 +349,7 @@ export function LiquidGlassSurface({
       optics={opticsFor(refraction, variant, surface)}
       refract={source}
       behind="var(--primary-background-color, transparent)"
-      filterResolution={isEmbeddedCompanionWebView() ? 1 : 2}
+      filterResolution={filterResolutionForQuality(quality)}
     >
       {children}
     </Glass>

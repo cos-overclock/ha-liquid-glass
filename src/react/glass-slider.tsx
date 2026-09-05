@@ -22,7 +22,11 @@ import {
   type GlassOptics,
 } from "@samasante/liquid-glass";
 import { clamp } from "../utils";
-import { isEmbeddedCompanionWebView } from "./platform";
+import {
+  filterResolutionForQuality,
+  opticsForQuality,
+  useRefractionQuality,
+} from "./refraction-quality";
 
 const RUBBER_OVERSHOOT = 0.05;
 const RUBBER_DAMPENING = 30;
@@ -89,7 +93,8 @@ export function useGlassSliderOptics(
   refraction: boolean,
   scheme: "light" | "dark",
 ): Partial<GlassOptics> {
-  return useMemo(() => ({
+  const quality = useRefractionQuality();
+  return useMemo(() => opticsForQuality({
     ...SLIDER_BASE,
     ...(scheme === "dark" ? SLIDER_DARK : SLIDER_LIGHT),
     ...(IS_SAFARI ? SLIDER_SAFARI : null),
@@ -102,7 +107,7 @@ export function useGlassSliderOptics(
       bend: 0,
     }),
     sheenDark: scheme === "light",
-  }), [refraction, scheme]);
+  }, quality), [quality, refraction, scheme]);
 }
 
 /** Which handle a change came from. A single-value slider always reports "low". */
@@ -324,6 +329,7 @@ export function GlassSlider({
   onInput,
   onChange,
 }: GlassSliderProps) {
+  const quality = useRefractionQuality();
   const optics = useGlassSliderOptics(refraction, scheme);
   const isRange = highValue !== undefined;
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -673,7 +679,7 @@ export function GlassSlider({
           shadowOpacity: motion.shadowOpacity,
           restShadowOpacity: motion.restShadowOpacity,
         }}
-        filterResolution={isEmbeddedCompanionWebView() ? 1 : 2}
+        filterResolution={filterResolutionForQuality(quality)}
         behind={scheme === "dark" ? "#1f1f24" : "#ffffff"}
         style={{
           left: -geometry.pad,

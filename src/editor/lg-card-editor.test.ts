@@ -33,6 +33,7 @@ describe("liquid-glass-card-editor", () => {
       type: "custom:liquid-glass-light-card",
       entity: "light.desk",
       refraction: "auto",
+      refraction_quality: "auto",
       theme: "auto",
       glass_variant: "regular",
       show_brightness: true,
@@ -48,6 +49,7 @@ describe("liquid-glass-card-editor", () => {
           type: "custom:liquid-glass-light-card",
           entity: "light.desk",
           refraction: "off",
+          refraction_quality: "auto",
           theme: "auto",
           glass_variant: "regular",
         },
@@ -63,6 +65,33 @@ describe("liquid-glass-card-editor", () => {
         entity: "light.desk",
         refraction: false,
       },
+    });
+  });
+
+  it("round-trips an explicit refraction quality", () => {
+    const editor = new LiquidGlassCardEditor();
+    const form = editor.shadowRoot?.querySelector("ha-form") as TestForm;
+    editor.hass = hass;
+    editor.setConfig({
+      type: "custom:liquid-glass-light-card",
+      entity: "light.desk",
+      refraction: true,
+      refraction_quality: "medium",
+    });
+
+    expect(form.data).toMatchObject({ refraction: "on", refraction_quality: "medium" });
+
+    const changed = vi.fn();
+    editor.addEventListener("config-changed", changed);
+    form.dispatchEvent(new CustomEvent("value-changed", {
+      detail: { value: { ...form.data, refraction_quality: "high" } },
+      bubbles: true,
+      composed: true,
+    }));
+
+    expect(changed.mock.calls[0][0].detail.config).toMatchObject({
+      refraction: true,
+      refraction_quality: "high",
     });
   });
 });

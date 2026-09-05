@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { glassSurfaceStyles, LiquidGlassSurface, opticsFor } from "./glass-primitives";
+import { filterResolutionForQuality, opticsForQuality } from "./refraction-quality";
 
 describe("Liquid Glass optical presets", () => {
   it("uses stronger, clearer optics for clear glass", () => {
@@ -67,5 +68,15 @@ describe("Liquid Glass optical presets", () => {
   it("uses a smaller displacement map for enabled surfaces", () => {
     expect(opticsFor(true, "regular", "card").mapSize).toBe(256);
     expect(opticsFor(true, "clear", "control").mapSize).toBe(256);
+  });
+
+  it("keeps refraction but removes supersampling and RGB dispersion at medium quality", () => {
+    const highOptics = { strength: 0.2, dispersion: 0.5, frost: 4 };
+    const mediumOptics = opticsForQuality(highOptics, "medium");
+
+    expect(filterResolutionForQuality("high")).toBe(2);
+    expect(filterResolutionForQuality("medium")).toBe(1);
+    expect(opticsForQuality(highOptics, "high")).toBe(highOptics);
+    expect(mediumOptics).toMatchObject({ strength: 0.2, dispersion: 0, frost: 4 });
   });
 });

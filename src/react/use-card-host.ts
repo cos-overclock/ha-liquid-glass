@@ -1,6 +1,6 @@
 import { useLayoutEffect } from "react";
 import type { BaseCardConfig, HomeAssistant } from "../types";
-import { resolveRefraction } from "./platform";
+import { resolveRefraction, resolveRefractionQuality } from "./platform";
 
 /** Keep Home Assistant theme/config state on the custom-element host for shadow CSS. */
 export function useCardHost(
@@ -12,12 +12,14 @@ export function useCardHost(
     config.theme === "dark" ||
     (config.theme !== "light" && Boolean(hass?.themes?.darkMode));
   const refraction = resolveRefraction(config.refraction);
+  const refractionQuality = resolveRefractionQuality(config.refraction_quality);
 
   useLayoutEffect(() => {
     host.toggleAttribute("dark", isDark);
     host.toggleAttribute("refraction", refraction);
+    host.setAttribute("refraction-quality", refraction ? refractionQuality : "off");
     host.setAttribute("glass-variant", config.glass_variant ?? "regular");
-  }, [config.glass_variant, host, isDark, refraction]);
+  }, [config.glass_variant, host, isDark, refraction, refractionQuality]);
 
   return { isDark, refraction };
 }

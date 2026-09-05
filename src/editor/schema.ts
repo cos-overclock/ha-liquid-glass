@@ -60,6 +60,11 @@ function advanced(t: Translator): FormSchema {
           { value: "off", label: t("ed_refraction_off") },
         ]),
       ]),
+      select("refraction_quality", [
+        { value: "auto", label: t("ed_refraction_quality_auto") },
+        { value: "high", label: t("ed_refraction_quality_high") },
+        { value: "medium", label: t("ed_refraction_quality_medium") },
+      ]),
       select("language", [
         { value: "ja", label: "日本語" },
         { value: "en", label: "English" },

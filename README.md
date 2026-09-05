@@ -104,12 +104,15 @@ entity: light.living_room   # 必須
 name: リビング              # 表示名（省略時は friendly_name）
 icon: mdi:lightbulb         # アイコン上書き
 refraction: auto            # auto | true | false（Android WebViewではautoが軽量表示）
+refraction_quality: auto    # auto | high | medium（Androidではautoが中品質）
 theme: auto                 # auto | light | dark
 glass_variant: regular      # regular | clear（写真・映像上では clear が有効）
 language: ja                # 省略時は HA の言語設定
 ```
 
-`regular` は文字の読みやすさを保つ標準素材です。`clear` は tint と blur を抑えて背後の写真や映像を優先します。通常のブラウザではカードの実寸と角丸からSDF変位マップを生成し、サイズ変更時だけ再生成します。Android CompanionアプリのWebViewでは、`auto`がCanvas/SVGフィルタを生成しない軽量なCSS表示へ自動的に切り替わります。屈折を強制する場合だけ`refraction: true`を指定してください。
+`regular` は文字の読みやすさを保つ標準素材です。`clear` は tint と blur を抑えて背後の写真や映像を優先します。通常のブラウザではカードの実寸と角丸からSDF変位マップを生成し、サイズ変更時だけ再生成します。Android CompanionアプリのWebViewでは、`refraction: auto` がCanvas/SVGフィルタを生成しない軽量なCSS表示へ自動的に切り替わります。屈折を強制する場合だけ `refraction: true` を指定してください。
+
+`refraction_quality: auto` はAndroid（ChromeとCompanionアプリ）で中品質、PCなどでは高品質を選びます。中品質は屈折形状を維持したまま、SVGフィルタの2倍スーパーサンプリングを1倍へ落とし、操作部のRGB色分散を単一の変位処理へ変更します。カメラカードではWebGLの最大DPRも1へ制限します。端末に関係なく固定する場合は `high` または `medium` を指定してください。
 
 ### Light
 
@@ -396,7 +399,7 @@ cards:
 
 `cards` には Liquid Glass 以外の任意の Lovelace カードも入れられます。子カードは Home Assistant の `loadCardHelpers()` で生成されるためです。
 
-`theme` `refraction` `language` は、子カードが自分で指定していない場合にかぎり引き継がれます。グループをダークに固定すると中のカードもダークになります。
+`theme` `refraction` `refraction_quality` `language` `glass_variant` は、子カードが自分で指定していない場合にかぎり引き継がれます。グループをダークに固定すると中のカードもダークになります。
 
 折りたたむと、子カードのエンティティごとに状態チップが並びます。照明は明るさ、カバーは開度、エアコンは設定温度というように、閉じたままでも各機器の状態が読めます。`summary: false` でチップを省き、ヘッダーだけにできます。
 
@@ -424,7 +427,7 @@ npm test          # React/Custom Element 境界の単体テスト
 npm run demo      # http://localhost:5173/ でモック hass を使ったデモを表示
 ```
 
-デモは `?theme=dark` `?lang=en` `?refraction=off` `?width=210` のクエリで表示を切り替えられます。画面上部のスライダーでカード幅を変えられるので、狭い列での見え方を確認できます。
+デモは `?theme=dark` `?lang=en` `?refraction=on` `?quality=medium` `?width=210` のクエリで表示を切り替えられます。画面上部のスライダーでカード幅を変えられるので、狭い列での見え方を確認できます。
 React版カードを個別に確認する場合は`?focus=separator`、`?focus=lock`、`?focus=slider`を使用できます。
 
 `http://localhost:5173/demo/editor.html` はビジュアルエディタの確認用ページです。`?kind=cover` のようにカード種別を指定できます。Home Assistant の `ha-form` を最小限に再現したシムの上で動くため見た目は簡素ですが、スキーマ・ラベル・書き出される設定・カードへの反映を確認できます。ページ上部の Self test が全カードのエディタを自動で操作して結果を検証します。

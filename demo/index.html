@@ -337,13 +337,17 @@
       const els = [];
       const initialRefraction = params.get("refraction");
       let refraction = initialRefraction === "off" ? false : initialRefraction === "on" ? true : "auto";
+      const initialQuality = params.get("quality");
+      const refractionQuality = initialQuality === "high" || initialQuality === "medium"
+        ? initialQuality
+        : "auto";
       function mount() {
         main.innerHTML = "";
         els.length = 0;
         for (const [type, cfg] of visibleCards) {
           const el = document.createElement(type);
           if (type === "liquid-glass-climate-card" && cfg.design === "compact") el.id = "demo-climate-compact";
-          el.setConfig({ ...cfg, refraction });
+          el.setConfig({ ...cfg, refraction, refraction_quality: refractionQuality });
           el.hass = hass;
           main.appendChild(el);
           els.push(el);

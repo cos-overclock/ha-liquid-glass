@@ -6,6 +6,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -20,6 +21,7 @@ import {
   Icon,
   LiquidGlassSurface,
 } from "../react/glass-primitives";
+import { opticsForQuality, useRefractionQuality } from "../react/refraction-quality";
 import { useCardHost } from "../react/use-card-host";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HomeAssistant } from "../types";
@@ -284,6 +286,11 @@ const styles = `${tokens}${reactCardStyles}${glassSurfaceStyles}
  */
 function CameraCard({ config, hass, host }: ReactCardProps<CameraCardConfig>) {
   const { refraction } = useCardHost(host, config, hass);
+  const quality = useRefractionQuality();
+  const cameraOptics = useMemo(
+    () => opticsForQuality(glassVideoControlOptics, quality),
+    [quality],
+  );
   const t = createTranslator(config.language ?? hass?.locale?.language ?? hass?.language);
   /** Bumped on a timer to force the browser to re-request the still. */
   const [tick, setTick] = useState(0);
@@ -500,9 +507,9 @@ function CameraCard({ config, hass, host }: ReactCardProps<CameraCardConfig>) {
         {glassReady ? <Glass
           className="camera-glass-stage"
           draw={drawStill}
-          optics={glassVideoControlOptics}
+          optics={cameraOptics}
           lenses={lenses}
-          maxDpr={2}
+          maxDpr={quality === "medium" ? 1 : 2}
         >
           {feedContents}
         </Glass> : feedContents}

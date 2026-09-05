@@ -206,4 +206,22 @@ describe("liquid-glass-slider-card", () => {
     expect(element.shadowRoot?.querySelector(".slider-glass")).toBeNull();
     expect(element.shadowRoot?.querySelector("[data-liquid-glass]")).toBeNull();
   });
+
+  it("keeps dynamic glass enabled in medium-quality mode", async () => {
+    const fan = entity("fan", "on", { percentage: 40, percentage_step: 10 });
+    const element = document.createElement("liquid-glass-slider-card") as SliderElement;
+    element.setConfig({
+      type: "custom:liquid-glass-slider-card",
+      entity: fan.entity_id,
+      refraction: true,
+      refraction_quality: "medium",
+    });
+    element.hass = createHass(fan, async () => undefined);
+
+    await act(async () => document.body.append(element));
+    expect(element.getAttribute("refraction-quality")).toBe("medium");
+    expect(element.shadowRoot?.querySelector(".slider-glass")).toBeTruthy();
+    expect(element.shadowRoot?.querySelectorAll("[data-lg-refraction-source='copy']").length)
+      .toBeGreaterThanOrEqual(2);
+  });
 });

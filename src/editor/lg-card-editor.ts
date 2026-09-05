@@ -51,6 +51,7 @@ export class LiquidGlassCardEditor extends HTMLElement {
     const { refraction, theme, ...rest } = config as unknown as FormData;
     const data: FormData = { ...rest };
     data.refraction = refraction === true ? "on" : refraction === false ? "off" : "auto";
+    data.refraction_quality = (rest.refraction_quality as string | undefined) ?? "auto";
     data.theme = theme ?? "auto";
     data.glass_variant = (rest.glass_variant as string | undefined) ?? "regular";
     if (cardKind(config.type) === "weather") data.layout = (rest.layout as string | undefined) ?? "full";
@@ -93,6 +94,7 @@ export class LiquidGlassCardEditor extends HTMLElement {
     if (out.refraction === "on") out.refraction = true;
     else if (out.refraction === "off") out.refraction = false;
     else delete out.refraction;
+    if (out.refraction_quality === "auto") delete out.refraction_quality;
     if (out.theme === "auto") delete out.theme;
     if (out.glass_variant === "regular") delete out.glass_variant;
     if (out.layout === "full") delete out.layout;
