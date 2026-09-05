@@ -102,16 +102,6 @@ export const glassVideoControlOptics: Partial<GlassOptics> = {
   brightness: 0,
 };
 
-const flat = (optics: Partial<GlassOptics>): Partial<GlassOptics> => ({
-  ...optics,
-  strength: 0,
-  scaleX: 0,
-  scaleY: 0,
-  curvature: 0,
-  dispersion: 0,
-  bend: 0,
-});
-
 const basePresets = {
   regular: {
     card: regularCardOptics,
@@ -168,19 +158,19 @@ const refractingPresets: Record<RefractionQuality, OpticTable> = {
   medium: deriveTable(mediumSurfaceOptics),
 };
 
-const flatPresets: Record<RefractionQuality, OpticTable> = {
-  high: deriveTable(flat),
-  medium: deriveTable((optics) => flat(opticsForQuality(optics, "medium"))),
-};
-
-/** Explicit SDF optics shared by every React card. */
+/**
+ * Explicit SDF optics shared by every React card.
+ *
+ * Refracting surfaces only. A surface with refraction off never mounts `<Glass>` —
+ * it takes the `data-lg-static-glass` CSS route instead — so there is no
+ * displacement-free variant of these presets to ask for.
+ */
 export function opticsFor(
-  refraction: boolean,
   variant: GlassVariant = "regular",
   surface: GlassSurface = "card",
   quality: RefractionQuality = "high",
 ): Partial<GlassOptics> {
-  return (refraction ? refractingPresets : flatPresets)[quality][variant][surface];
+  return refractingPresets[quality][variant][surface];
 }
 
 export const glassSurfaceStyles = `
@@ -395,7 +385,7 @@ export function LiquidGlassSurface({
     <Glass
       {...props}
       className={surfaceClass}
-      optics={opticsFor(refraction, variant, surface, quality)}
+      optics={opticsFor(variant, surface, quality)}
       refract={source}
       behind="var(--primary-background-color, transparent)"
       filterResolution={filterResolutionForQuality(quality)}

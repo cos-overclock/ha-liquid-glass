@@ -6,8 +6,8 @@ import { filterResolutionForQuality, opticsForQuality } from "./refraction-quali
 
 describe("Liquid Glass optical presets", () => {
   it("uses stronger, clearer optics for clear glass", () => {
-    const regular = opticsFor(true, "regular", "card");
-    const clear = opticsFor(true, "clear", "card");
+    const regular = opticsFor("regular", "card");
+    const clear = opticsFor("clear", "card");
     expect(clear.strength).toBeGreaterThan(regular.strength ?? 0);
     expect(clear.frost).toBeLessThan(regular.frost ?? 0);
   });
@@ -15,30 +15,17 @@ describe("Liquid Glass optical presets", () => {
   it("leaves dispersion off, which the copied-source filter would render as a dark veil", () => {
     for (const variant of ["regular", "clear"] as const) {
       for (const surface of ["card", "compact", "control"] as const) {
-        expect(opticsFor(true, variant, surface).dispersion).toBe(0);
+        expect(opticsFor(variant, surface).dispersion).toBe(0);
       }
     }
   });
 
   it("uses a deeper lens for controls than full cards", () => {
-    const card = opticsFor(true, "regular", "card");
-    const control = opticsFor(true, "regular", "control");
+    const card = opticsFor("regular", "card");
+    const control = opticsFor("regular", "control");
     expect(control.strength).toBeGreaterThan(card.strength ?? 0);
     expect(control.curvature).toBeGreaterThan(card.curvature ?? 0);
     expect(control.bend).toBeGreaterThan(card.bend ?? 0);
-  });
-
-  it("keeps material styling but disables displacement when refraction is off", () => {
-    const flat = opticsFor(false, "regular", "control");
-    expect(flat).toMatchObject({
-      strength: 0,
-      scaleX: 0,
-      scaleY: 0,
-      curvature: 0,
-      dispersion: 0,
-      bend: 0,
-    });
-    expect(flat.frost).toBeGreaterThan(0);
   });
 
   it("does not mount the filter engine when refraction is off", () => {
@@ -66,8 +53,8 @@ describe("Liquid Glass optical presets", () => {
   });
 
   it("uses a smaller displacement map for enabled surfaces", () => {
-    expect(opticsFor(true, "regular", "card").mapSize).toBe(256);
-    expect(opticsFor(true, "clear", "control").mapSize).toBe(256);
+    expect(opticsFor("regular", "card").mapSize).toBe(256);
+    expect(opticsFor("clear", "control").mapSize).toBe(256);
   });
 
   it("keeps refraction but removes supersampling and RGB dispersion at medium quality", () => {
@@ -90,11 +77,19 @@ describe("Liquid Glass optical presets", () => {
     expect(opticsForQuality({}, "medium").mapSize).toBe(256);
   });
 
+  it("never raises the map above what high quality asked for", () => {
+    // The floor must not turn a downgrade into an upgrade: medium can only ever
+    // cost the same as high or less, whatever the preset starts at.
+    for (const mapSize of [32, 64, 96, 128, 192, 256, 512]) {
+      expect(opticsForQuality({ mapSize }, "medium").mapSize).toBeLessThanOrEqual(mapSize);
+    }
+  });
+
   it("applies medium quality to card surfaces, not only to controls", () => {
     for (const variant of ["regular", "clear"] as const) {
       for (const surface of ["card", "compact", "control"] as const) {
-        const high = opticsFor(true, variant, surface, "high");
-        const medium = opticsFor(true, variant, surface, "medium");
+        const high = opticsFor(variant, surface, "high");
+        const medium = opticsFor(variant, surface, "medium");
         expect(medium.mapSize).toBe((high.mapSize ?? 0) / 2);
         // Everything that shapes the lens has to survive the downgrade.
         expect(medium).toMatchObject({
@@ -111,8 +106,8 @@ describe("Liquid Glass optical presets", () => {
   it("drops the frost blur from refracted surfaces at medium quality", () => {
     for (const variant of ["regular", "clear"] as const) {
       for (const surface of ["card", "compact", "control"] as const) {
-        expect(opticsFor(true, variant, surface, "high").frost).toBeGreaterThan(0);
-        expect(opticsFor(true, variant, surface, "medium").frost).toBe(0);
+        expect(opticsFor(variant, surface, "high").frost).toBeGreaterThan(0);
+        expect(opticsFor(variant, surface, "medium").frost).toBe(0);
       }
     }
   });
@@ -131,11 +126,11 @@ describe("Liquid Glass optical presets", () => {
    * which costs far more than the quality downgrade saves.
    */
   it("returns a stable optics reference for repeated lookups", () => {
-    for (const refraction of [true, false]) {
-      for (const quality of ["high", "medium"] as const) {
-        expect(opticsFor(refraction, "regular", "card", quality)).toBe(
-          opticsFor(refraction, "regular", "card", quality),
-        );
+    for (const variant of ["regular", "clear"] as const) {
+      for (const surface of ["card", "compact", "control"] as const) {
+        for (const quality of ["high", "medium"] as const) {
+          expect(opticsFor(variant, surface, quality)).toBe(opticsFor(variant, surface, quality));
+        }
       }
     }
   });
