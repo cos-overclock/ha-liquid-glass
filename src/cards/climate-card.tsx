@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from "react";
 import { Glass, deriveGlass, glassValue, useLensWobble } from "@samasante/liquid-glass";
 import { createTranslator, type Translator } from "../i18n";
 import { Badge, CardTitle, IconWell, UnavailableCard, type BadgeStyle, type WellStyle } from "../react/card-parts";
@@ -71,6 +71,11 @@ interface DialGlassThumbProps {
   refraction: boolean;
   scheme: "light" | "dark";
   sourceBackground: string;
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => void;
 }
 
 /** A circular-track thumb driven by the same lens recipe and motion as GlassSlider. */
@@ -84,6 +89,11 @@ function DialGlassThumb({
   refraction,
   scheme,
   sourceBackground,
+  label,
+  value,
+  min,
+  max,
+  onKeyDown,
 }: DialGlassThumbProps) {
   const optics = useGlassSliderOptics(refraction, scheme);
   const dialOptics = useMemo(() => ({
@@ -159,6 +169,13 @@ function DialGlassThumb({
     <div
       className={`dial-glass-thumb-position${active ? " active" : ""}`}
       data-dial-glass-thumb={id}
+      role="slider"
+      tabIndex={0}
+      aria-label={label}
+      aria-valuemin={min}
+      aria-valuemax={max}
+      aria-valuenow={value}
+      onKeyDown={onKeyDown}
       style={{
         left: `${(x * 100).toFixed(3)}%`,
         top: `${(y * 100).toFixed(3)}%`,
@@ -253,6 +270,10 @@ const ownStyles = `
     z-index: 1;
     transform-origin: center;
     pointer-events: none !important;
+  }
+  .dial-glass-thumb-position:focus-visible {
+    outline: 2px solid var(--lg-cool-deep);
+    outline-offset: -20px;
   }
   .dial-glass-lens {
     position: absolute !important;
@@ -673,6 +694,20 @@ function ClimateCard({ config, hass, host }: ReactCardProps<ClimateCardConfig>) 
     commit(drag.which, drag.value);
   };
 
+  const changeFromKeyboard = (which: Which, event: KeyboardEvent<HTMLDivElement>) => {
+    const lower = which === "high" ? low + step : min;
+    const upper = which === "low" && isRange ? high - step : max;
+    let next = which === "low" ? low : which === "high" ? high : single;
+    if (event.key === "ArrowRight" || event.key === "ArrowUp") next += step;
+    else if (event.key === "ArrowLeft" || event.key === "ArrowDown") next -= step;
+    else if (event.key === "Home") next = lower;
+    else if (event.key === "End") next = upper;
+    else return;
+    event.preventDefault();
+    event.stopPropagation();
+    commit(which, clamp(next, lower, upper));
+  };
+
   const action = attributes.hvac_action as string | undefined;
   const actionText = off
     ? t("mode_off")
@@ -763,6 +798,7 @@ function ClimateCard({ config, hass, host }: ReactCardProps<ClimateCardConfig>) 
           refraction={refraction}
           scheme={isDark ? "dark" : "light"}
           label={isRange ? t("target_range") : t("target_temp")}
+          rangeLabels={[`${t("target_temp")} ${t("ed_min")}`, `${t("target_temp")} ${t("ed_max")}`]}
           onInput={(next, handle) => setDrag({ which: isRange ? handle : "single", value: next })}
           onChange={(next, handle) => {
             const which = isRange ? handle : "single";
@@ -894,6 +930,13 @@ function ClimateCard({ config, hass, host }: ReactCardProps<ClimateCardConfig>) 
                 refraction={refraction}
                 scheme={isDark ? "dark" : "light"}
                 sourceBackground={dialSourceBackground}
+                label={isRange
+                  ? `${t("target_temp")} ${t(which === "low" ? "ed_min" : "ed_max")}`
+                  : t("target_temp")}
+                value={value}
+                min={which === "high" ? low + step : min}
+                max={which === "low" && isRange ? high - step : max}
+                onKeyDown={(event) => changeFromKeyboard(which, event)}
               />
             );
           })}

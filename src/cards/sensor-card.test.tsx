@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 
 import { act } from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { HassEntity, HomeAssistant } from "../types";
-import { LiquidGlassSensorCard, type SensorCardConfig } from "./sensor-card";
+import { downsamplePoints, LiquidGlassSensorCard, type SensorCardConfig } from "./sensor-card";
 
 type CardElement = HTMLElement & {
   hass?: HomeAssistant;
@@ -89,5 +89,45 @@ describe("liquid-glass-sensor-card", () => {
     expect(root.querySelector(".spark")).toBeNull();
     expect(root.querySelector(".state")?.textContent).toContain("3 人");
     expect(element.getCardSize()).toBe(1);
+  });
+
+  it("still fetches history and shows the trend in caption mode", async () => {
+    const target = entity("sensor.people", "3", { friendly_name: "在室", unit_of_measurement: "人" });
+    const hass = createHass([target], async () => undefined);
+    const now = Date.now();
+    hass.callApi = vi.fn(async () => [[
+      { state: "1", last_changed: new Date(now - 3600_000).toISOString() },
+      { state: "2", last_changed: new Date(now - 1800_000).toISOString() },
+    ]]) as HomeAssistant["callApi"];
+    const element = document.createElement("liquid-glass-sensor-card") as CardElement;
+    element.setConfig({
+      type: "custom:liquid-glass-sensor-card",
+      entity: target.entity_id,
+      value_in_caption: true,
+    });
+    element.hass = hass;
+
+    await act(async () => document.body.append(element));
+    await act(async () => { await Promise.resolve(); });
+
+    expect(hass.callApi).toHaveBeenCalledOnce();
+    expect(element.shadowRoot!.querySelector(".spark")).toBeNull();
+    expect(element.shadowRoot!.querySelector(".badge.trend")?.textContent).toContain("+2");
+  });
+});
+
+describe("downsamplePoints", () => {
+  it("bounds dense histories while retaining endpoints and extrema", () => {
+    const points = Array.from({ length: 10_000 }, (_, index) => ({
+      t: index,
+      v: index === 4321 ? -100 : index === 7654 ? 100 : Math.sin(index),
+    }));
+    const sampled = downsamplePoints(points, 100);
+
+    expect(sampled.length).toBeLessThanOrEqual(100);
+    expect(sampled[0]).toEqual(points[0]);
+    expect(sampled[sampled.length - 1]).toEqual(points[points.length - 1]);
+    expect(sampled).toContainEqual(points[4321]);
+    expect(sampled).toContainEqual(points[7654]);
   });
 });

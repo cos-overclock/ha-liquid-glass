@@ -118,4 +118,42 @@ describe("liquid-glass-cover-card", () => {
     expect(root.querySelector(".label-row .value")?.textContent).toBe("90°");
     expect(slider.getAttribute("aria-valuenow")).toBe("100");
   });
+
+  it("changes position from the keyboard", async () => {
+    const callService = vi.fn<HomeAssistant["callService"]>(async () => undefined);
+    const target = cover("open");
+    const element = document.createElement("liquid-glass-cover-card") as CardElement;
+    element.setConfig({ type: "custom:liquid-glass-cover-card", entity: target.entity_id });
+    element.hass = createHass(target, callService);
+
+    await act(async () => document.body.append(element));
+    const track = element.shadowRoot!.querySelector<HTMLElement>(".track")!;
+    expect(track.getAttribute("role")).toBe("slider");
+    expect(track.getAttribute("aria-valuenow")).toBe("65");
+    await act(async () => track.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "ArrowUp" })));
+
+    expect(callService).toHaveBeenCalledWith("cover", "set_cover_position", {
+      entity_id: target.entity_id,
+      position: 70,
+    });
+  });
+
+  it("disables unsupported actions and uses position for supported boundaries", async () => {
+    const callService = vi.fn<HomeAssistant["callService"]>(async () => undefined);
+    const target = cover("open", { supported_features: 4 });
+    const element = document.createElement("liquid-glass-cover-card") as CardElement;
+    element.setConfig({ type: "custom:liquid-glass-cover-card", entity: target.entity_id });
+    element.hass = createHass(target, callService);
+
+    await act(async () => document.body.append(element));
+    const buttons = element.shadowRoot!.querySelectorAll<HTMLButtonElement>(".round-btn");
+    expect(buttons[0].disabled).toBe(false);
+    expect(buttons[1].disabled).toBe(true);
+    expect(buttons[2].disabled).toBe(false);
+    await act(async () => buttons[0].click());
+    expect(callService).toHaveBeenCalledWith("cover", "set_cover_position", {
+      entity_id: target.entity_id,
+      position: 100,
+    });
+  });
 });

@@ -139,6 +139,24 @@ describe("liquid-glass-climate-card", () => {
     });
   });
 
+  it("changes the classic dial setpoint from the keyboard", async () => {
+    const callService = vi.fn<HomeAssistant["callService"]>(async () => undefined);
+    const target = thermostat("heat");
+    const element = document.createElement("liquid-glass-climate-card") as CardElement;
+    element.setConfig({ type: "custom:liquid-glass-climate-card", entity: target.entity_id });
+    element.hass = createHass(target, callService);
+
+    await act(async () => document.body.append(element));
+    const thumb = element.shadowRoot!.querySelector<HTMLElement>("[data-dial-glass-thumb]")!;
+    expect(thumb.getAttribute("role")).toBe("slider");
+    expect(thumb.getAttribute("aria-valuenow")).toBe("22");
+    await act(async () => thumb.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "ArrowUp" })));
+    expect(callService).toHaveBeenCalledWith("climate", "set_temperature", {
+      entity_id: target.entity_id,
+      temperature: 22.5,
+    });
+  });
+
   it("drags the glass mode lens and supports arrow-key selection", async () => {
     const callService = vi.fn<HomeAssistant["callService"]>(async () => undefined);
     const target = thermostat("heat");

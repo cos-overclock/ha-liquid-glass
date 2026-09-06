@@ -306,7 +306,7 @@ daily_count: 4
 show_metrics: true   # 湿度・風速・降水
 ```
 
-予報は `weather.get_forecasts` サービスから取得し、15分ごとに更新します。2024.4 より前の Home Assistant では属性の `forecast` を読みます。
+予報は `weather.get_forecasts` サービスから取得し、15分ごとに更新します。エンティティの対応機能から `daily` / `hourly` / `twice_daily` を自動判定し、`twice_daily` は日中・夜間を1日の最高・最低へまとめます。2024.4 より前の Home Assistant では属性の `forecast` を読みます。
 
 日ごとの行のバーは、表示する全日の最低から最高までを共通の目盛りにして各日の範囲を置きます。週の中でその日がどのあたりかが一目で分かります。
 

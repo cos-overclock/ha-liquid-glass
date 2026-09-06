@@ -108,10 +108,19 @@ describe("GlassSlider accessibility", () => {
     expect(track.tabIndex).toBe(0);
   });
 
-  it("reports a range as a text value, since one number cannot describe two handles", () => {
+  it("exposes a range as two independently labelled sliders", () => {
     const { track } = render({ value: 18, highValue: 24 });
+    expect(track.getAttribute("role")).toBe("group");
     expect(track.getAttribute("aria-valuenow")).toBeNull();
-    expect(track.getAttribute("aria-valuetext")).toBe("18-24");
+    expect(track.getAttribute("aria-valuetext")).toBeNull();
+    const handles = track.querySelectorAll<HTMLElement>(".slider-range-handle");
+    expect(handles).toHaveLength(2);
+    expect(handles[0].getAttribute("aria-label")).toBe("Brightness low");
+    expect(handles[0].getAttribute("aria-valuenow")).toBe("18");
+    expect(handles[0].getAttribute("aria-valuemax")).toBe("24");
+    expect(handles[1].getAttribute("aria-label")).toBe("Brightness high");
+    expect(handles[1].getAttribute("aria-valuemin")).toBe("18");
+    expect(handles[1].getAttribute("aria-valuenow")).toBe("24");
   });
 
   it("prefers a caller-supplied value text, which can carry a unit", () => {
@@ -168,11 +177,12 @@ describe("GlassSlider keyboard", () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
-  /* Two handles cannot be driven by one pair of arrow keys without a way to pick one. */
-  it("leaves a range slider to the pointer", () => {
+  it("drives each range handle from its own keyboard focus target", () => {
     const { track, onChange } = render({ value: 18, highValue: 24 });
-    press(track, "ArrowRight");
-    expect(onChange).not.toHaveBeenCalled();
+    const [low, high] = track.querySelectorAll<HTMLElement>(".slider-range-handle");
+    press(low, "ArrowRight");
+    press(high, "ArrowLeft");
+    expect(onChange.mock.calls).toEqual([[19, "low"], [23, "high"]]);
   });
 });
 

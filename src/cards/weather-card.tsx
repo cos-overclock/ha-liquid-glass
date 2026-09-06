@@ -35,7 +35,14 @@ interface Forecast {
   templow?: number;
   precipitation?: number;
   precipitation_probability?: number;
+  is_daytime?: boolean;
 }
+
+type ForecastType = "daily" | "hourly" | "twice_daily";
+
+const WEATHER_FORECAST_DAILY = 1;
+const WEATHER_FORECAST_HOURLY = 2;
+const WEATHER_FORECAST_TWICE_DAILY = 4;
 
 interface ConditionLook {
   icon: string;
@@ -373,7 +380,7 @@ const ownStyles = `
   }
 `;
 
-async function fetchForecast(hass: HomeAssistant, entityId: string, type: "daily" | "hourly"): Promise<Forecast[]> {
+async function fetchForecast(hass: HomeAssistant, entityId: string, type: ForecastType): Promise<Forecast[]> {
   try {
     const response = await hass.callService("weather", "get_forecasts", { type }, { entity_id: entityId }, false, true);
     const byEntity = (response?.response ?? {}) as Record<string, { forecast?: Forecast[] }>;
@@ -382,6 +389,36 @@ async function fetchForecast(hass: HomeAssistant, entityId: string, type: "daily
     // Installations before 2024.4 have no such service; the attribute still carries it.
     return (hass.states[entityId]?.attributes.forecast as Forecast[] | undefined) ?? [];
   }
+}
+
+/** Fold day/night periods into the daily rows this card presents. */
+export function dailyFromTwiceDaily(forecasts: Forecast[]): Forecast[] {
+  const days = new Map<string, Forecast[]>();
+  for (const forecast of forecasts) {
+    const key = forecast.datetime.slice(0, 10);
+    const entries = days.get(key) ?? [];
+    entries.push(forecast);
+    days.set(key, entries);
+  }
+
+  return [...days.values()].map((entries) => {
+    const temperatures = entries.flatMap((entry) =>
+      [entry.temperature, entry.templow].filter((value): value is number => value !== undefined));
+    const daytime = entries.find((entry) => entry.is_daytime) ?? entries[0];
+    const probabilities = entries
+      .map((entry) => entry.precipitation_probability)
+      .filter((value): value is number => value !== undefined);
+    const amounts = entries
+      .map((entry) => entry.precipitation)
+      .filter((value): value is number => value !== undefined);
+    return {
+      ...daytime,
+      temperature: temperatures.length ? Math.max(...temperatures) : undefined,
+      templow: temperatures.length ? Math.min(...temperatures) : undefined,
+      precipitation_probability: probabilities.length ? Math.max(...probabilities) : undefined,
+      precipitation: amounts.length ? amounts.reduce((sum, value) => sum + value, 0) : undefined,
+    };
+  });
 }
 
 /**
@@ -401,6 +438,15 @@ function WeatherCard({ config, hass, host }: ReactCardProps<WeatherCardConfig>) 
   const open = () => moreInfo(host, config.entity);
   const canFetch = Boolean(hass && config.entity);
   const refreshTick = useVisibleTick(host, REFRESH_MS, canFetch);
+  const featureValue = entity?.attributes.supported_features;
+  const hasForecastFeatures = typeof featureValue === "number";
+  const dailyType: "daily" | "twice_daily" | undefined = !hasForecastFeatures
+    || Boolean(featureValue & WEATHER_FORECAST_DAILY)
+    ? "daily"
+    : featureValue & WEATHER_FORECAST_TWICE_DAILY
+      ? "twice_daily"
+      : undefined;
+  const supportsHourly = !hasForecastFeatures || Boolean(featureValue & WEATHER_FORECAST_HOURLY);
 
   useEffect(() => {
     if (!hass || !config.entity) return;
@@ -408,10 +454,12 @@ function WeatherCard({ config, hass, host }: ReactCardProps<WeatherCardConfig>) 
     const target = config.entity;
     // Daily is fetched even when its rows are hidden: today's high and low sit in the
     // header, which the compact card still shows.
-    void fetchForecast(hass, target, "daily").then((forecast) => {
-      if (!cancelled) setDaily(forecast);
-    });
-    if (!isRow && config.show_hourly !== false) {
+    if (dailyType) {
+      void fetchForecast(hass, target, dailyType).then((forecast) => {
+        if (!cancelled) setDaily(dailyType === "twice_daily" ? dailyFromTwiceDaily(forecast) : forecast);
+      });
+    }
+    if (!isRow && config.show_hourly !== false && supportsHourly) {
       void fetchForecast(hass, target, "hourly").then((forecast) => {
         if (!cancelled) setHourly(forecast);
       });
@@ -422,7 +470,7 @@ function WeatherCard({ config, hass, host }: ReactCardProps<WeatherCardConfig>) 
      * forecast is meant to refetch on the tick, not on each reading.
      */
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canFetch, config.entity, config.show_hourly, isRow, refreshTick]);
+  }, [canFetch, config.entity, config.show_hourly, dailyType, isRow, refreshTick, supportsHourly]);
 
   if (!entity || isUnavailable(entity)) {
     return <>

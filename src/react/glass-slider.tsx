@@ -138,6 +138,8 @@ export interface GlassSliderProps {
   ticks?: number;
   label: string;
   valueText?: string;
+  /** Accessible names for the lower and upper handles of a range slider. */
+  rangeLabels?: readonly [low: string, high: string];
   /** Decorative, non-interactive content rendered inside the slider track. */
   trackContent?: ReactNode;
   /** Optional content carried by the thumb, such as an icon for a binary control. */
@@ -186,6 +188,20 @@ export const glassSliderStyles = `
   }
   .lg-react-slider.disabled .slider-track { cursor: not-allowed; }
   .slider-track:focus-visible {
+    outline: 2px solid var(--lg-cool-deep);
+    outline-offset: 2px;
+  }
+  .slider-range-handle {
+    position: absolute;
+    z-index: 5;
+    top: 0;
+    width: var(--lg-effective-thumb-width);
+    height: 100%;
+    transform: translateX(-50%);
+    border-radius: 999px;
+    pointer-events: none;
+  }
+  .slider-range-handle:focus-visible {
     outline: 2px solid var(--lg-cool-deep);
     outline-offset: 2px;
   }
@@ -325,6 +341,7 @@ export function GlassSlider({
   ticks = 0,
   label,
   valueText,
+  rangeLabels,
   trackContent,
   thumbContent,
   onInput,
@@ -560,19 +577,22 @@ export function GlassSlider({
     onChange(next, handle);
   };
 
-  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (disabled || !showKnob || isRange) return;
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>, handle: SliderHandle = "low") => {
+    if (disabled || !showKnob) return;
     const increment = keyboardStep ?? (step > 0 ? step : (max - min) / 20);
-    let next = value;
+    const lower = isRange && handle === "high" ? displayedLow : min;
+    const upper = isRange && handle === "low" ? displayedHigh : max;
+    let next = handle === "high" ? displayedHigh : displayedLow;
     if (event.key === "ArrowRight" || event.key === "ArrowUp") next += increment;
     else if (event.key === "ArrowLeft" || event.key === "ArrowDown") next -= increment;
-    else if (event.key === "Home") next = min;
-    else if (event.key === "End") next = max;
+    else if (event.key === "Home") next = lower;
+    else if (event.key === "End") next = upper;
     else return;
     event.preventDefault();
-    next = clamp(next, min, max);
-    activeHandleRef.current = "low";
-    setActiveHandle("low");
+    event.stopPropagation();
+    next = clamp(next, lower, upper);
+    activeHandleRef.current = handle;
+    setActiveHandle(handle);
     motion.thumbX.set(valueToX(next));
     setKeyActive(true);
     beginInteraction();
@@ -582,7 +602,7 @@ export function GlassSlider({
       setKeyActive(false);
       collapse();
     }, 320);
-    onChange(next, "low");
+    onChange(next, handle);
   };
 
   const span = max - min || 1;
@@ -613,19 +633,19 @@ export function GlassSlider({
     <div
       ref={trackRef}
       className="slider-track"
-      role="slider"
-      tabIndex={disabled ? -1 : 0}
+      role={isRange ? "group" : "slider"}
+      tabIndex={isRange || disabled ? -1 : 0}
       aria-label={label}
-      aria-valuemin={min}
-      aria-valuemax={max}
+      aria-valuemin={isRange ? undefined : min}
+      aria-valuemax={isRange ? undefined : max}
       aria-valuenow={isRange ? undefined : displayedHigh}
-      aria-valuetext={valueText ?? (isRange ? `${displayedLow}-${displayedHigh}` : undefined)}
+      aria-valuetext={isRange ? undefined : valueText}
       aria-disabled={disabled}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={finishDrag}
       onPointerCancel={finishDrag}
-      onKeyDown={onKeyDown}
+      onKeyDown={isRange ? undefined : onKeyDown}
       onDragStart={(event) => event.preventDefault()}
     >
       <div className="slider-bar">
@@ -636,6 +656,24 @@ export function GlassSlider({
       {ticks > 0 && <div className="marks" aria-hidden="true">
         {Array.from({ length: ticks }, (_, index) => <span key={index} />)}
       </div>}
+      {isRange && showKnob && ([
+        { handle: "low" as const, ratio: lowRatio, current: displayedLow, lower: min, upper: displayedHigh },
+        { handle: "high" as const, ratio: highRatio, current: displayedHigh, lower: displayedLow, upper: max },
+      ]).map(({ handle, ratio, current, lower, upper }, index) => (
+        <div
+          key={`a11y-${handle}`}
+          className="slider-range-handle"
+          style={{ left: centre(ratio) }}
+          role="slider"
+          tabIndex={disabled ? -1 : 0}
+          aria-label={rangeLabels?.[index] ?? `${label} ${handle}`}
+          aria-valuemin={lower}
+          aria-valuemax={upper}
+          aria-valuenow={current}
+          aria-disabled={disabled}
+          onKeyDown={(event) => onKeyDown(event, handle)}
+        />
+      ))}
       {showKnob && <div ref={probeRef} className="knob-probe" aria-hidden="true" />}
       {showKnob && handles
         .filter(({ key }) => key !== activeHandle)

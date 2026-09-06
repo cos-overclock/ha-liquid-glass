@@ -1,4 +1,4 @@
-import { useRef, useState, type CSSProperties, type PointerEvent } from "react";
+import { useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from "react";
 import { clockTime, createTranslator } from "../i18n";
 import { Badge, CardTitle, IconWell, UnavailableCard, type BadgeStyle, type WellStyle } from "../react/card-parts";
 import { reactCardStyles } from "../react/card-styles";
@@ -172,6 +172,14 @@ const ownStyles = `
   .round-btn.stop lg-icon {
     --mdc-icon-size: 18px;
   }
+  .round-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+  .track:focus-visible {
+    outline: 2px solid var(--lg-cover-accent-deep);
+    outline-offset: 2px;
+  }
   .tilt .lg-react-slider {
     --lg-slider-fill: linear-gradient(90deg, rgba(43, 179, 208, 0.35), rgba(43, 179, 208, 0.75));
     --fill-from: rgba(43, 179, 208, 0.35);
@@ -218,6 +226,9 @@ function CoverCard({ config, hass, host }: ReactCardProps<CoverCardConfig>) {
   const singleCurtain = isCurtain && (config.curtain ?? "double") === "single";
   const moving = entity.state === "opening" || entity.state === "closing" ? entity.state : undefined;
   const canSetPosition = supportsFeature(entity, F.SET_POSITION);
+  const canOpen = supportsFeature(entity, F.OPEN) || canSetPosition;
+  const canClose = supportsFeature(entity, F.CLOSE) || canSetPosition;
+  const canStop = supportsFeature(entity, F.STOP);
   const hasTilt = config.show_tilt !== false
     && supportsFeature(entity, F.SET_TILT)
     && attributes.current_tilt_position !== undefined;
@@ -258,12 +269,31 @@ function CoverCard({ config, hass, host }: ReactCardProps<CoverCardConfig>) {
     if (dragPos === undefined) return;
     setDragPos(posFromEvent(event));
   };
+  const setPosition = (next: number) => {
+    positionValue.commit(next);
+    call("set_cover_position", { position: next });
+  };
   const finishDrag = (event: PointerEvent<HTMLDivElement>) => {
     if (dragPos === undefined) return;
     const next = posFromEvent(event);
     setDragPos(undefined);
-    positionValue.commit(next);
-    call("set_cover_position", { position: next });
+    setPosition(next);
+  };
+  const onTrackKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (!canSetPosition) return;
+    let next = position;
+    if (event.key === "ArrowRight" || event.key === "ArrowUp") next += 5;
+    else if (event.key === "ArrowLeft" || event.key === "ArrowDown") next -= 5;
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = 100;
+    else return;
+    event.preventDefault();
+    setPosition(Math.round(clamp(next, 0, 100)));
+  };
+  const moveToBoundary = (opening: boolean) => {
+    const directFeature = opening ? F.OPEN : F.CLOSE;
+    if (supportsFeature(entity, directFeature)) call(opening ? "open_cover" : "close_cover");
+    else if (canSetPosition) setPosition(opening ? 100 : 0);
   };
 
   const closed = position === 0 && !moving;
@@ -313,10 +343,18 @@ function CoverCard({ config, hass, host }: ReactCardProps<CoverCardConfig>) {
         <div
           ref={trackRef}
           className="track"
+          role="slider"
+          tabIndex={canSetPosition ? 0 : -1}
+          aria-label={`${name} ${t("position")}`}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={position}
+          aria-disabled={!canSetPosition}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={finishDrag}
           onPointerCancel={finishDrag}
+          onKeyDown={onTrackKeyDown}
         >
           {!isCurtain ? <>
             {/* Percentages, not pixels: the track height scales with the card width. */}
@@ -354,13 +392,15 @@ function CoverCard({ config, hass, host }: ReactCardProps<CoverCardConfig>) {
         <div className="buttons">
           <button
             className={`round-btn${moving === "opening" ? " active" : ""}`}
-            onClick={() => call("open_cover")}
+            disabled={!canOpen}
+            onClick={() => moveToBoundary(true)}
             title="Open"
           >
             <Icon icon={upIcon} />
           </button>
           <button
             className={`round-btn stop${moving ? " selected" : ""}`}
+            disabled={!canStop}
             onClick={() => call("stop_cover")}
             title="Stop"
           >
@@ -368,7 +408,8 @@ function CoverCard({ config, hass, host }: ReactCardProps<CoverCardConfig>) {
           </button>
           <button
             className={`round-btn${moving === "closing" ? " active" : ""}`}
-            onClick={() => call("close_cover")}
+            disabled={!canClose}
+            onClick={() => moveToBoundary(false)}
             title="Close"
           >
             <Icon icon={downIcon} />

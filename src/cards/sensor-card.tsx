@@ -35,6 +35,30 @@ interface Point {
   v: number;
 }
 
+/** Keep history rendering bounded while retaining every bucket's visible extrema. */
+export function downsamplePoints(points: Point[], limit = 600): Point[] {
+  if (points.length <= limit || limit < 4) return points;
+
+  const result: Point[] = [points[0]];
+  const bucketCount = Math.max(1, Math.floor((limit - 2) / 2));
+  const interior = points.length - 2;
+  for (let bucket = 0; bucket < bucketCount; bucket++) {
+    const start = 1 + Math.floor((bucket * interior) / bucketCount);
+    const end = 1 + Math.floor(((bucket + 1) * interior) / bucketCount);
+    let low = start;
+    let high = start;
+    for (let index = start + 1; index < end; index++) {
+      if (points[index].v < points[low].v) low = index;
+      if (points[index].v > points[high].v) high = index;
+    }
+    if (low === high) result.push(points[low]);
+    else if (low < high) result.push(points[low], points[high]);
+    else result.push(points[high], points[low]);
+  }
+  result.push(points[points.length - 1]);
+  return result;
+}
+
 interface HistoryRow {
   s?: string;
   lu?: number;
@@ -153,7 +177,12 @@ const ownStyles = `
   }
 `;
 
-async function fetchHistory(hass: HomeAssistant, entityId: string, hours: number): Promise<Point[]> {
+interface HistoryData {
+  points: Point[];
+  trend: number | undefined;
+}
+
+async function fetchHistory(hass: HomeAssistant, entityId: string, hours: number): Promise<HistoryData> {
   const start = new Date(Date.now() - hours * 3600 * 1000).toISOString();
   try {
     const rows = await hass.callApi<HistoryRow[][]>(
@@ -169,9 +198,10 @@ async function fetchHistory(hass: HomeAssistant, entityId: string, hours: number
     }
     const current = Number(hass.states[entityId]?.state);
     if (Number.isFinite(current)) points.push({ t: Date.now(), v: current });
-    return points;
+    // Compute the one-hour delta before sampling so a dense history stays exact.
+    return { points: downsamplePoints(points), trend: trendOver(points) };
   } catch {
-    return [];
+    return { points: [], trend: undefined };
   }
 }
 
@@ -258,20 +288,28 @@ function SensorCard({ config, hass, host }: ReactCardProps<SensorCardConfig>) {
   const { refraction } = useCardHost(host, config, hass);
   const t = createTranslator(config.language ?? hass?.locale?.language ?? hass?.language);
   const [points, setPoints] = useState<Point[]>([]);
+  const [historyTrend, setHistoryTrend] = useState<number>();
   const entity = config.entity ? hass?.states[config.entity] : undefined;
   const name = config.name ?? friendlyName(entity, config.entity ?? "");
   const hours = config.hours_to_show ?? 24;
   const valueInCaption = config.value_in_caption === true;
   /** A caption reading leaves a single row, which has nowhere to put a graph. */
   const showGraph = config.graph !== false && !valueInCaption;
-  const canFetch = Boolean(hass && config.entity && showGraph);
+  const showTrend = config.trend !== false;
+  const needsHistory = showGraph || showTrend;
+  const canFetch = Boolean(hass && config.entity && needsHistory);
   const refreshTick = useVisibleTick(host, REFRESH_MS, canFetch);
 
   useEffect(() => {
-    if (!hass || !config.entity || !showGraph) return;
+    if (!hass || !config.entity || !needsHistory) return;
     let cancelled = false;
-    void fetchHistory(hass, config.entity, hours).then((history) => {
-      if (!cancelled) setPoints(history);
+    // A trend-only compact card needs one hour, while a graph keeps its configured span.
+    const historyHours = showGraph ? hours : 1;
+    void fetchHistory(hass, config.entity, historyHours).then((history) => {
+      if (!cancelled) {
+        setPoints(history.points);
+        setHistoryTrend(history.trend);
+      }
     });
     return () => { cancelled = true; };
     /*
@@ -279,7 +317,7 @@ function SensorCard({ config, hass, host }: ReactCardProps<SensorCardConfig>) {
      * history is meant to refetch on the tick, not on each reading.
      */
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canFetch, config.entity, hours, refreshTick, showGraph]);
+  }, [canFetch, config.entity, hours, needsHistory, refreshTick, showGraph]);
 
   if (!entity || isUnavailable(entity)) {
     return <>
@@ -299,11 +337,14 @@ function SensorCard({ config, hass, host }: ReactCardProps<SensorCardConfig>) {
   const numeric = Number.isFinite(value);
   const decimals = config.decimals;
   const unit = (entity.attributes.unit_of_measurement) ?? "";
-  const trend = numeric && config.trend !== false ? trendOver(points) : undefined;
+  const trend = numeric && showTrend ? historyTrend : undefined;
   const spark = showGraph ? sparkPath(points) : undefined;
-  const values = points.map((point) => point.v);
-  const min = values.length ? Math.min(...values) : undefined;
-  const max = values.length ? Math.max(...values) : undefined;
+  let min: number | undefined;
+  let max: number | undefined;
+  for (const point of points) {
+    min = min === undefined ? point.v : Math.min(min, point.v);
+    max = max === undefined ? point.v : Math.max(max, point.v);
+  }
   const icon = config.icon
     ?? (entity.attributes.icon)
     ?? (entity.attributes.device_class === "humidity" ? "mdi:water-percent" : "mdi:thermometer");

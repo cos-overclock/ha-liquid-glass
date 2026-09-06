@@ -3,7 +3,7 @@
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { HassEntity, HomeAssistant } from "../types";
-import { LiquidGlassWeatherCard, type WeatherCardConfig } from "./weather-card";
+import { dailyFromTwiceDaily, LiquidGlassWeatherCard, type WeatherCardConfig } from "./weather-card";
 
 type CardElement = HTMLElement & {
   hass?: HomeAssistant;
@@ -106,5 +106,45 @@ describe("liquid-glass-weather-card", () => {
     expect(root.querySelector(".daily")).toBeNull();
     expect(root.querySelector(".state")?.textContent).toContain("雨");
     expect(element.getCardSize()).toBe(1);
+  });
+
+  it("uses and folds a twice-daily forecast when that is the entity's only forecast type", async () => {
+    const target = weather();
+    target.attributes.supported_features = 4;
+    const periods = [
+      { ...forecast(0, 24, 18), datetime: "2026-09-06T00:00:00+09:00", is_daytime: true },
+      { ...forecast(0, 17, 15), datetime: "2026-09-06T12:00:00+09:00", is_daytime: false },
+      { ...forecast(1, 26, 19), datetime: "2026-09-07T00:00:00+09:00", is_daytime: true },
+      { ...forecast(1, 18, 16), datetime: "2026-09-07T12:00:00+09:00", is_daytime: false },
+    ];
+    const hass = createHass(target, periods);
+    const element = document.createElement("liquid-glass-weather-card") as CardElement;
+    element.setConfig({ type: "custom:liquid-glass-weather-card", entity: target.entity_id });
+    element.hass = hass;
+
+    await act(async () => document.body.append(element));
+    await act(async () => { await Promise.resolve(); });
+
+    expect(hass.callService).toHaveBeenCalledOnce();
+    expect(hass.callService).toHaveBeenCalledWith(
+      "weather",
+      "get_forecasts",
+      { type: "twice_daily" },
+      { entity_id: target.entity_id },
+      false,
+      true,
+    );
+    expect(element.shadowRoot!.querySelectorAll(".day")).toHaveLength(2);
+  });
+});
+
+describe("dailyFromTwiceDaily", () => {
+  it("keeps the daily high and low from both periods", () => {
+    const result = dailyFromTwiceDaily([
+      { datetime: "2026-09-06T00:00:00+09:00", temperature: 24, is_daytime: true },
+      { datetime: "2026-09-06T12:00:00+09:00", temperature: 15, is_daytime: false },
+    ]);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ temperature: 24, templow: 15, is_daytime: true });
   });
 });
