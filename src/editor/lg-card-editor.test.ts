@@ -95,6 +95,28 @@ describe("liquid-glass-card-editor", () => {
     });
   });
 
+  it("shows segments as the select default and omits that default from config", () => {
+    const editor = new LiquidGlassCardEditor();
+    const form = editor.shadowRoot?.querySelector("ha-form") as TestForm;
+    editor.hass = hass;
+    editor.setConfig({
+      type: "custom:liquid-glass-select-card",
+      entity: "select.fan_mode",
+    });
+
+    expect(form.data?.style).toBe("segments");
+
+    const changed = vi.fn();
+    editor.addEventListener("config-changed", changed);
+    form.dispatchEvent(new CustomEvent("value-changed", {
+      detail: { value: form.data },
+      bubbles: true,
+      composed: true,
+    }));
+
+    expect(changed.mock.calls[0][0].detail.config).not.toHaveProperty("style");
+  });
+
   it("round-trips Home Assistant action objects without rewriting them", () => {
     const editor = new LiquidGlassCardEditor();
     const form = editor.shadowRoot?.querySelector("ha-form") as TestForm;

@@ -77,6 +77,13 @@ describe("entity suggestions", () => {
     expect(suggestedFor(entity("light.desk"))).toContain("liquid-glass-light-card");
   });
 
+  it("offers the select card for select helpers and integrations", () => {
+    expect(suggestedFor(entity("select.fan_mode", { options: ["Auto", "Turbo"] })))
+      .toContain("liquid-glass-select-card");
+    expect(suggestedFor(entity("input_select.cleaning_mode", { options: ["Vacuum", "Mop"] })))
+      .toContain("liquid-glass-select-card");
+  });
+
   /*
    * The separator is the deliberate exception: it has no entity of its own, and offers
    * a neutral suggestion so it stays reachable from the entity-first Community list.

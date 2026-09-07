@@ -213,7 +213,8 @@ export const glassSegmentedControlStyles = `
 export interface GlassSegmentItem {
   value: string;
   label: string;
-  icon: string;
+  /** Optional because text-only choices are more legible for user-defined select options. */
+  icon?: string;
 }
 
 interface GlassSegmentedControlProps {
@@ -230,7 +231,7 @@ interface GlassSegmentedControlProps {
 
 function SegmentContent({ item, compact }: { item: GlassSegmentItem; compact: boolean }) {
   return <>
-    <Icon icon={item.icon} />
+    {item.icon && <Icon icon={item.icon} />}
     {!compact && <span>{item.label}</span>}
   </>;
 }

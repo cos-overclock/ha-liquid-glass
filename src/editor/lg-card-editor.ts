@@ -60,6 +60,7 @@ export class LiquidGlassCardEditor extends HTMLElement {
       data.design = design === "a" ? "compact" : design ?? "classic";
     }
     if (cardKind(config.type) === "separator") data.style = rest.style ?? "pill";
+    if (cardKind(config.type) === "select") data.style = rest.style ?? "segments";
 
     for (const name of fieldNames(schemaFor(config.type, this.t, data))) {
       if (!DEFAULT_ON.has(name)) continue;
@@ -102,6 +103,7 @@ export class LiquidGlassCardEditor extends HTMLElement {
     if (out.layout === "full") delete out.layout;
     if (out.design === "classic") delete out.design;
     if (out.style === "pill" && cardKind(out.type as string | undefined) === "separator") delete out.style;
+    if (out.style === "segments" && cardKind(out.type as string | undefined) === "select") delete out.style;
     const favorites = out.favorites;
     if (Array.isArray(favorites) && favorites.join() === DEFAULT_LIGHT_FAVORITES.join()) delete out.favorites;
 

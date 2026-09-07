@@ -101,6 +101,7 @@ describe("Liquid Glass Sections sizing", () => {
     expect(options("sensor", { graph: true }).rows).toBe(4);
     expect(options("slider", { show_range: false }).rows).toBe(2);
     expect(options("slider", { show_range: true }).rows).toBe(3);
+    expect(options("select").rows).toBe(3);
     expect(options("climate", { design: "compact" })).toMatchObject({ rows: 4, columns: 6 });
     expect(options("climate", { design: "classic" })).toMatchObject({ rows: 6, columns: 12 });
     expect(options("lock", { buttons: [{}, {}, {}] }).rows).toBe(5);

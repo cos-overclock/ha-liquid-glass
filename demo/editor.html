@@ -226,6 +226,7 @@
         "cover.living_blind": { entity_id: "cover.living_blind", state: "open", last_changed: new Date().toISOString(), last_updated: new Date().toISOString(), attributes: { friendly_name: "リビング ブラインド", current_position: 65, current_tilt_position: 75, device_class: "blind", supported_features: 255 } },
         "fan.bedroom": { entity_id: "fan.bedroom", state: "on", last_changed: new Date().toISOString(), last_updated: new Date().toISOString(), attributes: { friendly_name: "寝室 サーキュレーター", percentage: 60, percentage_step: 20 } },
         "input_number.hot_water": { entity_id: "input_number.hot_water", state: "42", last_changed: new Date().toISOString(), last_updated: new Date().toISOString(), attributes: { friendly_name: "給湯温度", min: 30, max: 60, step: 1, unit_of_measurement: "°C" } },
+        "select.fan_mode": { entity_id: "select.fan_mode", state: "自動", last_changed: new Date().toISOString(), last_updated: new Date().toISOString(), attributes: { friendly_name: "ファンモード", options: ["自動", "静音", "標準", "ターボ"] } },
         "weather.tokyo": { entity_id: "weather.tokyo", state: "partlycloudy", last_changed: new Date().toISOString(), last_updated: new Date().toISOString(), attributes: { friendly_name: "東京", temperature: 24, temperature_unit: "°C", humidity: 52, wind_speed: 3.2, wind_speed_unit: "m/s" } },
         "scene.night": { entity_id: "scene.night", state: new Date(Date.now() - 3600e3).toISOString(), last_changed: new Date().toISOString(), last_updated: new Date().toISOString(), attributes: { friendly_name: "おやすみモード" } },
         "scene.morning": { entity_id: "scene.morning", state: "unknown", last_changed: new Date().toISOString(), last_updated: new Date().toISOString(), attributes: { friendly_name: "おはよう" } },
@@ -264,7 +265,7 @@
         async callApi() { return [[]]; },
       };
 
-      const TYPES = ["light", "climate", "switch", "sensor", "binary-sensor", "lock", "cover", "media", "slider", "weather", "button", "scene", "camera", "group"];
+      const TYPES = ["light", "climate", "switch", "sensor", "binary-sensor", "lock", "cover", "media", "slider", "select", "weather", "button", "scene", "camera", "group"];
       // These cards hold a list rather than a single entity; the value names the list key.
       const ENTITYLESS = new Map([["scene", "scenes"], ["group", "cards"]]);
       const kindSel = document.getElementById("kind");

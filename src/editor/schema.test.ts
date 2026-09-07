@@ -7,7 +7,7 @@ const t = createTranslator("en");
 /** The card types the bundle registers, as they appear in a Lovelace config. */
 const CARD_TYPES = [
   "light", "climate", "switch", "sensor", "binary-sensor", "lock", "cover",
-  "media", "slider", "weather", "button", "scene", "camera", "group", "separator",
+  "media", "slider", "select", "weather", "button", "scene", "camera", "group", "separator",
 ].map((kind) => `custom:liquid-glass-${kind}-card`);
 
 describe("cardKind", () => {

@@ -8,13 +8,14 @@ import "./cards/lock-card";
 import "./cards/cover-card";
 import "./cards/media-card";
 import "./cards/slider-card";
+import "./cards/select-card";
 import "./cards/weather-card";
 import "./cards/button-card";
 import "./cards/scene-card";
 import "./cards/camera-card";
 import "./cards/group-card";
 import "./cards/separator-card";
-import { BUTTON_DOMAINS, SLIDER_DOMAINS, SWITCH_DOMAINS } from "./card-constants";
+import { BUTTON_DOMAINS, SELECT_DOMAINS, SLIDER_DOMAINS, SWITCH_DOMAINS } from "./card-constants";
 import type { CustomCardRegistration, HassEntity, HomeAssistant } from "./types";
 
 export { defineReactCard } from "./react/define-react-card";
@@ -33,6 +34,7 @@ export { LiquidGlassLockCard } from "./cards/lock-card";
 export { LiquidGlassCoverCard } from "./cards/cover-card";
 export { LiquidGlassMediaCard } from "./cards/media-card";
 export { LiquidGlassSliderCard } from "./cards/slider-card";
+export { LiquidGlassSelectCard } from "./cards/select-card";
 export { LiquidGlassWeatherCard } from "./cards/weather-card";
 export { LiquidGlassButtonCard } from "./cards/button-card";
 export { LiquidGlassSceneCard } from "./cards/scene-card";
@@ -143,6 +145,7 @@ const cards: CustomCardRegistration[] = [
   ),
   entityCard("liquid-glass-media-card", "Liquid Glass Media", "Now playing with transport and volume", ["media_player"]),
   entityCard("liquid-glass-slider-card", "Liquid Glass Slider", "Any numeric value as a draggable track", SLIDER_DOMAINS, supportsSlider),
+  entityCard("liquid-glass-select-card", "Liquid Glass Select", "Choose an option with glass segments or chips", SELECT_DOMAINS),
   entityCard("liquid-glass-weather-card", "Liquid Glass Weather", "Current conditions with hourly and daily forecast", ["weather"]),
   entityCard("liquid-glass-button-card", "Liquid Glass Button", "Run a scene, script, automation or button", BUTTON_DOMAINS),
   entityCard(
