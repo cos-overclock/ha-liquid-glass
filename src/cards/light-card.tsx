@@ -4,6 +4,7 @@ import { createTranslator } from "../i18n";
 import { CardTitle, IconWell, UnavailableCard, type WellStyle } from "../react/card-parts";
 import { reactCardStyles } from "../react/card-styles";
 import { defineLiquidGlassCard, type ReactCardProps } from "../react/define-liquid-glass-card";
+import { contentGridOptions } from "../react/grid-options";
 import { glassSurfaceStyles, Icon, LiquidGlassSurface } from "../react/glass-primitives";
 import { GlassSlider, glassSliderStyles } from "../react/glass-slider";
 import { GlassSwitch, glassSwitchStyles } from "../react/glass-switch";
@@ -440,6 +441,7 @@ export const LiquidGlassLightCard = defineLiquidGlassCard<LightCardConfig>({
   component: LightCard,
   styles: [tokens, reactCardStyles, glassSurfaceStyles, glassSliderStyles, glassSwitchStyles, ownStyles],
   getCardSize: () => 5,
+  getGridOptions: () => contentGridOptions(6),
   getStubConfig: (hass?: HomeAssistant, entities?: string[], entitiesFallback?: string[]) => ({
     entity: pickEntity(
       ["light"],

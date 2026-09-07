@@ -56,6 +56,16 @@ export interface BaseCardConfig {
   language?: string;
 }
 
+/** Sizing rules returned to Home Assistant's 12-column Sections grid. */
+export interface LovelaceGridOptions {
+  rows?: number;
+  min_rows?: number;
+  max_rows?: number;
+  columns?: number | "full";
+  min_columns?: number;
+  max_columns?: number;
+}
+
 /** Any Lovelace card config: ours or a built-in one nested inside the group card. */
 export interface LovelaceCardConfig {
   type: string;
@@ -66,6 +76,7 @@ export interface LovelaceCard extends HTMLElement {
   hass?: HomeAssistant;
   setConfig(config: BaseCardConfig): void;
   getCardSize?(): number;
+  getGridOptions?(): LovelaceGridOptions;
 }
 
 export interface LovelaceCardSuggestion {

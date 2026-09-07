@@ -3,6 +3,7 @@ import { createTranslator, type Translator } from "../i18n";
 import { IconWell } from "../react/card-parts";
 import { reactCardStyles } from "../react/card-styles";
 import { defineLiquidGlassCard, type ReactCardProps } from "../react/define-liquid-glass-card";
+import { autoHeightGridOptions } from "../react/grid-options";
 import { Icon } from "../react/glass-primitives";
 import { useCardHost } from "../react/use-card-host";
 import { tokens } from "../styles/tokens";
@@ -440,6 +441,7 @@ export const LiquidGlassGroupCard = defineLiquidGlassCard<GroupCardConfig>({
   styles: [tokens, reactCardStyles, ownStyles],
   getCardSize: (config, host) =>
     (host as GroupHost).lgGroupSize ?? (config.collapsed ? 1 : 1 + (config.cards?.length ?? 0) * 3),
+  getGridOptions: () => autoHeightGridOptions(),
   /** A fresh group is easier to understand with something already in it. */
   getStubConfig: (hass?: HomeAssistant, entities?: string[], entitiesFallback?: string[]) => {
     const pool = [entities, entitiesFallback, Object.keys(hass?.states ?? {})].find((list) => list?.length) ?? [];

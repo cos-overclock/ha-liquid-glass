@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { clockTime, createTranslator, relativeTime, type Translator } from "../i18n";
 import { defineLiquidGlassCard, type ReactCardProps } from "../react/define-liquid-glass-card";
+import { contentGridOptions } from "../react/grid-options";
 import { glassSurfaceStyles, Icon, LiquidGlassSurface } from "../react/glass-primitives";
 import { GlassSlider, glassSliderStyles } from "../react/glass-slider";
 import { reactCardStyles } from "../react/card-styles";
@@ -347,6 +348,7 @@ export const LiquidGlassLockCard = defineLiquidGlassCard<LockCardConfig>({
   component: LockCard,
   styles: [tokens, reactCardStyles, glassSurfaceStyles, glassSliderStyles, ownStyles],
   getCardSize: () => 2,
+  getGridOptions: (config) => contentGridOptions(3 + Math.ceil((config.buttons?.length ?? 0) / 2)),
   getStubConfig: (hass?: HomeAssistant, entities?: string[], entitiesFallback?: string[]) => ({
     entity: pickEntity(["lock"], hass, entities, entitiesFallback),
   }),

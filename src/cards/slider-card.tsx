@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { SLIDER_DOMAINS } from "../card-constants";
 import { createTranslator } from "../i18n";
 import { defineLiquidGlassCard, type ReactCardProps } from "../react/define-liquid-glass-card";
+import { contentGridOptions } from "../react/grid-options";
 import { glassSurfaceStyles, Icon, LiquidGlassSurface } from "../react/glass-primitives";
 import { GlassSlider, glassSliderStyles } from "../react/glass-slider";
 import { reactCardStyles } from "../react/card-styles";
@@ -353,6 +354,7 @@ export const LiquidGlassSliderCard = defineLiquidGlassCard<SliderCardConfig>({
   component: SliderCard,
   styles: [tokens, reactCardStyles, glassSurfaceStyles, glassSliderStyles, ownStyles],
   getCardSize: () => 2,
+  getGridOptions: (config) => contentGridOptions(config.show_range === false ? 2 : 3),
   getStubConfig: (hass?: HomeAssistant, entities?: string[], entitiesFallback?: string[]) => ({
     entity: pickEntity(SLIDER_DOMAINS, hass, entities, entitiesFallback),
   }),

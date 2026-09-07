@@ -3,6 +3,7 @@ import { clockTime, createTranslator } from "../i18n";
 import { Badge, CardTitle, IconWell, UnavailableCard, type BadgeStyle, type WellStyle } from "../react/card-parts";
 import { reactCardStyles } from "../react/card-styles";
 import { defineLiquidGlassCard, type ReactCardProps } from "../react/define-liquid-glass-card";
+import { contentGridOptions } from "../react/grid-options";
 import { glassSurfaceStyles, Icon, LiquidGlassSurface } from "../react/glass-primitives";
 import { GlassSlider, glassSliderStyles } from "../react/glass-slider";
 import { useCardHost } from "../react/use-card-host";
@@ -449,6 +450,7 @@ export const LiquidGlassCoverCard = defineLiquidGlassCard<CoverCardConfig>({
   component: CoverCard,
   styles: [tokens, reactCardStyles, glassSurfaceStyles, glassSliderStyles, ownStyles],
   getCardSize: () => 4,
+  getGridOptions: () => contentGridOptions(5),
   getStubConfig: (hass?: HomeAssistant, entities?: string[], entitiesFallback?: string[]) => ({
     entity: pickEntity(
       ["cover"],

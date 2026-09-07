@@ -32,6 +32,19 @@ Home Assistant 2026.6 以降では、ダッシュボード編集時に先にエ�
 
 250px を下回るとステータスバッジ、260px を下回るとセンサーの範囲表示が省略されます。どちらも状態テキストやグラフが同じ情報を示すためです。320px を下回るとエアコンの風量とプリセットが縦に並びます。
 
+## Sectionsビューでのサイズ変更
+
+Home AssistantのSectionsビューでは、各カードが`getGridOptions()`で推奨サイズと最小サイズを公開します。カード追加時から用途に合った幅になり、ダッシュボードの編集画面で半幅と全幅を切り替えられます。
+
+- Switch、Binary Sensor、Buttonと1行表示のSensor / Weather: 半幅、2行
+- Light、Slider、Lock、Cover、Media: 半幅を基準に、全幅まで変更可能
+- 通常表示のClimate、Weather、Scenes: 全幅を基準に、半幅まで変更可能
+- Separator: 全幅を基準に、4分の1幅まで変更可能
+- Camera: 映像のアスペクト比から高さを決定
+- Group: 展開状態と子カードから高さを決定
+
+表示項目によって必要な高さが変わるカードでは、設定内容に合わせて推奨行数も変わります。たとえばSensorのグラフ、Sliderの範囲表示、Weatherの日数、Sceneの件数、Lockの追加ボタンが反映されます。CameraとGroupは内容から高さが決まるため、Sectionsの固定行には合わせず自然な高さを維持します。
+
 ## Liquid Glass 効果について
 
 デザインファイルの `liquid-glass.glsl` シェーダ（エッジ屈折 + ブラー + 彩度 + リムハイライト）を、カード本体では CSS / SVG、スライダーやノブなどの操作部では WebGL で再現しています。カード本体は Home Assistant のダッシュボード背景を実際に透過・ぼかします。

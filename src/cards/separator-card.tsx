@@ -1,5 +1,6 @@
 import { createTranslator } from "../i18n";
 import { defineLiquidGlassCard, type ReactCardProps } from "../react/define-liquid-glass-card";
+import { separatorGridOptions } from "../react/grid-options";
 import { glassSurfaceStyles, Icon, LiquidGlassSurface } from "../react/glass-primitives";
 import { useCardHost } from "../react/use-card-host";
 import { tokens } from "../styles/tokens";
@@ -260,6 +261,7 @@ export const LiquidGlassSeparatorCard = defineLiquidGlassCard<SeparatorCardConfi
   component: SeparatorCard,
   styles: [tokens, glassSurfaceStyles, ownStyles],
   getCardSize: () => 1,
+  getGridOptions: separatorGridOptions,
   getStubConfig: () => ({
     title: "Section",
     icon: "mdi:lightbulb-outline",

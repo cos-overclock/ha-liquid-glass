@@ -3,6 +3,7 @@ import { createTranslator } from "../i18n";
 import { CardTitle, UnavailableCard } from "../react/card-parts";
 import { reactCardStyles } from "../react/card-styles";
 import { defineLiquidGlassCard, type ReactCardProps } from "../react/define-liquid-glass-card";
+import { contentGridOptions, rowGridOptions } from "../react/grid-options";
 import { glassSurfaceStyles, Icon, LiquidGlassSurface } from "../react/glass-primitives";
 import { useCardHost } from "../react/use-card-host";
 import { useVisibleTick } from "../react/use-visible-tick";
@@ -649,6 +650,14 @@ export const LiquidGlassWeatherCard = defineLiquidGlassCard<WeatherCardConfig>({
     if (config.show_daily !== false) size += 2;
     if (config.show_metrics !== false) size += 1;
     return size;
+  },
+  getGridOptions: (config) => {
+    if (config.layout === "row") return rowGridOptions();
+    let rows = 3;
+    if (config.show_hourly !== false) rows += 1;
+    if (config.show_daily !== false) rows += Math.ceil(clamp(config.daily_count ?? 4, 1, 10) * 44 / 64);
+    if (config.show_metrics !== false) rows += 1;
+    return contentGridOptions(rows, 12);
   },
   getStubConfig: (hass?: HomeAssistant, entities?: string[], entitiesFallback?: string[]) => ({
     entity: pickEntity(["weather"], hass, entities, entitiesFallback),

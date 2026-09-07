@@ -2,6 +2,7 @@ import { createTranslator, relativeTime, type Translator } from "../i18n";
 import { Badge, CardTitle, IconWell, UnavailableCard, type BadgeStyle, type WellStyle } from "../react/card-parts";
 import { reactCardStyles } from "../react/card-styles";
 import { defineLiquidGlassCard, type ReactCardProps } from "../react/define-liquid-glass-card";
+import { rowGridOptions } from "../react/grid-options";
 import { glassSurfaceStyles, LiquidGlassSurface } from "../react/glass-primitives";
 import { useCardHost } from "../react/use-card-host";
 import { tokens } from "../styles/tokens";
@@ -141,6 +142,7 @@ export const LiquidGlassBinarySensorCard = defineLiquidGlassCard<BinarySensorCar
   component: BinarySensorCard,
   styles: [tokens, reactCardStyles, glassSurfaceStyles],
   getCardSize: () => 1,
+  getGridOptions: () => rowGridOptions(),
   getStubConfig: (hass?: HomeAssistant, entities?: string[], entitiesFallback?: string[]) => ({
     entity: pickEntity(["binary_sensor"], hass, entities, entitiesFallback),
   }),
