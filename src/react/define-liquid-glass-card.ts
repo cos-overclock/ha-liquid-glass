@@ -59,25 +59,27 @@ function CardStyles({ host, parts }: { host: HTMLElement; parts: readonly string
 /** Add one keyboard target only when a card does not already expose its header as one. */
 function CardActionAccessibility({
   host,
-  actionable,
+  hasAction,
+  tapAccessible,
 }: {
   host: HTMLElement;
-  actionable: boolean;
+  hasAction: boolean;
+  tapAccessible: boolean;
 }): null {
   useLayoutEffect(() => {
-    host.toggleAttribute("card-action", actionable);
+    host.toggleAttribute("card-action", hasAction);
     const previous = host.shadowRoot?.querySelector<HTMLElement>("[data-lg-action-focus]");
     previous?.removeAttribute("data-lg-action-focus");
     previous?.removeAttribute("role");
     previous?.removeAttribute("tabindex");
-    if (!actionable) return;
+    if (!tapAccessible) return;
 
     const surface = host.shadowRoot?.querySelector<HTMLElement>(".card, .panel, .separator");
     if (!surface || surface.matches("[tabindex]") || surface.querySelector(".title[tabindex]")) return;
     surface.setAttribute("data-lg-action-focus", "");
     surface.setAttribute("role", "button");
     surface.tabIndex = 0;
-  });
+  }, [host, hasAction, tapAccessible]);
   return null;
 }
 
