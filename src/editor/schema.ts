@@ -13,6 +13,7 @@ export interface FormSchema {
   icon?: string;
   required?: boolean;
   selector?: Record<string, unknown>;
+  context?: Record<string, string>;
   schema?: FormSchema[];
 }
 
@@ -77,6 +78,30 @@ function advanced(t: Translator): FormSchema {
   };
 }
 
+/** Standard Lovelace actions, edited by Home Assistant's own rich action selector. */
+function interactions(t: Translator): FormSchema {
+  const action = (name: string): FormSchema => ({
+    name,
+    selector: {
+      ui_action: {
+        actions: ["more-info", "toggle", "navigate", "url", "perform-action", "assist", "none"],
+      },
+    },
+    context: { entity_id: "entity" },
+  });
+  return {
+    name: "",
+    type: "expandable",
+    title: t("ed_interactions"),
+    icon: "mdi:gesture-tap",
+    schema: [action("tap_action"), action("hold_action"), action("double_tap_action")],
+  };
+}
+
+function common(t: Translator): FormSchema[] {
+  return [interactions(t), advanced(t)];
+}
+
 const HVAC_MODES = ["auto", "heat_cool", "heat", "cool", "dry", "fan_only", "off"];
 
 /** Card type (`custom:liquid-glass-light-card`) → the kind of card it is (`light`). */
@@ -101,7 +126,7 @@ export function schemaFor(type: string | undefined, t: Translator, data?: Record
         grid([bool("show_brightness"), bool("show_color_temp"), bool("show_color")]),
         { name: "favorites", selector: { text: { multiple: true } } },
         object("presets"),
-        advanced(t),
+        ...common(t),
       ];
 
     case "climate":
@@ -120,14 +145,14 @@ export function schemaFor(type: string | undefined, t: Translator, data?: Record
           true,
         ),
         grid([number("min_temp", -50, 100, 0.5), number("max_temp", -50, 100, 0.5)]),
-        advanced(t),
+        ...common(t),
       ];
 
     case "switch":
       return [
         ...head(["switch", "input_boolean", "fan", "light", "automation", "humidifier", "siren", "remote"]),
         entity("power_entity", "sensor"),
-        advanced(t),
+        ...common(t),
       ];
 
     case "sensor": {
@@ -139,7 +164,7 @@ export function schemaFor(type: string | undefined, t: Translator, data?: Record
         grid(compact ? [number("decimals", 0, 4)] : [number("hours_to_show", 1, 168), number("decimals", 0, 4)]),
         text("accent"),
         grid([entity("secondary_entity", ["sensor", "binary_sensor"]), text("secondary_label")]),
-        advanced(t),
+        ...common(t),
       ];
     }
 
@@ -149,11 +174,11 @@ export function schemaFor(type: string | undefined, t: Translator, data?: Record
         grid([icon("icon_on"), icon("icon_off")]),
         grid([text("label_on"), text("label_off")]),
         text("accent"),
-        advanced(t),
+        ...common(t),
       ];
 
     case "lock":
-      return [...head("lock"), object("buttons"), advanced(t)];
+      return [...head("lock"), object("buttons"), ...common(t)];
 
     case "cover":
       return [
@@ -169,11 +194,11 @@ export function schemaFor(type: string | undefined, t: Translator, data?: Record
           ]),
         ]),
         bool("show_tilt"),
-        advanced(t),
+        ...common(t),
       ];
 
     case "media":
-      return [...head("media_player"), grid([bool("show_volume"), bool("show_device")]), text("source_color"), advanced(t)];
+      return [...head("media_player"), grid([bool("show_volume"), bool("show_device")]), text("source_color"), ...common(t)];
 
     case "slider":
       return [
@@ -190,7 +215,7 @@ export function schemaFor(type: string | undefined, t: Translator, data?: Record
           icon: "mdi:code-braces",
           schema: [text("attribute"), grid([text("service"), text("service_key")])],
         },
-        advanced(t),
+        ...common(t),
       ];
 
     case "weather": {
@@ -200,13 +225,13 @@ export function schemaFor(type: string | undefined, t: Translator, data?: Record
         { value: "full", label: t("ed_layout_full") },
         { value: "row", label: t("ed_layout_row") },
       ]);
-      if (row) return [...head("weather"), layout, advanced(t)];
+      if (row) return [...head("weather"), layout, ...common(t)];
       return [
         ...head("weather"),
         layout,
         grid([bool("show_hourly"), bool("show_daily"), bool("show_metrics")]),
         grid([number("hourly_count", 2, 12), number("daily_count", 1, 10)]),
-        advanced(t),
+        ...common(t),
       ];
     }
 
@@ -222,7 +247,7 @@ export function schemaFor(type: string | undefined, t: Translator, data?: Record
           icon: "mdi:code-braces",
           schema: [text("service"), object("service_data")],
         },
-        advanced(t),
+        ...common(t),
       ];
 
     case "scene":
@@ -236,7 +261,7 @@ export function schemaFor(type: string | undefined, t: Translator, data?: Record
         ]),
         grid([text("title"), bool("show_count")]),
         object("scenes"),
-        advanced(t),
+        ...common(t),
       ];
 
     case "group":
@@ -245,7 +270,7 @@ export function schemaFor(type: string | undefined, t: Translator, data?: Record
         text("subtitle"),
         grid([bool("collapsible"), bool("collapsed"), bool("summary")]),
         object("cards"),
-        advanced(t),
+        ...common(t),
       ];
 
     case "separator": {
@@ -258,7 +283,7 @@ export function schemaFor(type: string | undefined, t: Translator, data?: Record
           { value: "header", label: t("ed_style_header") },
         ]),
         ...(style === "header" ? [text("subtitle")] : [number("count", 0, 999)]),
-        advanced(t),
+        ...common(t),
       ];
     }
 
@@ -275,11 +300,11 @@ export function schemaFor(type: string | undefined, t: Translator, data?: Record
           icon: "mdi:code-braces",
           schema: [text("snapshot_service"), text("mic_service")],
         },
-        advanced(t),
+        ...common(t),
       ];
 
     default:
-      return [entity("entity", [], true), grid([text("name"), icon("icon")]), advanced(t)];
+      return [entity("entity", [], true), grid([text("name"), icon("icon")]), ...common(t)];
   }
 }
 

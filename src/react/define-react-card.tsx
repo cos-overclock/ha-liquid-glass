@@ -1,6 +1,7 @@
 import { createElement, type ComponentType } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import type { BaseCardConfig, HomeAssistant, LovelaceGridOptions } from "../types";
+import { installCardActionHandler } from "./card-actions";
 
 export interface ReactCardProps<C extends BaseCardConfig> {
   config: C;
@@ -100,11 +101,14 @@ export function defineReactCard<C extends BaseCardConfig>(
     private hassValue?: HomeAssistant;
     private root?: Root;
     private readonly mountNode: HTMLDivElement;
+    private readonly cardShadowRoot: ShadowRoot;
+    private actionCleanup?: () => void;
     private renderQueued = false;
 
     constructor() {
       super();
       const shadowRoot = this.attachShadow({ mode: "open" });
+      this.cardShadowRoot = shadowRoot;
       this.mountNode = document.createElement("div");
       this.mountNode.setAttribute("part", "root");
       shadowRoot.append(this.mountNode);
@@ -141,11 +145,18 @@ export function defineReactCard<C extends BaseCardConfig>(
       const instances = runtime.instances.get(tagName) ?? new Set<RuntimeInstance>();
       instances.add(this);
       runtime.instances.set(tagName, instances);
+      this.actionCleanup ??= installCardActionHandler(
+        this.cardShadowRoot,
+        this,
+        () => this.configValue,
+      );
       this.requestRender();
     }
 
     disconnectedCallback(): void {
       runtime.instances.get(tagName)?.delete(this);
+      this.actionCleanup?.();
+      this.actionCleanup = undefined;
       this.root?.unmount();
       this.root = undefined;
     }

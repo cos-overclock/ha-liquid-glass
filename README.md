@@ -21,6 +21,7 @@ React版カードは屈折対象となる背景レイヤーもReactで所有し�
 | Scenes | `custom:liquid-glass-scene-card` | 複数のシーンをタイルまたはチップで並べる |
 | Camera | `custom:liquid-glass-camera-card` | `camera`（静止画、動体検知、履歴） |
 | Group | `custom:liquid-glass-group-card` | 他のカードをまとめる折りたたみ可能なパネル |
+| Separator | `custom:liquid-glass-separator-card` | セクション見出し（プレーン / ピル / ヘッダー） |
 
 すべてのカードはライト / ダークテーマ（`hass.themes.darkMode`）、日本語 / 英語（`hass.language`）に自動で追従します。
 
@@ -101,14 +102,14 @@ Home Assistant はリソースを強くキャッシュします。ファイル�
 読み込まれているビルドはブラウザのコンソールで確認できます。起動時に次のような行が出ます。
 
 ```text
- LIQUID-GLASS-CARDS  v0.6.0 · 13 cards · built 2026-09-04 09:06
+ LIQUID-GLASS-CARDS  v0.6.0 · 15 cards · built 2026-09-04 09:06
 ```
 
 カード枚数とビルド時刻が、コピーしたファイルのものと一致していれば正しく読み込まれています。一致しない場合はまだ古いファイルです。
 
 ## 設定例
 
-13種類すべてビジュアルエディタに対応しています。ダッシュボードでカードを追加すると、エンティティや表示項目をフォームから設定できます。YAML を直接書く必要はありません。以下は同じ設定を YAML で表したものです。
+15種類すべてビジュアルエディタに対応しています。ダッシュボードでカードを追加すると、エンティティや表示項目をフォームから設定できます。YAML を直接書く必要はありません。以下は同じ設定を YAML で表したものです。
 
 すべてのカードに共通するオプション:
 
@@ -136,6 +137,26 @@ language: ja                # 省略時は HA の言語設定
 - カメラカードではWebGLの最大DPRも1へ制限
 
 カードを複数枚並べるとレンズも枚数分だけ増えるため、Android実機ではこの差が体感に出ます。
+
+### タップ・長押し・ダブルタップ
+
+すべてのカードは Home Assistant 標準のダッシュボードアクションに対応しています。ビジュアルエディタの「操作」から設定するか、YAMLで `tap_action` `hold_action` `double_tap_action` を指定します。設定していない操作は、カード本来の動作を維持します。たとえばSwitchカードはタップで切り替え、長押しで詳細を開く動作のままです。
+
+```yaml
+type: custom:liquid-glass-switch-card
+entity: switch.desk_outlet
+tap_action:
+  action: toggle
+hold_action:
+  action: more-info
+double_tap_action:
+  action: perform-action
+  perform_action: script.turn_everything_off
+  confirmation:
+    text: すべて停止しますか？
+```
+
+`more-info` `toggle` `perform-action` `navigate` `url` `assist` `none`を利用でき、各アクションにはHome Assistant標準の`confirmation`も指定できます。スライダー、スイッチ、再生ボタン、シーンタイルなどカード内の独立した操作部を触った場合は、カード全体のアクションを実行しません。
 
 ### Light
 
