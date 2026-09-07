@@ -1,6 +1,6 @@
 import { createElement, type ComponentType } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import type { BaseCardConfig, HomeAssistant } from "../types";
+import type { BaseCardConfig, HomeAssistant, LovelaceGridOptions } from "../types";
 import { installCardActionHandler } from "./card-actions";
 
 export interface ReactCardProps<C extends BaseCardConfig> {
@@ -15,6 +15,8 @@ export interface ReactCardDefinition<C extends BaseCardConfig> {
   normalizeConfig?: (config: C) => C;
   /** `host` is the custom element, for a card whose size depends on runtime state. */
   getCardSize?: (config: C, host: HTMLElement) => number;
+  /** Sizing rules for Home Assistant's 12-column Sections view. */
+  getGridOptions?: (config: C, host: HTMLElement) => LovelaceGridOptions;
   getConfigElement?: () => HTMLElement | Promise<HTMLElement>;
   getStubConfig?: (
     hass?: HomeAssistant,
@@ -28,6 +30,7 @@ export interface ReactCardConstructor<C extends BaseCardConfig> extends CustomEl
     hass?: HomeAssistant;
     setConfig(config: C): void;
     getCardSize(): number;
+    getGridOptions(): LovelaceGridOptions;
   };
   getConfigElement?: () => HTMLElement | Promise<HTMLElement>;
   getStubConfig?: ReactCardDefinition<C>["getStubConfig"];
@@ -131,6 +134,11 @@ export function defineReactCard<C extends BaseCardConfig>(
     getCardSize(): number {
       if (!this.configValue) return 3;
       return this.currentDefinition().getCardSize?.(this.configValue, this) ?? 3;
+    }
+
+    getGridOptions(): LovelaceGridOptions {
+      if (!this.configValue) return { columns: 12 };
+      return this.currentDefinition().getGridOptions?.(this.configValue, this) ?? { columns: 12 };
     }
 
     connectedCallback(): void {

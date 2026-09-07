@@ -4,6 +4,7 @@ import { createTranslator, relativeTime } from "../i18n";
 import { CardTitle, IconWell, UnavailableCard } from "../react/card-parts";
 import { reactCardStyles } from "../react/card-styles";
 import { defineLiquidGlassCard, type ReactCardProps } from "../react/define-liquid-glass-card";
+import { rowGridOptions } from "../react/grid-options";
 import { glassSurfaceStyles, LiquidGlassSurface } from "../react/glass-primitives";
 import { useCardHost } from "../react/use-card-host";
 import { tokens } from "../styles/tokens";
@@ -220,6 +221,7 @@ export const LiquidGlassSwitchCard = defineLiquidGlassCard<SwitchCardConfig>({
   component: SwitchCard,
   styles: [tokens, reactCardStyles, glassSurfaceStyles, ownStyles],
   getCardSize: () => 1,
+  getGridOptions: () => rowGridOptions(),
   getStubConfig: (hass?: HomeAssistant, entities?: string[], entitiesFallback?: string[]) => ({
     entity: pickEntity(SWITCH_DOMAINS, hass, entities, entitiesFallback),
   }),

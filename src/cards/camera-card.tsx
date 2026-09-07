@@ -14,6 +14,7 @@ import { createTranslator, relativeTime } from "../i18n";
 import { UnavailableCard } from "../react/card-parts";
 import { reactCardStyles } from "../react/card-styles";
 import { defineLiquidGlassCard, type ReactCardProps } from "../react/define-liquid-glass-card";
+import { autoHeightGridOptions } from "../react/grid-options";
 import {
   glassSurfaceStyles,
   glassVideoControlOptics,
@@ -563,6 +564,7 @@ export const LiquidGlassCameraCard = defineLiquidGlassCard<CameraCardConfig>({
   component: CameraCard,
   styles: [tokens, reactCardStyles, glassSurfaceStyles, ownStyles],
   getCardSize: (config) => (config.show_actions === false ? 4 : 5),
+  getGridOptions: () => autoHeightGridOptions(),
   getStubConfig: (hass?: HomeAssistant, entities?: string[], entitiesFallback?: string[]) => ({
     entity: pickEntity(["camera"], hass, entities, entitiesFallback),
   }),

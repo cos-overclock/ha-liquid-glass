@@ -3,6 +3,7 @@ import { createTranslator, relativeTime, type Translator } from "../i18n";
 import { CardTitle, IconWell, UnavailableCard } from "../react/card-parts";
 import { reactCardStyles } from "../react/card-styles";
 import { defineLiquidGlassCard, type ReactCardProps } from "../react/define-liquid-glass-card";
+import { contentGridOptions, rowGridOptions } from "../react/grid-options";
 import { glassSurfaceStyles, Icon, LiquidGlassSurface } from "../react/glass-primitives";
 import { useCardHost } from "../react/use-card-host";
 import { useVisibleTick } from "../react/use-visible-tick";
@@ -425,6 +426,10 @@ export const LiquidGlassSensorCard = defineLiquidGlassCard<SensorCardConfig>({
   getCardSize: (config) => {
     if (config.graph === false || config.value_in_caption) return config.value_in_caption ? 1 : 2;
     return 4;
+  },
+  getGridOptions: (config) => {
+    if (config.value_in_caption) return rowGridOptions();
+    return contentGridOptions(config.graph === false ? 3 : 4);
   },
   getStubConfig: (hass?: HomeAssistant, entities?: string[], entitiesFallback?: string[]) => ({
     entity: pickEntity(["sensor"], hass, entities, entitiesFallback, (entity) => Number.isFinite(Number(entity.state))),

@@ -2,7 +2,7 @@
 
 import { act } from "react";
 import { afterEach, describe, expect, it } from "vitest";
-import type { BaseCardConfig, HomeAssistant } from "../types";
+import type { BaseCardConfig, HomeAssistant, LovelaceGridOptions } from "../types";
 import { defineReactCard, type ReactCardProps } from "./define-react-card";
 
 interface TestConfig extends BaseCardConfig {
@@ -13,6 +13,7 @@ type TestElement = HTMLElement & {
   hass?: HomeAssistant;
   setConfig(config: TestConfig): void;
   getCardSize(): number;
+  getGridOptions(): LovelaceGridOptions;
 };
 
 const tagName = "liquid-glass-react-adapter-test";
@@ -40,6 +41,7 @@ describe("defineReactCard", () => {
       ),
       normalizeConfig: (config) => ({ theme: "auto", ...config }),
       getCardSize: () => 1,
+      getGridOptions: () => ({ rows: 2, columns: 6, min_columns: 3 }),
       getStubConfig: () => ({ label: "stub" }),
     });
     const element = document.createElement(tagName) as TestElement;
@@ -48,6 +50,7 @@ describe("defineReactCard", () => {
     await act(async () => document.body.append(element));
     expect(element.shadowRoot?.textContent).toContain("first:none");
     expect(element.getCardSize()).toBe(1);
+    expect(element.getGridOptions()).toEqual({ rows: 2, columns: 6, min_columns: 3 });
     expect(Card.getStubConfig?.()).toEqual({ label: "stub" });
 
     await act(async () => {
@@ -73,12 +76,19 @@ describe("defineReactCard", () => {
         tagName,
         component: ({ config }: ReactCardProps<TestConfig>) => <strong>updated:{config.label}</strong>,
         getCardSize: () => 2,
+        getGridOptions: () => ({ rows: 4, columns: 12 }),
       });
     });
 
     expect(UpdatedCard).toBe(customElements.get(tagName));
     expect(element.shadowRoot?.textContent).toContain("updated:hot");
     expect(element.getCardSize()).toBe(2);
+    expect(element.getGridOptions()).toEqual({ rows: 4, columns: 12 });
+  });
+
+  it("returns a safe full-width grid default before configuration", () => {
+    const element = document.createElement(tagName) as TestElement;
+    expect(element.getGridOptions()).toEqual({ columns: 12 });
   });
 
   it("re-registers when only a stale runtime constructor remains", () => {

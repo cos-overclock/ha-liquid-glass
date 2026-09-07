@@ -4,6 +4,7 @@ import { createTranslator, type Translator } from "../i18n";
 import { Badge, CardTitle, IconWell, UnavailableCard, type BadgeStyle, type WellStyle } from "../react/card-parts";
 import { reactCardStyles } from "../react/card-styles";
 import { defineLiquidGlassCard, type ReactCardProps } from "../react/define-liquid-glass-card";
+import { contentGridOptions } from "../react/grid-options";
 import { glassSurfaceStyles, Icon, LiquidGlassSurface } from "../react/glass-primitives";
 import { GlassSegmentedControl, glassSegmentedControlStyles } from "../react/glass-segmented-control";
 import {
@@ -983,6 +984,10 @@ export const LiquidGlassClimateCard = defineLiquidGlassCard<ClimateCardConfig>({
   component: ClimateCard,
   styles: [tokens, reactCardStyles, glassSurfaceStyles, glassSliderStyles, glassSegmentedControlStyles, ownStyles],
   getCardSize: () => 6,
+  getGridOptions: (config) => {
+    const compact = config.design === "compact" || config.design === "a";
+    return contentGridOptions(compact ? 4 : 6, compact ? 6 : 12);
+  },
   getStubConfig: (hass?: HomeAssistant, entities?: string[], entitiesFallback?: string[]) => ({
     entity: pickEntity(["climate"], hass, entities, entitiesFallback),
   }),

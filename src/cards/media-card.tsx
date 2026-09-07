@@ -3,6 +3,7 @@ import { createTranslator } from "../i18n";
 import { UnavailableCard } from "../react/card-parts";
 import { reactCardStyles } from "../react/card-styles";
 import { defineLiquidGlassCard, type ReactCardProps } from "../react/define-liquid-glass-card";
+import { contentGridOptions } from "../react/grid-options";
 import {
   glassSurfaceStyles,
   GlassVideoControlLens,
@@ -461,6 +462,7 @@ export const LiquidGlassMediaCard = defineLiquidGlassCard<MediaCardConfig>({
   component: MediaCard,
   styles: [tokens, reactCardStyles, glassSurfaceStyles, glassSliderStyles, ownStyles],
   getCardSize: () => 4,
+  getGridOptions: () => contentGridOptions(6),
   getStubConfig: (hass?: HomeAssistant, entities?: string[], entitiesFallback?: string[]) => ({
     entity: pickEntity(["media_player"], hass, entities, entitiesFallback),
   }),

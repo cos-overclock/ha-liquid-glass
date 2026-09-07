@@ -3,6 +3,7 @@ import { createTranslator } from "../i18n";
 import { UnavailableCard } from "../react/card-parts";
 import { reactCardStyles } from "../react/card-styles";
 import { defineLiquidGlassCard, type ReactCardProps } from "../react/define-liquid-glass-card";
+import { contentGridOptions } from "../react/grid-options";
 import { glassSurfaceStyles, Icon, LiquidGlassSurface } from "../react/glass-primitives";
 import { useCardHost } from "../react/use-card-host";
 import { tokens } from "../styles/tokens";
@@ -294,6 +295,11 @@ export const LiquidGlassSceneCard = defineLiquidGlassCard<SceneCardConfig>({
     const columns = clamp(Math.round(config.columns ?? 3), 1, 6);
     const rows = Math.ceil((config.scenes?.length ?? 0) / columns);
     return 1 + rows * (config.style === "chips" ? 1 : 2);
+  },
+  getGridOptions: (config) => {
+    const columns = clamp(Math.round(config.columns ?? 3), 1, 6);
+    const rows = Math.ceil((config.scenes?.length ?? 0) / columns);
+    return contentGridOptions(1 + rows * (config.style === "chips" ? 1 : 2), 12);
   },
   getStubConfig: (hass?: HomeAssistant, entities?: string[], entitiesFallback?: string[]) => {
     const scenes = [entities, entitiesFallback, Object.keys(hass?.states ?? {})]
