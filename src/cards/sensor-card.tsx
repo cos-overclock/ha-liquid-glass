@@ -1,4 +1,5 @@
-import { useEffect, useState, type CSSProperties } from "react";
+import { type CSSProperties } from "react";
+import type { HistoryPoint } from "../history";
 import { createTranslator, relativeTime, type Translator } from "../i18n";
 import { CardTitle, IconWell, UnavailableCard } from "../react/card-parts";
 import { reactCardStyles } from "../react/card-styles";
@@ -6,7 +7,7 @@ import { defineLiquidGlassCard, type ReactCardProps } from "../react/define-liqu
 import { contentGridOptions, rowGridOptions } from "../react/grid-options";
 import { glassSurfaceStyles, Icon, LiquidGlassSurface } from "../react/glass-primitives";
 import { useCardHost } from "../react/use-card-host";
-import { useVisibleTick } from "../react/use-visible-tick";
+import { useEntityHistory } from "../react/use-entity-history";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HassEntity, HomeAssistant } from "../types";
 import { entityName, entityStateText, formatNumber, isUnavailable, lighten, moreInfo, pickEntity, withAlpha } from "../utils";
@@ -31,46 +32,8 @@ export interface SensorCardConfig extends BaseCardConfig {
   trend?: boolean;
 }
 
-interface Point {
-  t: number;
-  v: number;
-}
-
-/** Keep history rendering bounded while retaining every bucket's visible extrema. */
-export function downsamplePoints(points: Point[], limit = 600): Point[] {
-  if (points.length <= limit || limit < 4) return points;
-
-  const result: Point[] = [points[0]];
-  const bucketCount = Math.max(1, Math.floor((limit - 2) / 2));
-  const interior = points.length - 2;
-  for (let bucket = 0; bucket < bucketCount; bucket++) {
-    const start = 1 + Math.floor((bucket * interior) / bucketCount);
-    const end = 1 + Math.floor(((bucket + 1) * interior) / bucketCount);
-    let low = start;
-    let high = start;
-    for (let index = start + 1; index < end; index++) {
-      if (points[index].v < points[low].v) low = index;
-      if (points[index].v > points[high].v) high = index;
-    }
-    if (low === high) result.push(points[low]);
-    else if (low < high) result.push(points[low], points[high]);
-    else result.push(points[high], points[low]);
-  }
-  result.push(points[points.length - 1]);
-  return result;
-}
-
-interface HistoryRow {
-  s?: string;
-  lu?: number;
-  state?: string;
-  last_changed?: string;
-  last_updated?: string;
-}
-
 const W = 340;
 const H = 84;
-const REFRESH_MS = 5 * 60 * 1000;
 
 const ownStyles = `
   .card {
@@ -178,49 +141,8 @@ const ownStyles = `
   }
 `;
 
-interface HistoryData {
-  points: Point[];
-  trend: number | undefined;
-}
-
-async function fetchHistory(hass: HomeAssistant, entityId: string, hours: number): Promise<HistoryData> {
-  const start = new Date(Date.now() - hours * 3600 * 1000).toISOString();
-  try {
-    const rows = await hass.callApi<HistoryRow[][]>(
-      "GET",
-      `history/period/${start}?filter_entity_id=${encodeURIComponent(entityId)}&minimal_response&no_attributes&significant_changes_only=0`,
-    );
-    const points: Point[] = [];
-    for (const row of rows?.[0] ?? []) {
-      const value = Number(row.state ?? row.s);
-      const stamp = row.last_changed ?? row.last_updated;
-      const time = stamp ? new Date(stamp).getTime() : (row.lu ?? 0) * 1000;
-      if (Number.isFinite(value) && time) points.push({ t: time, v: value });
-    }
-    const current = Number(hass.states[entityId]?.state);
-    if (Number.isFinite(current)) points.push({ t: Date.now(), v: current });
-    // Compute the one-hour delta before sampling so a dense history stays exact.
-    return { points: downsamplePoints(points), trend: trendOver(points) };
-  } catch {
-    return { points: [], trend: undefined };
-  }
-}
-
-/** Change over the last hour, or undefined when there is not enough history. */
-function trendOver(points: Point[]): number | undefined {
-  if (points.length < 2) return undefined;
-  const now = points[points.length - 1];
-  const target = now.t - 3600 * 1000;
-  let reference = points[0];
-  for (const point of points) {
-    if (point.t <= target) reference = point;
-    else break;
-  }
-  return now.v - reference.v;
-}
-
 /** Catmull-Rom style smoothing, as a line path plus the area under it. */
-export function sparkPath(points: Point[]): { line: string; area: string; last: [number, number] } | undefined {
+export function sparkPath(points: HistoryPoint[]): { line: string; area: string; last: [number, number] } | undefined {
   if (points.length < 2) return undefined;
   const t0 = points[0].t;
   const t1 = points[points.length - 1].t;
@@ -290,8 +212,6 @@ function subtitleFor(
 function SensorCard({ config, hass, host }: ReactCardProps<SensorCardConfig>) {
   const { refraction } = useCardHost(host, config, hass);
   const t = createTranslator(config.language ?? hass?.locale?.language ?? hass?.language);
-  const [points, setPoints] = useState<Point[]>([]);
-  const [historyTrend, setHistoryTrend] = useState<number>();
   const entity = config.entity ? hass?.states[config.entity] : undefined;
   const name = entityName(hass, entity, config.name, config.entity ?? "");
   const hours = config.hours_to_show ?? 24;
@@ -300,27 +220,14 @@ function SensorCard({ config, hass, host }: ReactCardProps<SensorCardConfig>) {
   const showGraph = config.graph !== false && !valueInCaption;
   const showTrend = config.trend !== false;
   const needsHistory = showGraph || showTrend;
-  const canFetch = Boolean(hass && config.entity && needsHistory);
-  const refreshTick = useVisibleTick(host, REFRESH_MS, canFetch);
-
-  useEffect(() => {
-    if (!hass || !config.entity || !needsHistory) return;
-    let cancelled = false;
-    // A trend-only compact card needs one hour, while a graph keeps its configured span.
-    const historyHours = showGraph ? hours : 1;
-    void fetchHistory(hass, config.entity, historyHours).then((history) => {
-      if (!cancelled) {
-        setPoints(history.points);
-        setHistoryTrend(history.trend);
-      }
-    });
-    return () => { cancelled = true; };
-    /*
-     * `hass` is left out deliberately. Its identity changes on every state push, and the
-     * history is meant to refetch on the tick, not on each reading.
-     */
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canFetch, config.entity, hours, needsHistory, refreshTick, showGraph]);
+  // A trend-only compact card needs one hour, while a graph keeps its configured span.
+  const { points, trend: historyTrend } = useEntityHistory(
+    host,
+    hass,
+    config.entity,
+    showGraph ? hours : 1,
+    needsHistory,
+  );
 
   if (!entity || isUnavailable(entity)) {
     return <>

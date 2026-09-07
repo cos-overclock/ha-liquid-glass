@@ -1,7 +1,7 @@
 # Liquid Glass Cards for Home Assistant
 
 `pen/design.pen` の Liquid Glass デザインを、Home Assistant のダッシュボードに追加できるカスタムカード群として実装したものです。
-Vite + React + TypeScript で実装し、Home Assistant 向けには単一ファイル `dist/liquid-glass-cards.js` にバンドルされます。全カードが React と `@samasante/liquid-glass` で書かれており、Home Assistant へは Custom Element のアダプター（`react/define-react-card.tsx`）を通して公開されます。
+Vite + React + TypeScript で実装し、Home Assistant 向けには単一ファイル `dist/liquid-glass-cards.js` にバンドルされます。バンドルは React ではなく Preact（`preact/compat`）の上で動きます。ソースもテストも React のまま書きますが、ビルド時に差し替わるため配布ファイルが 370 KB（gzip 約 97 KB）に収まります。詳しくは「バンドルサイズ」を参照してください。全カードが React と `@samasante/liquid-glass` で書かれており、Home Assistant へは Custom Element のアダプター（`react/define-react-card.tsx`）を通して公開されます。
 
 React版カードは屈折対象となる背景レイヤーもReactで所有し、`Glass`の`refract`へ複製して渡します。これにより`backdrop-filter: url()`へ依存せず、Chromium / Safari / Firefoxで共通のSVG `filter: url()`経路を使用します。任意のHA壁紙そのものではなく、カード内の光学背景を屈折する方式です。
 
@@ -234,7 +234,9 @@ accent: "#FF9F0A"
 decimals: 1
 ```
 
-履歴は `history/period` API から取得し 5 分ごとに更新します。
+履歴は WebSocket の `history/stream` で購読します。購読を開くと指定した期間がまとめて届き、以降はレコーダーが新しい値を書き込むたびに差分が push されるため、グラフとトレンドはセンサーに追従して動きます。ポーリングではないので、センサーカードを何枚並べても定期的な HTTP リクエストは発生しません。
+
+`history/stream` を持たない古い Home Assistant や、接続を公開しないホストでは、従来どおり `history/period` を 5 分ごとに取得する動作に自動で戻ります。どちらの経路も、カードが画面外にあるあいだとタブが背面にあるあいだは停止し、戻ってきたときに取り直します。
 
 `value_in_caption: true` にすると、大きな数値をやめて値を説明文の先頭に入れます。残るのは1行だけになるので、スイッチカードと並べたときに高さが揃います。グラフはこの形に収まらないため描画しません。
 
@@ -493,6 +495,19 @@ liquid_glass:
 
 主なトークン: `--lg-text-primary` `--lg-text-secondary` `--lg-glass-tint`（RGB 三成分）`--lg-glass-tint-alpha` `--lg-glass-stroke` `--lg-track-bg` `--lg-shadow-glass` `--lg-segment-selected` `--lg-accent` `--lg-heat` `--lg-cool` `--lg-radius` `--lg-blur` `--lg-saturation` `--lg-group-panel`。定義は `src/styles/tokens.ts` を参照してください。
 
+## バンドルサイズ
+
+Home Assistant はダッシュボードを開くたびにこのファイルを読み込みます。カードが使っているのはフック・ref・シャドウルートへの描画までで、React 19 が加えた機能は使っていないため、ビルド時に `preact/compat` へ差し替えています。
+
+| | 生 | gzip |
+| --- | --- | --- |
+| React | 606 KB | 154 KB |
+| Preact | 370 KB | 97 KB |
+
+差し替えは `vite.config.ts` の `resolve.alias` 1か所だけで行います。ソースは `react` を import したまま、型も `@types/react` のままで、テストも同じ alias の上で走ります。配布物だけが別のランタイムで動く、という状態にはなりません。
+
+`@vitejs/plugin-react` は外しました。JSX は Vite 本体の変換が扱います。このため `npm run demo` の開発サーバーでは Fast Refresh が効かず、変更時はページ全体が再読み込みされます。
+
 ## 開発
 
 ```bash
@@ -517,6 +532,8 @@ src/
   index.ts                    カード登録 / customCards への追加
   react/define-react-card.tsx React と HA Custom Element 契約のアダプター
   react/use-card-host.ts      hass / config をホスト属性へ同期する React Hook
+  react/use-entity-history.ts 履歴の購読とポーリングの切り替え
+  history.ts                  履歴の取得・購読・間引き・トレンド
   react/glass-primitives.tsx  ガラス面（Glass ラッパーと光学プリセット）
   react/glass-slider.tsx      Apple 風スライダー（バー＋つまみ）
   react/card-parts.tsx        アイコンウェル / タイトル / バッジなどの共通部品

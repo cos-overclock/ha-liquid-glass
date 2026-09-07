@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 
-import { act } from "react";
+import { act } from "../react/test-act";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { HassEntity, HomeAssistant } from "../types";
-import { downsamplePoints, LiquidGlassSensorCard, type SensorCardConfig } from "./sensor-card";
+import { LiquidGlassSensorCard, type SensorCardConfig } from "./sensor-card";
 
 type CardElement = HTMLElement & {
   hass?: HomeAssistant;
@@ -11,8 +11,6 @@ type CardElement = HTMLElement & {
   getCardSize(): number;
 };
 
-const reactTestScope = globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean };
-reactTestScope.IS_REACT_ACT_ENVIRONMENT = true;
 
 class ResizeObserverStub implements ResizeObserver {
   constructor(_callback: ResizeObserverCallback) {}
@@ -114,20 +112,76 @@ describe("liquid-glass-sensor-card", () => {
     expect(element.shadowRoot!.querySelector(".spark")).toBeNull();
     expect(element.shadowRoot!.querySelector(".badge.trend")?.textContent).toContain("+2");
   });
-});
 
-describe("downsamplePoints", () => {
-  it("bounds dense histories while retaining endpoints and extrema", () => {
-    const points = Array.from({ length: 10_000 }, (_, index) => ({
-      t: index,
-      v: index === 4321 ? -100 : index === 7654 ? 100 : Math.sin(index),
-    }));
-    const sampled = downsamplePoints(points, 100);
+  /*
+   * The socket is the normal path on a current Home Assistant: the card must draw the
+   * window the stream opens with, follow the chunks that arrive afterwards, and never
+   * fall back to a REST request it no longer needs.
+   */
+  it("draws live history from the history/stream subscription", async () => {
+    const target = entity("sensor.living_temp", "22.4", { friendly_name: "室温", unit_of_measurement: "°C" });
+    const hass = createHass([target], async () => undefined);
+    hass.callApi = vi.fn(async () => undefined) as HomeAssistant["callApi"];
+    let push: ((message: unknown) => void) | undefined;
+    const unsubscribe = vi.fn(async () => {});
+    hass.connection = {
+      subscribeMessage: vi.fn(async (callback: (message: never) => void) => {
+        push = callback as (message: unknown) => void;
+        return unsubscribe;
+      }),
+    };
 
-    expect(sampled.length).toBeLessThanOrEqual(100);
-    expect(sampled[0]).toEqual(points[0]);
-    expect(sampled[sampled.length - 1]).toEqual(points[points.length - 1]);
-    expect(sampled).toContainEqual(points[4321]);
-    expect(sampled).toContainEqual(points[7654]);
+    const element = document.createElement("liquid-glass-sensor-card") as CardElement;
+    element.setConfig({ type: "custom:liquid-glass-sensor-card", entity: target.entity_id });
+    element.hass = hass;
+
+    await act(async () => document.body.append(element));
+    await act(async () => { await Promise.resolve(); });
+
+    const now = Date.now();
+    await act(async () => {
+      push?.({ states: { "sensor.living_temp": [
+        { s: "21.0", lu: (now - 7200_000) / 1000 },
+        { s: "23.5", lu: (now - 3600_000) / 1000 },
+      ] } });
+    });
+
+    const root = element.shadowRoot!;
+    const first = root.querySelector(".spark .line")?.getAttribute("d");
+    expect(first).toMatch(/^M /);
+    expect(hass.callApi).not.toHaveBeenCalled();
+
+    await act(async () => {
+      push?.({ states: { "sensor.living_temp": [{ s: "25.0", lu: (now - 60_000) / 1000 }] } });
+    });
+    expect(root.querySelector(".spark .line")?.getAttribute("d")).not.toBe(first);
+
+    await act(async () => element.remove());
+    expect(unsubscribe).toHaveBeenCalled();
+  });
+
+  /* An older Home Assistant answers the command with an error rather than a stream. */
+  it("falls back to the REST history when the stream is refused", async () => {
+    const target = entity("sensor.living_temp", "22.4", { friendly_name: "室温", unit_of_measurement: "°C" });
+    const hass = createHass([target], async () => undefined);
+    const now = Date.now();
+    hass.callApi = vi.fn(async () => [[
+      { state: "21.0", last_changed: new Date(now - 7200_000).toISOString() },
+      { state: "23.5", last_changed: new Date(now - 3600_000).toISOString() },
+    ]]) as HomeAssistant["callApi"];
+    hass.connection = {
+      subscribeMessage: vi.fn(async () => { throw new Error("unknown command"); }),
+    };
+
+    const element = document.createElement("liquid-glass-sensor-card") as CardElement;
+    element.setConfig({ type: "custom:liquid-glass-sensor-card", entity: target.entity_id });
+    element.hass = hass;
+
+    await act(async () => document.body.append(element));
+    await act(async () => { await Promise.resolve(); });
+    await act(async () => { await Promise.resolve(); });
+
+    expect(hass.callApi).toHaveBeenCalled();
+    expect(element.shadowRoot!.querySelector(".spark .line")?.getAttribute("d")).toMatch(/^M /);
   });
 });

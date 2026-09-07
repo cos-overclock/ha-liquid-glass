@@ -1,22 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 
 /**
- * A counter that advances every `intervalMs`, but only while the card can be seen.
+ * True while the card can actually be seen.
  *
- * Home Assistant keeps unselected dashboard views mounted, so a plain interval goes on
- * re-fetching history and pulling camera stills for cards nobody is looking at — on a
- * wall tablet, indefinitely. Watching both the element's intersection and the document's
- * visibility covers the two ways a card goes unwatched: scrolled or switched away from,
- * and the whole tab being in the background.
+ * Home Assistant keeps unselected dashboard views mounted, so work scheduled by a card
+ * nobody is looking at goes on indefinitely — on a wall tablet, for days. Watching both
+ * the element's intersection and the document's visibility covers the two ways a card
+ * goes unwatched: scrolled or switched away from, and the whole tab being in the
+ * background.
  */
-export function useVisibleTick(host: HTMLElement, intervalMs: number, enabled = true): number {
-  const [tick, setTick] = useState(0);
+export function useCardVisible(host: HTMLElement, enabled = true): boolean {
   const [onScreen, setOnScreen] = useState(true);
   const [pageVisible, setPageVisible] = useState(
     () => typeof document === "undefined" || document.visibilityState === "visible",
   );
-  /** Starts true so the first activation is a mount, not a resume, and fetches once. */
-  const wasActive = useRef(true);
 
   useEffect(() => {
     if (typeof IntersectionObserver === "undefined") return;
@@ -35,7 +32,17 @@ export function useVisibleTick(host: HTMLElement, intervalMs: number, enabled = 
     return () => document.removeEventListener("visibilitychange", sync);
   }, []);
 
-  const active = enabled && onScreen && pageVisible;
+  return enabled && onScreen && pageVisible;
+}
+
+/**
+ * A counter that advances every `intervalMs` while `active`, and once more the moment
+ * `active` returns after a pause.
+ */
+export function useTickWhile(active: boolean, intervalMs: number): number {
+  const [tick, setTick] = useState(0);
+  /** Starts true so the first activation is a mount, not a resume, and fetches once. */
+  const wasActive = useRef(true);
 
   useEffect(() => {
     if (!active) {
@@ -51,4 +58,9 @@ export function useVisibleTick(host: HTMLElement, intervalMs: number, enabled = 
   }, [active, intervalMs]);
 
   return tick;
+}
+
+/** A counter that advances every `intervalMs`, but only while the card can be seen. */
+export function useVisibleTick(host: HTMLElement, intervalMs: number, enabled = true): number {
+  return useTickWhile(useCardVisible(host, enabled), intervalMs);
 }
