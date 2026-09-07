@@ -84,6 +84,25 @@ describe("LiquidGlassEntityBadge", () => {
     expect((listener.mock.calls[0][0] as CustomEvent).detail).toEqual({ entityId: "light.desk" });
   });
 
+  it("localizes a missing entity and removes disabled action affordances", async () => {
+    const element = new LiquidGlassEntityBadge();
+    element.setConfig({
+      type: "custom:liquid-glass-entity-badge",
+      entity: "sensor.missing",
+      language: "ja",
+      tap_action: { action: "none" },
+    });
+    element.hass = hass(entity());
+    await act(async () => document.body.append(element));
+    await act(async () => { await Promise.resolve(); });
+
+    const card = element.shadowRoot!.querySelector<HTMLElement>(".card")!;
+    expect(element.shadowRoot!.querySelector(".badge")?.textContent).toBe("利用不可");
+    expect(card.getAttribute("role")).toBeNull();
+    expect(card.getAttribute("tabindex")).toBeNull();
+    expect(element.hasAttribute("card-action")).toBe(false);
+  });
+
   it("provides a usable entity stub to the badge picker", () => {
     const target = entity();
     expect(LiquidGlassEntityBadge.getStubConfig?.(hass(target))).toEqual({ entity: target.entity_id });

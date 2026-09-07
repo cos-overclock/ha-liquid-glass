@@ -1,4 +1,5 @@
 import type { KeyboardEvent } from "react";
+import { createTranslator } from "../i18n";
 import { Badge, type BadgeStyle } from "../react/card-parts";
 import { reactCardStyles } from "../react/card-styles";
 import { defineLiquidGlassCard, type ReactCardProps } from "../react/define-liquid-glass-card";
@@ -28,7 +29,6 @@ const ownStyles = `
     min-height: 36px;
     padding: 0;
     border-radius: 18px;
-    cursor: pointer;
   }
   .card:focus-visible {
     outline: 2px solid var(--badge-color, var(--lg-cool-deep));
@@ -123,10 +123,11 @@ function stateStyle(entity: HassEntity, color: string | undefined): BadgeStyle |
 
 function EntityBadge({ config, hass, host }: ReactCardProps<EntityBadgeConfig>) {
   const { refraction } = useCardHost(host, config, hass);
+  const t = createTranslator(config.language ?? hass?.locale?.language ?? hass?.language);
   const entity = config.entity ? hass?.states[config.entity] : undefined;
   const name = entityName(hass, entity, config.name, config.entity ?? "Entity");
   const unavailable = isUnavailable(entity);
-  const state = entity ? stateLabel(hass, entity) : "Unavailable";
+  const state = entity ? stateLabel(hass, entity) : t("unavailable");
   const showIcon = config.show_icon !== false;
   const showName = config.show_name === true;
   const showState = config.show_state !== false;

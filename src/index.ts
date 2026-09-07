@@ -209,7 +209,7 @@ for (const badge of badges) {
 
 // The card count makes a stale copy obvious: a build that predates a new card says so here.
 console.info(
-  `%c LIQUID-GLASS-CARDS %c v${VERSION} · ${cards.length} cards · ${badges.length} badge · built ${BUILD} `,
+  `%c LIQUID-GLASS-CARDS %c v${VERSION} · ${cards.length} cards · ${badges.length} badge${badges.length === 1 ? "" : "s"} · built ${BUILD} `,
   "color: #1c1c1e; background: linear-gradient(90deg,#ffd36b,#ff8a1f); font-weight: 700; border-radius: 6px 0 0 6px;",
   "color: #fff; background: #1c1c1e; font-weight: 500; border-radius: 0 6px 6px 0;",
 );
