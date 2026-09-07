@@ -198,6 +198,14 @@ export interface CustomCardRegistration {
   ) => LovelaceCardSuggestion | LovelaceCardSuggestion[] | null;
 }
 
+export interface CustomBadgeRegistration {
+  type: string;
+  name: string;
+  description?: string;
+  preview?: boolean;
+  documentationURL?: string;
+}
+
 /** Home Assistant's card factory, used by stack-like cards to build their children. */
 export interface CardHelpers {
   createCardElement(config: LovelaceCardConfig): LovelaceCard;
@@ -206,6 +214,7 @@ export interface CardHelpers {
 declare global {
   interface Window {
     customCards?: CustomCardRegistration[];
+    customBadges?: CustomBadgeRegistration[];
     loadCardHelpers?: () => Promise<CardHelpers>;
   }
 }

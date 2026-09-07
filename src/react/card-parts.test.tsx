@@ -3,7 +3,7 @@
 import { act } from "./test-act";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { CardTitle, IconWell } from "./card-parts";
+import { Badge, CardTitle, IconWell } from "./card-parts";
 
 
 let root: Root | undefined;
@@ -100,5 +100,15 @@ describe("IconWell", () => {
       .querySelector(".icon-well") as HTMLElement;
 
     expect(well.className).not.toContain("tappable");
+  });
+});
+
+describe("Badge", () => {
+  it("uses an entity icon in place of the status dot when provided", () => {
+    const badge = render(<Badge label="On" icon="mdi:lightbulb" />).querySelector(".badge")!;
+
+    expect(badge.querySelector(".dot")).toBeNull();
+    expect(badge.querySelector("lg-icon")?.getAttribute("icon")).toBe("mdi:lightbulb");
+    expect(badge.textContent).toBe("On");
   });
 });

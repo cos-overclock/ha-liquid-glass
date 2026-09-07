@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeAll, describe, expect, it } from "vitest";
-import type { CustomCardRegistration, HassEntity, HomeAssistant, LovelaceCardSuggestion } from "./types";
+import type { CustomBadgeRegistration, CustomCardRegistration, HassEntity, HomeAssistant, LovelaceCardSuggestion } from "./types";
 
 class ResizeObserverStub implements ResizeObserver {
   constructor(_callback: ResizeObserverCallback) {}
@@ -11,10 +11,27 @@ class ResizeObserverStub implements ResizeObserver {
 globalThis.ResizeObserver = ResizeObserverStub;
 
 let cards: CustomCardRegistration[];
+let badges: CustomBadgeRegistration[];
 
 beforeAll(async () => {
   await import("./index");
   cards = window.customCards ?? [];
+  badges = window.customBadges ?? [];
+});
+
+describe("badge registration", () => {
+  it("registers the entity badge once with picker metadata", () => {
+    expect(badges).toEqual([
+      expect.objectContaining({
+        type: "liquid-glass-entity-badge",
+        name: expect.any(String),
+        description: expect.any(String),
+        preview: true,
+        documentationURL: expect.stringContaining("github.com"),
+      }),
+    ]);
+    expect(customElements.get("liquid-glass-entity-badge")).toBeDefined();
+  });
 });
 
 function entity(entityId: string, attributes: HassEntity["attributes"] = {}): HassEntity {
@@ -67,8 +84,10 @@ describe("card registration", () => {
   /* Re-evaluating the bundle happens on a resource reload; it must not duplicate rows. */
   it("survives being evaluated twice", async () => {
     const before = window.customCards?.length;
+    const badgesBefore = window.customBadges?.length;
     await import(/* @vite-ignore */ `./index.ts?reimport=${Date.now()}`);
     expect(window.customCards?.length).toBe(before);
+    expect(window.customBadges?.length).toBe(badgesBefore);
   });
 });
 

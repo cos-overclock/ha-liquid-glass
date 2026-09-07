@@ -195,6 +195,14 @@ export function schemaFor(
         ...common(t),
       ];
 
+    case "entity-badge":
+      return [
+        ...head([]),
+        grid([bool("show_icon"), bool("show_name"), bool("show_state")]),
+        text("color"),
+        ...common(t),
+      ];
+
     case "lock":
       return [...head("lock"), object("buttons"), ...common(t)];
 
@@ -348,6 +356,8 @@ export const DEFAULT_ON = new Set([
   "show_color",
   "show_fan_mode",
   "show_preset_mode",
+  "show_icon",
+  "show_state",
   "graph",
   "trend",
   "show_tilt",
@@ -382,6 +392,7 @@ export const HELPERS: Record<string, string> = {
   favorites: "ed_help_favorites",
   accent: "ed_help_color",
   source_color: "ed_help_color",
+  color: "ed_help_color",
   ticks: "ed_help_ticks",
   show_range: "ed_help_show_range",
   value_in_caption: "ed_help_value_in_caption",

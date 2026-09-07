@@ -10,6 +10,7 @@ const CARD_TYPES = [
   "light", "climate", "switch", "sensor", "binary-sensor", "lock", "cover",
   "media", "slider", "select", "weather", "button", "scene", "camera", "group", "separator",
 ].map((kind) => `custom:liquid-glass-${kind}-card`);
+CARD_TYPES.push("custom:liquid-glass-entity-badge");
 
 describe("cardKind", () => {
   it("strips the custom prefix, the package prefix and the card suffix", () => {

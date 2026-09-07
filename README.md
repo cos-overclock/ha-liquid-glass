@@ -24,6 +24,8 @@ React版カードは屈折対象となる背景レイヤーもReactで所有し�
 | Group | `custom:liquid-glass-group-card` | 他のカードをまとめる折りたたみ可能なパネル |
 | Separator | `custom:liquid-glass-separator-card` | セクション見出し（プレーン / ピル / ヘッダー） |
 
+セクションビュー上部のバッジ行には、同じガラス素材を使う `custom:liquid-glass-entity-badge` を利用できます。エンティティのアイコン・名前・状態をコンパクトなピルで表示し、タップすると詳細を開きます。
+
 すべてのカードはライト / ダークテーマ（`hass.themes.darkMode`）、日本語 / 英語（`hass.language`）に自動で追従します。
 
 エンティティの名前と状態は Home Assistant 本体に問い合わせます。Home Assistant 2026.4 以降では、名前は `hass.formatEntityName()` がレジストリ（フロア・エリア・デバイス・エンティティ）から組み立て、状態は `hass.formatEntityState()` が翻訳します。device_class ごとの言い回し（`Detected` / `Clear`）、`select` の選択肢、HVAC モード、天気の状態などが、more-info ダイアログや組み込みカードとまったく同じ言葉になり、Home Assistant が対応する全言語で表示されます。カードが自前で持つ文言（`src/translations/`）は、それ以外の見出しやラベル、および 2026.4 より前の Home Assistant での代替表示に使います。
@@ -105,14 +107,14 @@ Home Assistant はリソースを強くキャッシュします。ファイル�
 読み込まれているビルドはブラウザのコンソールで確認できます。起動時に次のような行が出ます。
 
 ```text
- LIQUID-GLASS-CARDS  v0.6.0 · 16 cards · built 2026-09-07 10:45
+ LIQUID-GLASS-CARDS  v0.6.0 · 16 cards · 1 badge · built 2025-01-01 12:34
 ```
 
 カード枚数とビルド時刻が、コピーしたファイルのものと一致していれば正しく読み込まれています。一致しない場合はまだ古いファイルです。
 
 ## 設定例
 
-16種類すべてビジュアルエディタに対応しています。ダッシュボードでカードを追加すると、エンティティや表示項目をフォームから設定できます。YAML を直接書く必要はありません。以下は同じ設定を YAML で表したものです。
+16種類のカードとエンティティバッジはすべてビジュアルエディタに対応しています。ダッシュボードで追加すると、エンティティや表示項目をフォームから設定できます。YAML を直接書く必要はありません。以下は同じ設定を YAML で表したものです。
 
 すべてのカードに共通するオプション:
 
@@ -170,6 +172,19 @@ double_tap_action:
 ```
 
 `more-info` `toggle` `perform-action` `navigate` `url` `assist` `none`を利用でき、各アクションにはHome Assistant標準の`confirmation`も指定できます。スライダー、スイッチ、再生ボタン、シーンタイルなどカード内の独立した操作部を触った場合は、カード全体のアクションを実行しません。
+
+### Entity Badge
+
+```yaml
+type: custom:liquid-glass-entity-badge
+entity: sensor.living_room_temperature
+show_icon: true
+show_name: false
+show_state: true
+color: "#0A84FF"
+```
+
+セクションビューの `badges:` に追加します。`show_name` を有効にすると「リビング室温 · 23.4 °C」のように名前と状態を1つのピルへまとめます。`color` は省略可能です。
 
 ### Light
 

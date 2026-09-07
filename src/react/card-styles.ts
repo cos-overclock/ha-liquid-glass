@@ -162,6 +162,16 @@ export const reactCardStyles = `
     background: var(--badge-color, var(--lg-text-secondary));
     box-shadow: 0 0 6px var(--badge-glow, transparent);
   }
+  .badge .badge-icon {
+    flex: none;
+    display: inline-flex;
+    color: var(--badge-color, var(--lg-text-secondary));
+  }
+  .badge .badge-icon lg-icon {
+    --mdc-icon-size: 16px;
+    width: 16px;
+    height: 16px;
+  }
 
   .chips {
     display: flex;

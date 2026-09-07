@@ -1,4 +1,5 @@
 import "./editor/lg-card-editor";
+import "./badges/entity-badge";
 import "./cards/light-card";
 import "./cards/climate-card";
 import "./cards/switch-card";
@@ -17,6 +18,7 @@ import "./cards/group-card";
 import "./cards/separator-card";
 import { BUTTON_DOMAINS, SELECT_DOMAINS, SLIDER_DOMAINS, SWITCH_DOMAINS } from "./card-constants";
 import type { CustomCardRegistration, HassEntity, HomeAssistant } from "./types";
+import type { CustomBadgeRegistration } from "./types";
 
 export { defineReactCard } from "./react/define-react-card";
 export type {
@@ -41,6 +43,7 @@ export { LiquidGlassSceneCard } from "./cards/scene-card";
 export { LiquidGlassCameraCard } from "./cards/camera-card";
 export { LiquidGlassGroupCard } from "./cards/group-card";
 export { LiquidGlassSeparatorCard } from "./cards/separator-card";
+export { LiquidGlassEntityBadge } from "./badges/entity-badge";
 
 /** Replaced at build time by Vite. */
 declare const __LG_VERSION__: string;
@@ -180,6 +183,14 @@ const cards: CustomCardRegistration[] = [
   },
 ];
 
+const badges: CustomBadgeRegistration[] = [
+  {
+    type: "liquid-glass-entity-badge",
+    name: "Liquid Glass Entity",
+    description: "Entity name and state in a compact glass pill",
+  },
+];
+
 window.customCards = window.customCards ?? [];
 for (const card of cards) {
   const registration = { ...card, preview: true, documentationURL: DOCS };
@@ -188,9 +199,17 @@ for (const card of cards) {
   else window.customCards.push(registration);
 }
 
+window.customBadges = window.customBadges ?? [];
+for (const badge of badges) {
+  const registration = { ...badge, preview: true, documentationURL: DOCS };
+  const existing = window.customBadges.find((candidate) => candidate.type === badge.type);
+  if (existing) Object.assign(existing, registration);
+  else window.customBadges.push(registration);
+}
+
 // The card count makes a stale copy obvious: a build that predates a new card says so here.
 console.info(
-  `%c LIQUID-GLASS-CARDS %c v${VERSION} · ${cards.length} cards · built ${BUILD} `,
+  `%c LIQUID-GLASS-CARDS %c v${VERSION} · ${cards.length} cards · ${badges.length} badge${badges.length === 1 ? "" : "s"} · built ${BUILD} `,
   "color: #1c1c1e; background: linear-gradient(90deg,#ffd36b,#ff8a1f); font-weight: 700; border-radius: 6px 0 0 6px;",
   "color: #fff; background: #1c1c1e; font-weight: 500; border-radius: 0 6px 6px 0;",
 );
