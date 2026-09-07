@@ -1,7 +1,7 @@
 # Liquid Glass Cards for Home Assistant
 
 `pen/design.pen` の Liquid Glass デザインを、Home Assistant のダッシュボードに追加できるカスタムカード群として実装したものです。
-Vite + React + TypeScript で実装し、Home Assistant 向けには単一ファイル `dist/liquid-glass-cards.js` にバンドルされます。バンドルは React ではなく Preact（`preact/compat`）の上で動きます。ソースもテストも React のまま書きますが、ビルド時に差し替わるため配布ファイルが 370 KB（gzip 約 97 KB）に収まります。詳しくは「バンドルサイズ」を参照してください。全カードが React と `@samasante/liquid-glass` で書かれており、Home Assistant へは Custom Element のアダプター（`react/define-react-card.tsx`）を通して公開されます。
+Vite + React + TypeScript で実装し、Home Assistant 向けには単一ファイル `dist/liquid-glass-cards.js` にバンドルされます。バンドルは React ではなく Preact（`preact/compat`）の上で動きます。ソースもテストも React のまま書きますが、ビルド時に差し替わるため配布ファイルが約 401 KB（gzip 約 105 KB）に収まります。詳しくは「バンドルサイズ」を参照してください。全カードが React と `@samasante/liquid-glass` で書かれており、Home Assistant へは Custom Element のアダプター（`react/define-react-card.tsx`）を通して公開されます。
 
 React版カードは屈折対象となる背景レイヤーもReactで所有し、`Glass`の`refract`へ複製して渡します。これにより`backdrop-filter: url()`へ依存せず、Chromium / Safari / Firefoxで共通のSVG `filter: url()`経路を使用します。任意のHA壁紙そのものではなく、カード内の光学背景を屈折する方式です。
 
@@ -84,12 +84,14 @@ OS で「視差効果を減らす」（`prefers-reduced-motion: reduce`）を有
 2. このリポジトリの URL を Category: Dashboard で追加
 3. "Liquid Glass Cards" をインストールし、フロントエンドをリロード
 
+HACSはGitHub Releaseを安定版として追跡します。新しいReleaseが公開されると更新通知が表示され、過去5件のReleaseまたはデフォルトブランチへ切り替えられます。
+
 ### 手動
 
-1. `npm install && npm run build` で `dist/liquid-glass-cards.js` を生成
-2. `config/www/liquid-glass-cards.js` にコピー
+1. [最新のGitHub Release](https://github.com/cos-overclock/ha-liquid-glass/releases/latest)から`liquid-glass-cards.js`をダウンロード
+2. `config/www/liquid-glass-cards.js`へコピー
 3. `www/` を新規に作った場合は Home Assistant を再起動
-4. 設定 → ダッシュボード → リソース で `/local/liquid-glass-cards.js?v=1`（JavaScript モジュール）を追加
+4. 設定 → ダッシュボード → リソース で `/local/liquid-glass-cards.js?v=0.8.0`（JavaScript モジュール）を追加
 
 コピー先を `HA_WWW` に設定しておくと、ビルド後に自動でコピーされます。`npm run watch` でも各ビルド後にコピーされます。
 
@@ -101,23 +103,23 @@ HA_WWW=//homeassistant/config/www npm run build
 
 Home Assistant はリソースを強くキャッシュします。ファイルを置き換えただけでは古いままになることがあります。
 
-1. ファイルをコピーし直す
-2. リソースの URL の `?v=` の値を**前回と違う値**に変える（`?v=1` → `?v=2`）
+1. GitHub Releaseから対象バージョンの `liquid-glass-cards.js` を取得してコピーする
+2. リソースURLの `?v=` をReleaseバージョンへ変更する（`?v=0.8.0` → `?v=0.8.1`）
 3. ブラウザを再読み込みする
 
-`?v=` はキャッシュを捨てるための目印なので、値が前回と変わっていなければ意味がありません。バージョン番号を使う場合は、バージョンが上がっていないと同じ値になる点に注意してください。日時など必ず変わる値のほうが確実です。
+HACS経由ではReleaseバージョンの選択・更新・ロールバックをHACSが管理します。手動インストール時は`?v=`をReleaseタグと揃えることで、導入中の版とキャッシュキーを一致させられます。
 
 読み込まれているビルドはブラウザのコンソールで確認できます。起動時に次のような行が出ます。
 
 ```text
- LIQUID-GLASS-CARDS  v0.6.0 · 16 cards · 1 badge · built 2025-01-01 12:34
+ LIQUID-GLASS-CARDS  v0.8.0 · 19 cards · 1 badge · built 2025-01-01 12:34
 ```
 
 カード枚数とビルド時刻が、コピーしたファイルのものと一致していれば正しく読み込まれています。一致しない場合はまだ古いファイルです。
 
 ## 設定例
 
-16種類のカードとエンティティバッジはすべてビジュアルエディタに対応しています。ダッシュボードで追加すると、エンティティや表示項目をフォームから設定できます。YAML を直接書く必要はありません。以下は同じ設定を YAML で表したものです。
+19種類のカードとエンティティバッジはすべてビジュアルエディタに対応しています。ダッシュボードで追加すると、エンティティや表示項目をフォームから設定できます。YAML を直接書く必要はありません。以下は同じ設定を YAML で表したものです。
 
 すべてのカードに共通するオプション:
 
@@ -556,7 +558,7 @@ Home Assistant はダッシュボードを開くたびにこのファイルを�
 | | 生 | gzip |
 | --- | --- | --- |
 | React | 606 KB | 154 KB |
-| Preact | 370 KB | 97 KB |
+| Preact | 401 KB | 105 KB |
 
 差し替えは `vite.config.ts` の `resolve.alias` 1か所だけで行います。ソースは `react` を import したまま、型も `@types/react` のままで、テストも同じ alias の上で走ります。配布物だけが別のランタイムで動く、という状態にはなりません。
 
@@ -577,7 +579,9 @@ npm run demo      # http://localhost:5173/ でモック hass を使ったデモ�
 デモは `?theme=dark` `?lang=en` `?refraction=on` `?quality=medium` `?width=210` のクエリで表示を切り替えられます。画面上部のスライダーでカード幅を変えられるので、狭い列での見え方を確認できます。
 React版カードを個別に確認する場合は`?focus=separator`、`?focus=lock`、`?focus=slider`、`?focus=select`を使用できます。
 
-GitHub Actions（`.github/workflows/ci.yml`）が push と pull request ごとに `typecheck` / `lint` / `test` / `build` を実行します。`dist/` は HACS がリポジトリからそのまま配信するため、コミット済みのバンドルが `src` から遅れていないかも検査します（ビルド時刻のスタンプだけは差分として無視します）。
+GitHub Actions（`.github/workflows/ci.yml`）が push と pull request ごとに `typecheck` / `lint` / `test` / `build` を実行します。コミット済みの`dist/`が`src`から遅れていないかも検査します（ビルド時刻のスタンプだけは差分として無視します）。
+
+リリース時は`package.json`と`package-lock.json`のバージョンを同時に更新して`main`へマージします。`.github/workflows/release.yml`がソースを再検証・ビルドし、`v<version>`タグとGitHub Releaseを作成して`liquid-glass-cards.js`を添付します。同じバージョンのReleaseが存在する場合は再発行しません。手動でタグを作る必要はありません。
 
 `http://localhost:5173/demo/editor.html` はビジュアルエディタの確認用ページです。`?kind=cover` のようにカード種別を指定できます。Home Assistant の `ha-form` を最小限に再現したシムの上で動くため見た目は簡素ですが、スキーマ・ラベル・書き出される設定・カードへの反映を確認できます。ページ上部の Self test が全カードのエディタを自動で操作して結果を検証します。
 
