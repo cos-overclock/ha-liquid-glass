@@ -234,7 +234,9 @@ accent: "#FF9F0A"
 decimals: 1
 ```
 
-履歴は `history/period` API から取得し 5 分ごとに更新します。
+履歴は WebSocket の `history/stream` で購読します。購読を開くと指定した期間がまとめて届き、以降はレコーダーが新しい値を書き込むたびに差分が push されるため、グラフとトレンドはセンサーに追従して動きます。ポーリングではないので、センサーカードを何枚並べても定期的な HTTP リクエストは発生しません。
+
+`history/stream` を持たない古い Home Assistant や、接続を公開しないホストでは、従来どおり `history/period` を 5 分ごとに取得する動作に自動で戻ります。どちらの経路も、カードが画面外にあるあいだとタブが背面にあるあいだは停止し、戻ってきたときに取り直します。
 
 `value_in_caption: true` にすると、大きな数値をやめて値を説明文の先頭に入れます。残るのは1行だけになるので、スイッチカードと並べたときに高さが揃います。グラフはこの形に収まらないため描画しません。
 
@@ -530,6 +532,8 @@ src/
   index.ts                    カード登録 / customCards への追加
   react/define-react-card.tsx React と HA Custom Element 契約のアダプター
   react/use-card-host.ts      hass / config をホスト属性へ同期する React Hook
+  react/use-entity-history.ts 履歴の購読とポーリングの切り替え
+  history.ts                  履歴の取得・購読・間引き・トレンド
   react/glass-primitives.tsx  ガラス面（Glass ラッパーと光学プリセット）
   react/glass-slider.tsx      Apple 風スライダー（バー＋つまみ）
   react/card-parts.tsx        アイコンウェル / タイトル / バッジなどの共通部品

@@ -39,8 +39,28 @@ export interface EntityNameOptions {
 /** The value a card's `name` option can hold: a plain string, or a composition. */
 export type EntityName = string | EntityNameItem | EntityNameItem[];
 
+/**
+ * The Home Assistant WebSocket connection, as `hass.connection` exposes it.
+ *
+ * Only the subscription entry point is described here: it is the one part the cards use,
+ * and typing the whole `home-assistant-js-websocket` surface would tie the bundle to a
+ * dependency it deliberately does not have.
+ */
+export interface HassConnection {
+  subscribeMessage<T>(
+    callback: (message: T) => void,
+    subscribeMessage: Record<string, unknown>,
+    options?: { resubscribe?: boolean },
+  ): Promise<() => Promise<void>>;
+}
+
 export interface HomeAssistant {
   states: Record<string, HassEntity>;
+  /**
+   * Absent in tests and in any host that does not expose the socket, so every caller
+   * has to keep a path that works without it.
+   */
+  connection?: HassConnection;
   language: string;
   locale?: { language?: string; number_format?: string; time_format?: string };
   themes?: { darkMode?: boolean };
