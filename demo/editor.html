@@ -150,7 +150,7 @@
             Object.assign(input, { min: sel.number.min, max: sel.number.max, step: sel.number.step });
             input.value = value ?? "";
             input.onchange = () => this.emit(item.name, input.value === "" ? undefined : Number(input.value));
-          } else if (sel.object) {
+          } else if (sel.object || sel.ui_action) {
             input = document.createElement("textarea");
             input.value = value === undefined ? "" : JSON.stringify(value, null, 2);
             input.onchange = () => {

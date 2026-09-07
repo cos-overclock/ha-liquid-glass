@@ -49,6 +49,29 @@ describe("schemaFor", () => {
     }
   });
 
+  it("offers Home Assistant actions on every card", () => {
+    for (const type of CARD_TYPES) {
+      const schema = schemaFor(type, t);
+      const names = fieldNames(schema);
+      for (const field of ["tap_action", "hold_action", "double_tap_action"]) {
+        expect(names.has(field), `${type} is missing ${field}`).toBe(true);
+      }
+
+      const fields: FormSchema[] = [];
+      const walk = (items: FormSchema[]): void => {
+        for (const item of items) {
+          if (item.schema) walk(item.schema);
+          else fields.push(item);
+        }
+      };
+      walk(schema);
+      for (const field of fields.filter((item) => item.name.endsWith("_action"))) {
+        expect(field.selector).toHaveProperty("ui_action");
+        expect(field.context).toEqual({ entity_id: "entity" });
+      }
+    }
+  });
+
   it("asks entity cards for an entity, and container cards for none", () => {
     for (const type of CARD_TYPES) {
       const names = fieldNames(schemaFor(type, t));

@@ -30,6 +30,16 @@ const createConfigElement = async (): Promise<HTMLElement> => {
   return document.createElement("liquid-glass-card-editor");
 };
 
+const cardActionStyles = `
+  :host([card-action]) .card,
+  :host([card-action]) .panel,
+  :host([card-action]) .separator { cursor: pointer; }
+  [data-lg-action-focus]:focus-visible {
+    outline: 2px solid var(--lg-cool-deep);
+    outline-offset: 2px;
+  }
+`;
+
 /**
  * Puts the card's CSS on its shadow root.
  *
@@ -46,12 +56,42 @@ function CardStyles({ host, parts }: { host: HTMLElement; parts: readonly string
   return createElement("style", null, parts.join(""));
 }
 
+/** Add one keyboard target only when a card does not already expose its header as one. */
+function CardActionAccessibility({
+  host,
+  hasAction,
+  tapAccessible,
+}: {
+  host: HTMLElement;
+  hasAction: boolean;
+  tapAccessible: boolean;
+}): null {
+  useLayoutEffect(() => {
+    host.toggleAttribute("card-action", hasAction);
+    const previous = host.shadowRoot?.querySelector<HTMLElement>("[data-lg-action-focus]");
+    previous?.removeAttribute("data-lg-action-focus");
+    previous?.removeAttribute("role");
+    previous?.removeAttribute("tabindex");
+    if (!tapAccessible) return;
+
+    const surface = host.shadowRoot?.querySelector<HTMLElement>(".card, .panel, .separator");
+    if (!surface || surface.matches("[tabindex]") || surface.querySelector(".title[tabindex]")) return;
+    surface.setAttribute("data-lg-action-focus", "");
+    surface.setAttribute("role", "button");
+    surface.tabIndex = 0;
+  }, [host, hasAction, tapAccessible]);
+  return null;
+}
+
+const isConfiguredAction = (action: BaseCardConfig["tap_action"]): boolean =>
+  action?.action !== undefined && action.action !== "none";
+
 /** Register one of this package's cards with its shared config defaults and editor. */
 export function defineLiquidGlassCard<C extends BaseCardConfig>(
   definition: LiquidGlassCardDefinition<C>,
 ): ReactCardConstructor<C> {
   const CardComponent = definition.component;
-  const styleParts = definition.styles;
+  const styleParts = [...definition.styles, cardActionStyles];
   return defineReactCard({
     ...definition,
     component: (props) => createElement(
@@ -59,6 +99,13 @@ export function defineLiquidGlassCard<C extends BaseCardConfig>(
       { value: resolveRefractionQuality(props.config.refraction_quality) },
       createElement(CardStyles, { host: props.host, parts: styleParts }),
       createElement(CardComponent, props),
+      createElement(CardActionAccessibility, {
+        host: props.host,
+        hasAction: isConfiguredAction(props.config.tap_action)
+          || isConfiguredAction(props.config.hold_action)
+          || isConfiguredAction(props.config.double_tap_action),
+        tapAccessible: isConfiguredAction(props.config.tap_action),
+      }),
     ),
     normalizeConfig: (config) => ({
       refraction: "auto",
