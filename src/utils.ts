@@ -1,4 +1,4 @@
-import type { HassEntity, HomeAssistant } from "./types";
+import type { EntityName, EntityNameItem, HassEntity, HomeAssistant } from "./types";
 
 export const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 
@@ -10,8 +10,69 @@ export function moreInfo(node: HTMLElement, entityId: string | undefined): void 
   if (entityId) fireEvent(node, "hass-more-info", { entityId });
 }
 
-export function friendlyName(entity: HassEntity | undefined, fallback: string): string {
+/** The name Home Assistant puts in the state object; the last resort behind `entityName`. */
+function friendlyName(entity: HassEntity | undefined, fallback: string): string {
   return entity?.attributes.friendly_name ?? fallback;
+}
+
+/** A composition of nothing but literal text still reads correctly without the registries. */
+function literalName(name: EntityName | undefined): string | undefined {
+  if (typeof name === "string") return name;
+  const items: EntityNameItem[] = name === undefined ? [] : Array.isArray(name) ? name : [name];
+  if (items.length === 0 || !items.every((item) => item.type === "text")) return undefined;
+  return items.map((item) => (item.type === "text" ? item.text : "")).join(" ");
+}
+
+/**
+ * The title a card shows, composed the way Home Assistant composes its own.
+ *
+ * `hass.formatEntityName` (2026.4 and newer) turns the `entity_name` selector's parts —
+ * floor, area, device, entity — into the registry names the user actually sees elsewhere,
+ * translated and kept in sync with renames. Older cores have no registry access from a
+ * card, so a plain string is used as typed and anything else falls back to `friendly_name`,
+ * which is what `formatEntityName` itself returns when given no composition.
+ */
+export function entityName(
+  hass: HomeAssistant | undefined,
+  entity: HassEntity | undefined,
+  name: EntityName | undefined,
+  fallback: string,
+): string {
+  if (entity && hass?.formatEntityName) {
+    // A card must not go blank because a helper it does not own threw.
+    try {
+      const formatted = hass.formatEntityName(entity, name);
+      if (formatted?.trim()) return formatted;
+    } catch {
+      /* falls through to the friendly name below */
+    }
+  }
+  return literalName(name) ?? friendlyName(entity, fallback);
+}
+
+/**
+ * Home Assistant's own translation of a state, with the card's dictionary as the fallback.
+ *
+ * `hass.formatEntityState` (2026.4 and newer) already knows the device-class wording a
+ * binary sensor uses, the translated options of a `select`, and every language Home
+ * Assistant ships, so it beats the two languages the cards carry themselves. Passing
+ * `state` formats that value instead of the current one, which is how an option list is
+ * labelled. The fallback keeps older cores, and the demo page, reading the same as before.
+ */
+export function entityStateText(
+  hass: HomeAssistant | undefined,
+  entity: HassEntity | undefined,
+  fallback: string,
+  state?: string,
+): string {
+  if (!entity) return fallback;
+  try {
+    const formatted = hass?.formatEntityState?.(entity, state);
+    if (formatted?.trim()) return formatted;
+  } catch {
+    /* falls through to the card's own wording */
+  }
+  return fallback;
 }
 
 export function formatNumber(hass: HomeAssistant | undefined, value: number, digits?: number): string {

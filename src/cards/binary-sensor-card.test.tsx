@@ -80,6 +80,37 @@ describe("liquid-glass-binary-sensor-card", () => {
     expect(root.querySelector(".icon-well")?.classList.contains("idle")).toBe(true);
   });
 
+  /*
+   * Home Assistant already words every device class in every language it ships, and the
+   * badge is the slot that carries the plain state, so it defers. The line under the name
+   * keeps the card's own longer phrasing, which would otherwise read as a duplicate.
+   */
+  it("lets Home Assistant word the badge and keeps its own state line", async () => {
+    const target = entity("on", { friendly_name: "玄関ドア", device_class: "door" });
+    const element = document.createElement("liquid-glass-binary-sensor-card") as CardElement;
+    element.setConfig({ type: "custom:liquid-glass-binary-sensor-card", entity: target.entity_id });
+    const hass = createHass(target);
+    hass.formatEntityState = () => "開放";
+    element.hass = hass;
+    await act(async () => document.body.append(element));
+    const root = element.shadowRoot!;
+
+    expect(root.querySelector(".badge")?.textContent).toContain("開放");
+    expect(root.querySelector(".state")?.textContent).toContain("開いています");
+  });
+
+  it("keeps a configured label ahead of Home Assistant's wording", async () => {
+    const target = entity("on", { friendly_name: "玄関ドア", device_class: "door" });
+    const element = document.createElement("liquid-glass-binary-sensor-card") as CardElement;
+    element.setConfig({ type: "custom:liquid-glass-binary-sensor-card", entity: target.entity_id, label_on: "来客" });
+    const hass = createHass(target);
+    hass.formatEntityState = () => "開放";
+    element.hass = hass;
+    await act(async () => document.body.append(element));
+
+    expect(element.shadowRoot?.querySelector(".badge")?.textContent).toContain("来客");
+  });
+
   it("shows the unavailable header when the entity has no state", async () => {
     const element = await mount(entity("unavailable", { friendly_name: "玄関ドア" }));
     const root = element.shadowRoot!;

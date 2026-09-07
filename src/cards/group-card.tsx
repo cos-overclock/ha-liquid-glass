@@ -8,7 +8,7 @@ import { Icon } from "../react/glass-primitives";
 import { useCardHost } from "../react/use-card-host";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HassEntity, HomeAssistant, LovelaceCard, LovelaceCardConfig } from "../types";
-import { isUnavailable } from "../utils";
+import { entityStateText, isUnavailable } from "../utils";
 
 export interface GroupCardConfig extends BaseCardConfig {
   title?: string;
@@ -260,51 +260,65 @@ function defaultIcon(entity: HassEntity | undefined, domain: string): string {
   return DOMAIN_ICONS[domain] ?? "mdi:card-outline";
 }
 
-/** One short "what is this doing right now" phrase per domain, for the collapsed chips. */
-function describe(entity: HassEntity, domain: string, t: Translator): { label: string; tone: Tone } {
+/**
+ * One short "what is this doing right now" phrase per domain, for the collapsed chips.
+ *
+ * Every chip that is nothing but a state word borrows Home Assistant's own wording, so a
+ * chip reads the same as the card it summarises and the same as the more-info dialog. The
+ * chips that mix in a number — a dimmer's percentage, a thermostat's target — keep their
+ * own shape and only translate the word.
+ */
+function describe(
+  entity: HassEntity,
+  domain: string,
+  t: Translator,
+  hass?: HomeAssistant,
+): { label: string; tone: Tone } {
   const state = entity.state;
   const on = state === "on";
+  const word = (fallback: string, forState?: string) => entityStateText(hass, entity, fallback, forState);
   switch (domain) {
     case "light": {
-      if (!on) return { label: t("unlit"), tone: "off" };
+      if (!on) return { label: word(t("unlit")), tone: "off" };
       const brightness = entity.attributes.brightness as number | undefined;
-      return { label: brightness ? `${Math.round((brightness / 255) * 100)}%` : t("lit"), tone: "warm" };
+      return { label: brightness ? `${Math.round((brightness / 255) * 100)}%` : word(t("lit")), tone: "warm" };
     }
     case "switch":
     case "input_boolean":
     case "fan":
     case "automation":
     case "siren":
-      return on ? { label: t("on"), tone: "info" } : { label: t("off"), tone: "off" };
+      return on ? { label: word(t("on")), tone: "info" } : { label: word(t("off")), tone: "off" };
     case "lock":
-      if (state === "jammed") return { label: t("jammed"), tone: "warm" };
-      return state === "locked" ? { label: t("locked"), tone: "good" } : { label: t("unlocked"), tone: "warm" };
+      if (state === "jammed") return { label: word(t("jammed")), tone: "warm" };
+      return state === "locked" ? { label: word(t("locked")), tone: "good" } : { label: word(t("unlocked")), tone: "warm" };
     case "cover": {
-      if (state === "closed") return { label: t("closed"), tone: "off" };
+      if (state === "closed") return { label: word(t("closed")), tone: "off" };
       const position = entity.attributes.current_position as number | undefined;
-      return { label: position === undefined ? t("open") : `${t("open")} ${Math.round(position)}%`, tone: "info" };
+      const open = word(t("open"), "open");
+      return { label: position === undefined ? open : `${open} ${Math.round(position)}%`, tone: "info" };
     }
     case "climate": {
-      if (state === "off") return { label: t("mode_off"), tone: "off" };
+      if (state === "off") return { label: word(t("mode_off")), tone: "off" };
       const target = entity.attributes.temperature as number | undefined;
-      return { label: target === undefined ? t(`mode_${state}`) : `${target}°`, tone: "warm" };
+      return { label: target === undefined ? word(t(`mode_${state}`)) : `${target}°`, tone: "warm" };
     }
     case "binary_sensor": {
       const deviceClass = entity.attributes.device_class;
       const labels = (deviceClass && BINARY_LABELS[deviceClass]) ?? ["on", "off"];
-      return on ? { label: t(labels[0]), tone: "warm" } : { label: t(labels[1]), tone: "off" };
+      return on ? { label: word(t(labels[0])), tone: "warm" } : { label: word(t(labels[1])), tone: "off" };
     }
     case "media_player": {
-      if (state === "playing") return { label: t("playing"), tone: "info" };
-      if (state === "paused") return { label: t("paused"), tone: "off" };
-      return { label: t("standby"), tone: "off" };
+      if (state === "playing") return { label: word(t("playing")), tone: "info" };
+      if (state === "paused") return { label: word(t("paused")), tone: "off" };
+      return { label: word(t("standby")), tone: "off" };
     }
     case "sensor": {
       const unit = (entity.attributes.unit_of_measurement) ?? "";
-      return { label: `${state}${unit}`, tone: "off" };
+      return { label: word(`${state}${unit}`), tone: "off" };
     }
     default:
-      return on ? { label: t("on"), tone: "info" } : { label: state, tone: "off" };
+      return on ? { label: word(t("on")), tone: "info" } : { label: word(state), tone: "off" };
   }
 }
 
@@ -389,7 +403,7 @@ function GroupCard({ config, hass, host }: ReactCardProps<GroupCardConfig>) {
         ?? (entity?.attributes.icon)
         ?? defaultIcon(entity, domain);
       if (isUnavailable(entity)) return { icon, label: t("unavailable"), tone: "off" };
-      return { icon, ...describe(entity as HassEntity, domain, t) };
+      return { icon, ...describe(entity as HassEntity, domain, t, hass) };
     })
     .filter((item): item is SummaryItem => Boolean(item));
 

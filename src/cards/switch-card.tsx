@@ -9,7 +9,7 @@ import { glassSurfaceStyles, LiquidGlassSurface } from "../react/glass-primitive
 import { useCardHost } from "../react/use-card-host";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HomeAssistant } from "../types";
-import { formatNumber, friendlyName, isUnavailable, moreInfo, pickEntity } from "../utils";
+import { entityName, entityStateText, formatNumber, isUnavailable, moreInfo, pickEntity } from "../utils";
 
 export interface SwitchCardConfig extends BaseCardConfig {
   /** Optional power sensor shown in the state line while on. */
@@ -93,7 +93,7 @@ function SwitchCard({ config, hass, host }: ReactCardProps<SwitchCardConfig>) {
   const { refraction } = useCardHost(host, config, hass);
   const t = createTranslator(config.language ?? hass?.locale?.language ?? hass?.language);
   const entity = config.entity ? hass?.states[config.entity] : undefined;
-  const name = config.name ?? friendlyName(entity, config.entity ?? "");
+  const name = entityName(hass, entity, config.name, config.entity ?? "");
   const holdTimer = useRef<number | undefined>(undefined);
   const holdOrigin = useRef<{ x: number; y: number } | undefined>(undefined);
   const heldOpen = useRef(false);
@@ -181,11 +181,14 @@ function SwitchCard({ config, hass, host }: ReactCardProps<SwitchCardConfig>) {
 
   const power = config.power_entity ? hass?.states[config.power_entity] : undefined;
   const since = relativeTime(entity.last_changed, t);
+  // Home Assistant words a fan's or a siren's state its own way; the card's own On / Off
+  // is only the fallback.
+  const word = entityStateText(hass, entity, on ? t("on") : t("off"));
   const state = !on
-    ? `${t("off")} · ${t("last_on")} ${since}`
+    ? `${word} · ${t("last_on")} ${since}`
     : power && !isUnavailable(power)
-      ? `${t("on")} · ${t("power")} ${formatNumber(hass, Number(power.state), 0)} ${power.attributes.unit_of_measurement ?? "W"}`
-      : `${t("on")} · ${t("since", { t: since })}`;
+      ? `${word} · ${t("power")} ${formatNumber(hass, Number(power.state), 0)} ${power.attributes.unit_of_measurement ?? "W"}`
+      : `${word} · ${t("since", { t: since })}`;
 
   return <>
     <LiquidGlassSurface

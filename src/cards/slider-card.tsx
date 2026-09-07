@@ -9,7 +9,7 @@ import { reactCardStyles } from "../react/card-styles";
 import { useCardHost } from "../react/use-card-host";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HassEntity, HomeAssistant } from "../types";
-import { clamp, darken, formatNumber, friendlyName, isUnavailable, lighten, moreInfo, pickEntity, withAlpha } from "../utils";
+import { clamp, darken, entityName, formatNumber, isUnavailable, lighten, moreInfo, pickEntity, withAlpha } from "../utils";
 
 export interface SliderCardConfig extends BaseCardConfig {
   min?: number;
@@ -231,7 +231,7 @@ function SliderCard({ config, hass, host }: ReactCardProps<SliderCardConfig>) {
   }, [isSettled, pending]);
 
   if (!entity || isUnavailable(entity) || !spec) {
-    const name = config.name ?? friendlyName(entity, config.entity ?? "");
+    const name = entityName(hass, entity, config.name, config.entity ?? "");
     return <>
       <LiquidGlassSurface
         className="card"
@@ -315,7 +315,7 @@ function SliderCard({ config, hass, host }: ReactCardProps<SliderCardConfig>) {
           <Icon icon={spec.icon} />
         </div>
         <div className="title" onClick={() => moreInfo(host, config.entity)}>
-          <div className="name">{config.name ?? friendlyName(entity, config.entity ?? "")}</div>
+          <div className="name">{entityName(hass, entity, config.name, config.entity ?? "")}</div>
           <div className="state">{subtitle}</div>
         </div>
         <div className={`value${zero ? " zero" : ""}`}>
@@ -335,7 +335,7 @@ function SliderCard({ config, hass, host }: ReactCardProps<SliderCardConfig>) {
           scheme={isDark ? "dark" : "light"}
           showFill={!zero}
           ticks={tickCount}
-          label={config.name ?? friendlyName(entity, config.entity ?? "")}
+          label={entityName(hass, entity, config.name, config.entity ?? "")}
           onInput={setPreview}
           onChange={commit}
         />

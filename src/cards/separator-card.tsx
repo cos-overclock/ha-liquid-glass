@@ -5,6 +5,7 @@ import { glassSurfaceStyles, Icon, LiquidGlassSurface } from "../react/glass-pri
 import { useCardHost } from "../react/use-card-host";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig } from "../types";
+import { entityName } from "../utils";
 
 export type SeparatorStyle = "plain" | "pill" | "header";
 
@@ -196,7 +197,8 @@ function SeparatorCard({ config, hass, host }: ReactCardProps<SeparatorCardConfi
   const { refraction } = useCardHost(host, config, hass);
   const language = config.language ?? hass?.locale?.language ?? hass?.language;
   const t = createTranslator(language);
-  const heading = config.title ?? config.name ?? t("sep_title");
+  // A separator has no entity of its own, so a composed name can only be its literal text.
+  const heading = config.title ?? entityName(hass, undefined, config.name, t("sep_title"));
   const icon = config.icon ?? "mdi:lightbulb-outline";
   const hasCount = config.count !== undefined && config.count !== null && config.count !== "";
 

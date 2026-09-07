@@ -19,6 +19,26 @@ export interface HassEntity {
 /** Rendering quality used while refraction is enabled. */
 export type RefractionQuality = "medium" | "high";
 
+/**
+ * One part of a composed entity name, as Home Assistant's `entity_name` selector writes it.
+ *
+ * `entity` / `device` / `area` / `floor` are looked up in the registries, so the card shows
+ * whatever the user renamed them to, in their own language. `text` is a literal separator
+ * or prefix typed into the selector.
+ */
+export type EntityNameItem =
+  | { type: "entity" | "device" | "area" | "floor" }
+  | { type: "text"; text: string };
+
+/** Options accepted by `hass.formatEntityName`. */
+export interface EntityNameOptions {
+  /** Inserted between the parts. Home Assistant defaults to a single space. */
+  separator?: string;
+}
+
+/** The value a card's `name` option can hold: a plain string, or a composition. */
+export type EntityName = string | EntityNameItem | EntityNameItem[];
+
 export interface HomeAssistant {
   states: Record<string, HassEntity>;
   language: string;
@@ -37,7 +57,18 @@ export interface HomeAssistant {
     returnResponse?: boolean,
   ): Promise<{ response?: unknown } | undefined>;
   callApi<T>(method: string, path: string, params?: Record<string, unknown>): Promise<T>;
-  formatEntityState?(entity: HassEntity): string;
+  /**
+   * Home Assistant's own translation of a state, including the device-class wording
+   * (`Detected` / `Clear`) and the translated options of a `select`. Added in 2026.4, so
+   * the cards keep their built-in dictionary as the fallback.
+   */
+  formatEntityState?(entity: HassEntity, state?: string): string;
+  /**
+   * Composes a display name out of the registry: area, device and entity, exactly as the
+   * built-in cards do. Added in Home Assistant 2026.4; without it a card falls back to
+   * `friendly_name`. See https://developers.home-assistant.io/docs/frontend/data/
+   */
+  formatEntityName?(entity: HassEntity, name?: EntityName, options?: EntityNameOptions): string;
 }
 
 /** Confirmation options accepted by Home Assistant's dashboard action handler. */
@@ -84,7 +115,8 @@ export interface ActionConfig {
 export interface BaseCardConfig {
   type: string;
   entity?: string;
-  name?: string;
+  /** Free text, or registry parts composed by Home Assistant's `entity_name` selector. */
+  name?: EntityName;
   icon?: string;
   /** "auto" | true | false: auto disables costly refraction in embedded WebViews. */
   refraction?: "auto" | boolean;

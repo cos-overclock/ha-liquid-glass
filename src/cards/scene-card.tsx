@@ -8,7 +8,7 @@ import { glassSurfaceStyles, Icon, LiquidGlassSurface } from "../react/glass-pri
 import { useCardHost } from "../react/use-card-host";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HomeAssistant } from "../types";
-import { callConfiguredService, clamp, friendlyName, withAlpha } from "../utils";
+import { callConfiguredService, clamp, entityName, withAlpha } from "../utils";
 import { BUTTON_ACTIONS, WELLS, wellFor } from "./button-card";
 
 export interface SceneItem {
@@ -205,14 +205,14 @@ function SceneCard({ config, hass, host }: ReactCardProps<SceneCardConfig>) {
         refraction={refraction}
         variant={config.glass_variant}
         icon={config.icon}
-        name={config.title ?? config.name ?? ""}
+        name={config.title ?? entityName(hass, undefined, config.name, "")}
         label={t("unavailable")}
       />
     </>;
   }
 
   const label = (item: SceneItem): string =>
-    item.name ?? friendlyName(item.entity ? hass?.states[item.entity] : undefined, item.entity ?? "");
+    entityName(hass, item.entity ? hass?.states[item.entity] : undefined, item.name, item.entity ?? "");
 
   const iconFor = (item: SceneItem): string => {
     if (item.icon) return item.icon;

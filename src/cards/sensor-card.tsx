@@ -9,7 +9,7 @@ import { useCardHost } from "../react/use-card-host";
 import { useVisibleTick } from "../react/use-visible-tick";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HassEntity, HomeAssistant } from "../types";
-import { formatNumber, friendlyName, isUnavailable, lighten, moreInfo, pickEntity, withAlpha } from "../utils";
+import { entityName, entityStateText, formatNumber, isUnavailable, lighten, moreInfo, pickEntity, withAlpha } from "../utils";
 
 export interface SensorCardConfig extends BaseCardConfig {
   /**
@@ -278,8 +278,10 @@ function subtitleFor(
   parts.push(t("updated_ago", { t: relativeTime(entity.last_updated, t) }));
   const secondary = config.secondary_entity ? hass?.states[config.secondary_entity] : undefined;
   if (secondary && !isUnavailable(secondary)) {
-    const label = config.secondary_label ?? secondary.attributes.friendly_name ?? "";
-    parts.push(`${label} ${secondary.state}${secondary.attributes.unit_of_measurement ?? ""}`.trim());
+    const label = entityName(hass, secondary, config.secondary_label, "");
+    // Home Assistant's reading already carries the unit and the user's number format.
+    const reading = entityStateText(hass, secondary, `${secondary.state}${secondary.attributes.unit_of_measurement ?? ""}`);
+    parts.push(`${label} ${reading}`.trim());
   }
   return parts.join(" · ");
 }
@@ -291,7 +293,7 @@ function SensorCard({ config, hass, host }: ReactCardProps<SensorCardConfig>) {
   const [points, setPoints] = useState<Point[]>([]);
   const [historyTrend, setHistoryTrend] = useState<number>();
   const entity = config.entity ? hass?.states[config.entity] : undefined;
-  const name = config.name ?? friendlyName(entity, config.entity ?? "");
+  const name = entityName(hass, entity, config.name, config.entity ?? "");
   const hours = config.hours_to_show ?? 24;
   const valueInCaption = config.value_in_caption === true;
   /** A caption reading leaves a single row, which has nowhere to put a graph. */
@@ -352,7 +354,8 @@ function SensorCard({ config, hass, host }: ReactCardProps<SensorCardConfig>) {
   const up = (trend ?? 0) >= 0;
   // Symbols read fine inside the badge; a word like "objects" would blow it out.
   const trendUnit = unit === "°C" || unit === "°F" ? "°" : unit.length <= 3 ? unit : "";
-  const formatted = numeric ? formatNumber(hass, value, decimals) : entity.state;
+  // A non-numeric sensor holds an enum such as `charging`, which Home Assistant translates.
+  const formatted = numeric ? formatNumber(hass, value, decimals) : entityStateText(hass, entity, entity.state);
   const caption = subtitleFor(entity, config, hass, valueInCaption ? withUnit(formatted, unit) : undefined, t);
   const open = () => moreInfo(host, config.entity);
 

@@ -133,6 +133,36 @@ describe("liquid-glass-select-card", () => {
     expect(element.shadowRoot?.querySelector(".state")?.textContent).toBe("Day");
   });
 
+  /*
+   * The options an integration exposes are ids such as `eco_mode`. Home Assistant holds
+   * the translation for each one, so the card must ask rather than print the id.
+   */
+  it("labels the options and the current value with Home Assistant's translations", async () => {
+    const target = entity("select", "eco_mode", ["eco_mode", "turbo_mode"]);
+    const { element } = mount(target);
+    const words: Record<string, string> = { eco_mode: "エコ", turbo_mode: "ターボ" };
+    const hass = element.hass as HomeAssistant;
+    hass.formatEntityState = (stateObj, state) => words[state ?? stateObj.state] ?? "";
+    hass.formatEntityName = () => "リビング 運転モード";
+
+    await act(async () => document.body.append(element));
+
+    const buttons = element.shadowRoot?.querySelectorAll<HTMLButtonElement>(".lg-glass-segmented > button");
+    expect([...(buttons ?? [])].map((button) => button.textContent)).toEqual(["エコ", "ターボ"]);
+    expect(element.shadowRoot?.querySelector(".state")?.textContent).toBe("エコ");
+    expect(element.shadowRoot?.querySelector(".name")?.textContent).toBe("リビング 運転モード");
+  });
+
+  /* A composed name is only ever written by Home Assistant, never rendered as an object. */
+  it("shows the friendly name when the core cannot compose one", async () => {
+    const target = entity("select", "Auto", ["Auto", "Silent"]);
+    const { element } = mount(target, { name: [{ type: "area" }, { type: "entity" }] });
+
+    await act(async () => document.body.append(element));
+
+    expect(element.shadowRoot?.querySelector(".name")?.textContent).toBe("Operation mode");
+  });
+
   it("shows a clear empty state when the entity exposes no options", async () => {
     const target = entity("select", "unknown value", []);
     const { element } = mount(target);

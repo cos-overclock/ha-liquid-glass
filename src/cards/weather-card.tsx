@@ -9,7 +9,7 @@ import { useCardHost } from "../react/use-card-host";
 import { useVisibleTick } from "../react/use-visible-tick";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HomeAssistant } from "../types";
-import { clamp, formatNumber, friendlyName, isUnavailable, moreInfo, pickEntity, withAlpha } from "../utils";
+import { clamp, entityName, entityStateText, formatNumber, isUnavailable, moreInfo, pickEntity, withAlpha } from "../utils";
 
 export interface WeatherCardConfig extends BaseCardConfig {
   /**
@@ -434,7 +434,7 @@ function WeatherCard({ config, hass, host }: ReactCardProps<WeatherCardConfig>) 
   const [daily, setDaily] = useState<Forecast[]>([]);
   const [hourly, setHourly] = useState<Forecast[]>([]);
   const entity = config.entity ? hass?.states[config.entity] : undefined;
-  const name = config.name ?? friendlyName(entity, config.entity ?? "");
+  const name = entityName(hass, entity, config.name, config.entity ?? "");
   const isRow = config.layout === "row";
   const open = () => moreInfo(host, config.entity);
   const canFetch = Boolean(hass && config.entity);
@@ -493,7 +493,13 @@ function WeatherCard({ config, hass, host }: ReactCardProps<WeatherCardConfig>) 
     const found = CONDITIONS[condition ?? ""] ?? FALLBACK;
     return isNight && found.night ? { ...found, icon: found.night, color: "#9AB6FF" } : found;
   };
-  const conditionLabel = (condition: string | undefined): string => (condition ? t(`wx_${condition}`) : "");
+  /*
+   * A weather entity's state is its condition, so Home Assistant's own wording covers
+   * every language it ships and stays in step with the more-info dialog. Forecast rows
+   * pass their own condition, which is formatted against the same entity.
+   */
+  const conditionLabel = (condition: string | undefined): string =>
+    (condition ? entityStateText(hass, entity, t(`wx_${condition}`), condition) : "");
   const temp = (value: number | undefined): string =>
     value === undefined ? "–" : `${formatNumber(hass, value, 0)}°`;
   const dateLabel = (iso: string, options: Intl.DateTimeFormatOptions): string => {

@@ -9,7 +9,7 @@ import { glassSurfaceStyles, Icon, LiquidGlassSurface } from "../react/glass-pri
 import { useCardHost } from "../react/use-card-host";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HassEntity, HomeAssistant } from "../types";
-import { callConfiguredService, friendlyName, isUnavailable, lighten, moreInfo, pickEntity, withAlpha } from "../utils";
+import { callConfiguredService, entityName, isUnavailable, lighten, moreInfo, pickEntity, withAlpha } from "../utils";
 
 export interface ButtonCardConfig extends BaseCardConfig {
   /** "domain.service" to call instead of the domain's usual activation. */
@@ -124,7 +124,7 @@ function ButtonCard({ config, hass, host }: ReactCardProps<ButtonCardConfig>) {
   const [justRan, setJustRan] = useState(false);
   const doneTimer = useRef<number | undefined>(undefined);
   const entity = config.entity ? hass?.states[config.entity] : undefined;
-  const name = config.name ?? friendlyName(entity, config.entity ?? "");
+  const name = entityName(hass, entity, config.name, config.entity ?? "");
 
   useEffect(() => () => window.clearTimeout(doneTimer.current), []);
 

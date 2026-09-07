@@ -8,7 +8,7 @@ import { reactCardStyles } from "../react/card-styles";
 import { useCardHost } from "../react/use-card-host";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HassEntity, HomeAssistant } from "../types";
-import { friendlyName, isUnavailable, moreInfo, pickEntity } from "../utils";
+import { entityName, entityStateText, isUnavailable, moreInfo, pickEntity } from "../utils";
 
 export interface LockActionButton {
   name: string;
@@ -140,8 +140,20 @@ const ownStyles = `
   }
 `;
 
-function visualFor(entity: HassEntity, locked: boolean, jammed: boolean, t: Translator): LockVisual {
+/**
+ * `hass` is threaded in so the badge can borrow Home Assistant's own word for the lock —
+ * Locked, Unlocking, Jammed — instead of the card's two languages. The state line below
+ * the name keeps the card's longer phrasing, which reads differently from the badge.
+ */
+function visualFor(
+  hass: HomeAssistant | undefined,
+  entity: HassEntity,
+  locked: boolean,
+  jammed: boolean,
+  t: Translator,
+): LockVisual {
   const rel = relativeTime(entity.last_changed, t);
+  const word = (fallback: string) => entityStateText(hass, entity, fallback);
   if (jammed) {
     return {
       icon: "mdi:alert",
@@ -152,7 +164,7 @@ function visualFor(entity: HassEntity, locked: boolean, jammed: boolean, t: Tran
         stroke: "rgba(230,168,0,0.3)",
         glow: "var(--lg-warn)",
       },
-      badgeLabel: t("jammed"),
+      badgeLabel: word(t("jammed")),
       thumbColor: "var(--lg-warn)",
       hint: t("cannot_operate"),
       state: t("jammed_state"),
@@ -167,7 +179,7 @@ function visualFor(entity: HassEntity, locked: boolean, jammed: boolean, t: Tran
         background: "rgba(30,158,74,0.18)",
         stroke: "rgba(30,158,74,0.3)",
       },
-      badgeLabel: t("locked"),
+      badgeLabel: word(t("locked")),
       thumbColor: "var(--lg-lock-locked)",
       hint: t("slide_to_unlock"),
       state: entity.state === "locking"
@@ -183,7 +195,7 @@ function visualFor(entity: HassEntity, locked: boolean, jammed: boolean, t: Tran
       background: "rgba(255,59,48,0.18)",
       stroke: "rgba(255,59,48,0.3)",
     },
-    badgeLabel: t("unlocked"),
+    badgeLabel: word(t("unlocked")),
     thumbColor: "var(--lg-lock-unlocked)",
     hint: t("slide_to_lock"),
     state: entity.state === "unlocking" ? t("unlocking") : `${t("is_unlocked")} · ${rel}`,
@@ -209,7 +221,7 @@ function LockCard({ config, hass, host }: ReactCardProps<LockCardConfig>) {
   }, [lockState, pending]);
 
   if (!entity || isUnavailable(entity)) {
-    const name = config.name ?? friendlyName(entity, config.entity ?? "");
+    const name = entityName(hass, entity, config.name, config.entity ?? "");
     return <>
       <LiquidGlassSurface
         className="card"
@@ -234,7 +246,7 @@ function LockCard({ config, hass, host }: ReactCardProps<LockCardConfig>) {
   const locked = entity.state === "locked" || entity.state === "locking";
   const jammed = entity.state === "jammed";
   const busy = pending !== undefined || entity.state === "locking" || entity.state === "unlocking";
-  const visual = visualFor(entity, locked, jammed, t);
+  const visual = visualFor(hass, entity, locked, jammed, t);
 
   const trigger = (service: "lock" | "unlock") => {
     if (!hass || !config.entity) return;
@@ -282,7 +294,7 @@ function LockCard({ config, hass, host }: ReactCardProps<LockCardConfig>) {
           <Icon icon={config.icon ?? visual.icon} />
         </div>
         <div className="title" onClick={() => moreInfo(host, config.entity)}>
-          <div className="name">{config.name ?? friendlyName(entity, config.entity ?? "")}</div>
+          <div className="name">{entityName(hass, entity, config.name, config.entity ?? "")}</div>
           <div className="state">{visual.state}</div>
         </div>
         <div

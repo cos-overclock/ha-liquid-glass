@@ -18,8 +18,8 @@ import { animateGlass, holdWobble } from "../react/reduced-motion";
 import { useCardHost } from "../react/use-card-host";
 import { useOptimisticRecord } from "../react/use-optimistic-value";
 import { tokens } from "../styles/tokens";
-import type { BaseCardConfig, HomeAssistant } from "../types";
-import { clamp, formatNumber, friendlyName, isUnavailable, moreInfo, pickEntity } from "../utils";
+import type { BaseCardConfig, HassEntity, HomeAssistant } from "../types";
+import { clamp, entityName, entityStateText, formatNumber, isUnavailable, moreInfo, pickEntity } from "../utils";
 
 export interface ClimateCardConfig extends BaseCardConfig {
   /** Visual treatment. The original dial remains the default for backwards compatibility. */
@@ -579,7 +579,16 @@ function themeFor(mode: string, t: Translator): ModeTheme {
   }
 }
 
-function modeMeta(mode: string, t: Translator): { icon: string; label: string } {
+/**
+ * The hvac modes are the entity's own states, so Home Assistant already has a word for
+ * each one in the user's language; the dictionary below is the fallback for older cores.
+ */
+function modeMeta(
+  mode: string,
+  t: Translator,
+  hass?: HomeAssistant,
+  entity?: HassEntity,
+): { icon: string; label: string } {
   const icons: Record<string, string> = {
     auto: "mdi:refresh-auto",
     heat_cool: "mdi:sun-snowflake-variant",
@@ -589,7 +598,7 @@ function modeMeta(mode: string, t: Translator): { icon: string; label: string } 
     fan_only: "mdi:fan",
     off: "mdi:power",
   };
-  return { icon: icons[mode] ?? "mdi:thermostat", label: t(`mode_${mode}`) };
+  return { icon: icons[mode] ?? "mdi:thermostat", label: entityStateText(hass, entity, t(`mode_${mode}`), mode) };
 }
 
 /**
@@ -607,7 +616,7 @@ function ClimateCard({ config, hass, host }: ReactCardProps<ClimateCardConfig>) 
    */
   const dialRef = useRef<HTMLDivElement>(null);
   const entity = config.entity ? hass?.states[config.entity] : undefined;
-  const name = config.name ?? friendlyName(entity, config.entity ?? "");
+  const name = entityName(hass, entity, config.name, config.entity ?? "");
   const attributes = entity?.attributes ?? {};
 
   const step = (attributes.target_temp_step as number | undefined) ?? 0.5;
@@ -750,7 +759,7 @@ function ClimateCard({ config, hass, host }: ReactCardProps<ClimateCardConfig>) 
       ].join(" · ")}
       onClick={() => moreInfo(host, config.entity)}
     />
-    <Badge label={theme.label} style={theme.badge} />
+    <Badge label={entityStateText(hass, entity, theme.label)} style={theme.badge} />
   </div>;
 
   if (compact) {
@@ -812,7 +821,7 @@ function ClimateCard({ config, hass, host }: ReactCardProps<ClimateCardConfig>) 
           className="tile-modes"
           compact
           items={modes.map((option) => {
-            const meta = modeMeta(option, t);
+            const meta = modeMeta(option, t, hass, entity);
             return {
               value: option,
               label: meta.label,
@@ -962,7 +971,7 @@ function ClimateCard({ config, hass, host }: ReactCardProps<ClimateCardConfig>) 
 
       {modes.length > 0 && <GlassSegmentedControl
         className="segment modes"
-        items={modes.map((option) => ({ value: option, ...modeMeta(option, t) }))}
+        items={modes.map((option) => ({ value: option, ...modeMeta(option, t, hass, entity) }))}
         value={mode}
         selectedColor={theme.selectedColor}
         refraction={refraction}

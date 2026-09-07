@@ -12,7 +12,7 @@ import { useCardHost } from "../react/use-card-host";
 import { useOptimisticValue } from "../react/use-optimistic-value";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HomeAssistant } from "../types";
-import { callConfiguredService, clamp, friendlyName, hsToRgb, isUnavailable, moreInfo, pickEntity, rgbToHex, withAlpha } from "../utils";
+import { callConfiguredService, clamp, entityName, hsToRgb, isUnavailable, moreInfo, pickEntity, rgbToHex, withAlpha } from "../utils";
 
 export interface LightPreset {
   name: string;
@@ -168,7 +168,7 @@ function LightCard({ config, hass, host }: ReactCardProps<LightCardConfig>) {
   const [uiMode, setUiMode] = useState<ColorUiMode>();
   const lastBrightness = useRef<number | undefined>(undefined);
   const entity = config.entity ? hass?.states[config.entity] : undefined;
-  const name = config.name ?? friendlyName(entity, config.entity ?? "");
+  const name = entityName(hass, entity, config.name, config.entity ?? "");
   const open = () => moreInfo(host, config.entity);
   const on = entity?.state === "on";
   const rawBrightness = entity?.attributes.brightness as number | undefined;
