@@ -6,7 +6,6 @@ on:
     paths:
       - package.json
       - package-lock.json
-      - .github/workflows/release.yml
   workflow_dispatch:
 
 permissions:
@@ -90,7 +89,13 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.version }}
         shell: bash
-        run: grep -F "\"$VERSION\"" dist/liquid-glass-cards.js >/dev/null
+        run: |
+          expected="/*! ha-liquid-glass v$VERSION */"
+          actual="$(head -n 1 dist/liquid-glass-cards.js)"
+          if [[ "$actual" != "$expected" ]]; then
+            echo "::error::Bundle version banner mismatch: expected '$expected', got '$actual'."
+            exit 1
+          fi
 
       - name: Create tag and GitHub Release
         if: steps.existing.outputs.exists != 'true'
