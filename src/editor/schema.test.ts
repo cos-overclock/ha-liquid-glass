@@ -7,7 +7,7 @@ const t = createTranslator("en");
 
 /** The card types the bundle registers, as they appear in a Lovelace config. */
 const CARD_TYPES = [
-  "light", "climate", "switch", "sensor", "binary-sensor", "lock", "cover",
+  "light", "vacuum", "climate", "switch", "sensor", "binary-sensor", "lock", "cover",
   "media", "slider", "select", "weather", "button", "scene", "camera", "group", "separator",
 ].map((kind) => `custom:liquid-glass-${kind}-card`);
 CARD_TYPES.push("custom:liquid-glass-entity-badge");
@@ -186,6 +186,10 @@ describe("fieldNames", () => {
 });
 
 describe("editor metadata", () => {
+  it("seeds the vacuum fan-speed control as enabled", () => {
+    expect(DEFAULT_ON).toContain("show_fan_speed");
+  });
+
   /*
    * The editor seeds every DEFAULT_ON field as checked. A name here that no schema
    * declares would silently do nothing; one missing would show an unticked box for a

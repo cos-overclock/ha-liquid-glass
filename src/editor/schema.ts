@@ -147,6 +147,14 @@ export function schemaFor(
         ...common(t),
       ];
 
+    case "vacuum":
+      return [
+        ...head("vacuum"),
+        grid([bool("show_fan_speed"), bool("show_stats")]),
+        grid([bool("show_locate"), bool("show_clean_spot")]),
+        ...common(t),
+      ];
+
     case "climate":
       return [
         ...head("climate"),
@@ -355,7 +363,10 @@ export const DEFAULT_ON = new Set([
   "show_color_temp",
   "show_color",
   "show_fan_mode",
+  "show_fan_speed",
   "show_preset_mode",
+  "show_stats",
+  "show_locate",
   "show_icon",
   "show_state",
   "graph",

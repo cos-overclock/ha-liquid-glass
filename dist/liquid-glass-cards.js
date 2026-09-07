@@ -66,6 +66,20 @@ var e = [
 	preset: "Preset",
 	swing_mode: "Swing",
 	power: "Power",
+	vacuum_cleaning: "Cleaning",
+	vacuum_docked: "Docked",
+	vacuum_returning: "Returning",
+	vacuum_error: "Error",
+	vacuum_start: "Start",
+	vacuum_resume: "Resume",
+	vacuum_pause: "Pause",
+	vacuum_stop: "Stop",
+	vacuum_dock: "Dock",
+	vacuum_locate: "Locate",
+	vacuum_spot: "Spot clean",
+	vacuum_fan_speed: "Suction",
+	vacuum_battery: "Battery",
+	vacuum_area: "Cleaned area",
 	last_on: "last on",
 	updated_ago: "Updated {t}",
 	hours_24: "24 h",
@@ -189,7 +203,11 @@ var e = [
 	ed_presets: "Presets",
 	ed_favorites: "Favorite colors",
 	ed_show_fan_mode: "Fan mode",
+	ed_show_fan_speed: "Suction control",
 	ed_show_preset_mode: "Preset",
+	ed_show_stats: "Battery and cleaned area",
+	ed_show_locate: "Locate button",
+	ed_show_clean_spot: "Spot-clean button",
 	ed_show_icon: "Icon",
 	ed_show_name: "Name",
 	ed_show_state: "State",
@@ -319,6 +337,20 @@ var e = [
 		preset: "プリセット",
 		swing_mode: "スイング",
 		power: "消費電力",
+		vacuum_cleaning: "清掃中",
+		vacuum_docked: "充電台",
+		vacuum_returning: "帰還中",
+		vacuum_error: "エラー",
+		vacuum_start: "清掃開始",
+		vacuum_resume: "再開",
+		vacuum_pause: "一時停止",
+		vacuum_stop: "停止",
+		vacuum_dock: "充電台へ戻る",
+		vacuum_locate: "呼び出す",
+		vacuum_spot: "スポット清掃",
+		vacuum_fan_speed: "吸引力",
+		vacuum_battery: "バッテリー",
+		vacuum_area: "清掃面積",
 		last_on: "最終オン",
 		updated_ago: "{t}に更新",
 		hours_24: "24時間",
@@ -442,7 +474,11 @@ var e = [
 		ed_presets: "プリセット",
 		ed_favorites: "お気に入りの色",
 		ed_show_fan_mode: "風量",
+		ed_show_fan_speed: "吸引力操作",
 		ed_show_preset_mode: "プリセット",
+		ed_show_stats: "バッテリーと清掃面積",
+		ed_show_locate: "呼び出しボタン",
+		ed_show_clean_spot: "スポット清掃ボタン",
 		ed_show_icon: "アイコン",
 		ed_show_name: "名前",
 		ed_show_state: "状態",
@@ -869,6 +905,12 @@ function V(t, i, a, o) {
 			j("presets"),
 			...R(i)
 		];
+		case "vacuum": return [
+			...c("vacuum"),
+			M([k("show_fan_speed"), k("show_stats")]),
+			M([k("show_locate"), k("show_clean_spot")]),
+			...R(i)
+		];
 		case "climate": return [
 			...c("climate"),
 			F("design", [{
@@ -1105,7 +1147,10 @@ var te = /* @__PURE__ */ new Set([
 	"show_color_temp",
 	"show_color",
 	"show_fan_mode",
+	"show_fan_speed",
 	"show_preset_mode",
+	"show_stats",
+	"show_locate",
 	"show_icon",
 	"show_state",
 	"graph",
@@ -5541,15 +5586,243 @@ var Oa = ki({
 	getGridOptions: () => Ui(6),
 	getStubConfig: (e, t, n) => ({ entity: x(["light"], e, t, n, (e) => (e.attributes.supported_color_modes ?? []).some((e) => e !== "onoff")) })
 }), ka = {
+	PAUSE: 4,
+	STOP: 8,
+	RETURN_HOME: 16,
+	FAN_SPEED: 32,
+	LOCATE: 512,
+	CLEAN_SPOT: 1024,
+	START: 8192
+}, Aa = "\n  .card {\n    --vacuum-accent: #0a84ff;\n    --vacuum-accent-light: #68c5ff;\n  }\n  .icon-well.running lg-icon { animation: lg-vacuum-roam 2.2s ease-in-out infinite; }\n  .icon-well.returning lg-icon { animation: lg-vacuum-return 1.35s ease-in-out infinite; }\n  @keyframes lg-vacuum-roam {\n    0%, 100% { transform: translateX(-2px) rotate(-5deg); }\n    50% { transform: translateX(2px) rotate(5deg); }\n  }\n  @keyframes lg-vacuum-return {\n    0%, 100% { transform: translateX(0); }\n    50% { transform: translateX(-4px); }\n  }\n  .stats {\n    display: grid;\n    grid-template-columns: repeat(2, minmax(0, 1fr));\n    gap: 8px;\n  }\n  .stat {\n    min-width: 0;\n    padding: 10px 12px;\n    border-radius: 16px;\n    background: var(--lg-track-bg);\n    box-shadow: inset 0 0 0 1px var(--lg-glass-stroke);\n  }\n  .stat-label {\n    display: flex;\n    align-items: center;\n    gap: 5px;\n    color: var(--lg-text-secondary);\n    font-size: var(--lg-tick);\n  }\n  .stat-label lg-icon { --mdc-icon-size: 14px; }\n  .stat-value {\n    margin-top: 3px;\n    color: var(--lg-text-primary);\n    font-size: var(--lg-label);\n    font-weight: 650;\n    overflow: hidden;\n    text-overflow: ellipsis;\n    white-space: nowrap;\n  }\n  .controls {\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    gap: clamp(8px, 3cqi, 12px);\n  }\n  .control {\n    min-width: 0;\n    display: grid;\n    justify-items: center;\n    gap: 5px;\n    color: var(--lg-text-secondary);\n    font: inherit;\n    font-size: var(--lg-tick);\n  }\n  .control .round-btn { margin: 0; }\n  .control.primary .round-btn {\n    color: #fff;\n    background: linear-gradient(180deg, var(--vacuum-accent-light), var(--vacuum-accent));\n    box-shadow: 0 5px 14px color-mix(in srgb, var(--vacuum-accent) 30%, transparent);\n  }\n  .control.primary { color: var(--lg-text-primary); font-weight: 600; }\n  .control.danger .round-btn { color: var(--lg-lock-unlocked-deep); }\n  .fan-speed {\n    display: flex;\n    flex-direction: column;\n    gap: 8px;\n  }\n  .fan-title {\n    display: flex;\n    align-items: center;\n    gap: 6px;\n    color: var(--lg-text-secondary);\n    font-size: var(--lg-label);\n    font-weight: 600;\n  }\n  .fan-title lg-icon { --mdc-icon-size: 16px; }\n  .speed-options {\n    display: flex;\n    flex-wrap: wrap;\n    gap: 7px;\n  }\n  .speed {\n    min-height: 34px;\n    padding: 0 12px;\n    border: 0;\n    border-radius: 17px;\n    color: var(--lg-text-secondary);\n    background: var(--lg-track-bg);\n    box-shadow: inset 0 0 0 1px var(--lg-glass-stroke);\n    font: inherit;\n    font-size: var(--lg-tick);\n    cursor: pointer;\n  }\n  .speed.selected {\n    color: #fff;\n    background: linear-gradient(180deg, var(--vacuum-accent-light), var(--vacuum-accent));\n    box-shadow: 0 3px 10px color-mix(in srgb, var(--vacuum-accent) 24%, transparent);\n  }\n  .speed:focus-visible, .round-btn:focus-visible {\n    outline: 2px solid var(--vacuum-accent);\n    outline-offset: 2px;\n  }\n  @media (prefers-reduced-motion: reduce) {\n    .icon-well.running lg-icon, .icon-well.returning lg-icon { animation: none; }\n  }\n  @container (max-width: 250px) {\n    .control span { display: none; }\n    .controls { justify-content: space-between; }\n  }\n";
+function ja(e) {
+	switch (e) {
+		case "cleaning": return {
+			icon: "mdi:robot-vacuum",
+			labelKey: "vacuum_cleaning",
+			accent: "#0A84FF",
+			light: "#68C5FF",
+			className: "running"
+		};
+		case "returning": return {
+			icon: "mdi:home-import-outline",
+			labelKey: "vacuum_returning",
+			accent: "#2BB3D0",
+			light: "#78DCEA",
+			className: "returning"
+		};
+		case "paused": return {
+			icon: "mdi:pause-circle-outline",
+			labelKey: "paused",
+			accent: "#FF9F0A",
+			light: "#FFD06B"
+		};
+		case "docked": return {
+			icon: "mdi:robot-vacuum-variant",
+			labelKey: "vacuum_docked"
+		};
+		case "error": return {
+			icon: "mdi:robot-vacuum-alert",
+			labelKey: "vacuum_error",
+			accent: "#FF3B30",
+			light: "#FF8A80"
+		};
+		default: return {
+			icon: "mdi:robot-vacuum",
+			labelKey: "idle"
+		};
+	}
+}
+function Ma(e) {
+	let t = typeof e == "number" ? e : Number(e);
+	return Number.isFinite(t) ? t : void 0;
+}
+function Na(e) {
+	return Array.isArray(e) ? e.filter((e) => typeof e == "string") : [];
+}
+function Pa({ config: e, hass: t, host: n }) {
+	let { refraction: r } = Ai(n, e, t), i = s(e.language ?? t?.locale?.language ?? t?.language), a = e.entity ? t?.states[e.entity] : void 0, o = h(t, a, e.name, e.entity ?? ""), l = () => f(n, e.entity);
+	if (!a || y(a)) return /* @__PURE__ */ X(Yr, {
+		refraction: r,
+		variant: e.glass_variant,
+		icon: e.icon ?? "mdi:robot-vacuum",
+		name: o,
+		label: i("unavailable"),
+		onOpen: l
+	});
+	let u = ja(a.state), d = u.accent, p = d ? {
+		from: u.light ?? d,
+		to: d,
+		glow: D(d, .28)
+	} : void 0, m = d ? {
+		color: d,
+		bg: D(d, .18),
+		stroke: D(d, .3)
+	} : void 0, _ = g(t, a, i(u.labelKey)), v = Ma(a.attributes.battery_level), x = Ma(a.attributes.cleaned_area), S = a.attributes.cleaned_area_unit ?? "m²", C = a.attributes.fan_speed, w = Na(a.attributes.fan_speed_list), T = a.state === "paused", E = (n, r = {}) => {
+		t && e.entity && t.callService("vacuum", n, {
+			entity_id: e.entity,
+			...r
+		});
+	}, O = [
+		a.state === "cleaning" ? b(a, ka.PAUSE) ? {
+			key: "pause",
+			icon: "mdi:pause",
+			label: i("vacuum_pause"),
+			service: "pause",
+			className: "primary"
+		} : void 0 : b(a, ka.START) ? {
+			key: T ? "resume" : "start",
+			icon: "mdi:play",
+			label: i(T ? "vacuum_resume" : "vacuum_start"),
+			service: "start",
+			className: "primary"
+		} : void 0,
+		b(a, ka.STOP) ? {
+			key: "stop",
+			icon: "mdi:stop",
+			label: i("vacuum_stop"),
+			service: "stop",
+			className: "danger"
+		} : void 0,
+		b(a, ka.RETURN_HOME) ? {
+			key: "dock",
+			icon: "mdi:home-import-outline",
+			label: i("vacuum_dock"),
+			service: "return_to_base"
+		} : void 0,
+		e.show_locate !== !1 && b(a, ka.LOCATE) ? {
+			key: "locate",
+			icon: "mdi:map-marker-radius",
+			label: i("vacuum_locate"),
+			service: "locate"
+		} : void 0,
+		e.show_clean_spot === !0 && b(a, ka.CLEAN_SPOT) ? {
+			key: "spot",
+			icon: "mdi:target",
+			label: i("vacuum_spot"),
+			service: "clean_spot"
+		} : void 0
+	].filter((e) => !!e), k = {
+		display: "flex",
+		position: "relative",
+		"--vacuum-accent": d ?? "#0A84FF",
+		"--vacuum-accent-light": u.light ?? "#68C5FF"
+	};
+	return /* @__PURE__ */ X(Wr, {
+		className: "card",
+		refraction: r,
+		variant: e.glass_variant,
+		sourceAccent: d,
+		style: k,
+		children: [
+			/* @__PURE__ */ X("div", {
+				className: "header",
+				children: [
+					/* @__PURE__ */ X("div", {
+						className: `icon-well${p ? "" : " idle"}${u.className ? ` ${u.className}` : ""}`,
+						style: p ? {
+							"--well-from": p.from,
+							"--well-to": p.to,
+							"--well-glow": p.glow
+						} : void 0,
+						onClick: l,
+						role: "button",
+						children: /* @__PURE__ */ X(Q, { icon: e.icon ?? a.attributes.icon ?? u.icon })
+					}),
+					/* @__PURE__ */ X(qr, {
+						name: o,
+						state: `${_} · ${i("since", { t: c(a.last_changed, i) })}`,
+						onClick: l
+					}),
+					/* @__PURE__ */ X(Jr, {
+						label: _,
+						style: m
+					})
+				]
+			}),
+			e.show_stats !== !1 && (v !== void 0 || x !== void 0) && /* @__PURE__ */ X("div", {
+				className: "stats",
+				children: [v !== void 0 && /* @__PURE__ */ X("div", {
+					className: "stat",
+					children: [/* @__PURE__ */ X("div", {
+						className: "stat-label",
+						children: [/* @__PURE__ */ X(Q, { icon: "mdi:battery" }), /* @__PURE__ */ X("span", { children: i("vacuum_battery") })]
+					}), /* @__PURE__ */ X("div", {
+						className: "stat-value",
+						children: [Math.round(v), "%"]
+					})]
+				}), x !== void 0 && /* @__PURE__ */ X("div", {
+					className: "stat",
+					children: [/* @__PURE__ */ X("div", {
+						className: "stat-label",
+						children: [/* @__PURE__ */ X(Q, { icon: "mdi:ruler-square" }), /* @__PURE__ */ X("span", { children: i("vacuum_area") })]
+					}), /* @__PURE__ */ X("div", {
+						className: "stat-value",
+						children: [
+							x,
+							" ",
+							S
+						]
+					})]
+				})]
+			}),
+			O.length > 0 && /* @__PURE__ */ X("div", {
+				className: "controls",
+				role: "group",
+				"aria-label": o,
+				children: O.map((e) => /* @__PURE__ */ X("div", {
+					className: `control ${e.className ?? ""}`,
+					children: [/* @__PURE__ */ X("button", {
+						className: "round-btn",
+						type: "button",
+						title: e.label,
+						onClick: () => E(e.service),
+						children: /* @__PURE__ */ X(Q, { icon: e.icon })
+					}), /* @__PURE__ */ X("span", { children: e.label })]
+				}, e.key))
+			}),
+			e.show_fan_speed !== !1 && b(a, ka.FAN_SPEED) && w.length > 0 && /* @__PURE__ */ X("div", {
+				className: "fan-speed",
+				children: [/* @__PURE__ */ X("div", {
+					className: "fan-title",
+					children: [/* @__PURE__ */ X(Q, { icon: "mdi:fan" }), /* @__PURE__ */ X("span", { children: i("vacuum_fan_speed") })]
+				}), /* @__PURE__ */ X("div", {
+					className: "speed-options",
+					role: "group",
+					"aria-label": i("vacuum_fan_speed"),
+					children: w.map((e) => /* @__PURE__ */ X("button", {
+						className: `speed${e === C ? " selected" : ""}`,
+						type: "button",
+						"aria-pressed": e === C,
+						onClick: () => E("set_fan_speed", { fan_speed: e }),
+						children: e
+					}, e))
+				})]
+			})
+		]
+	});
+}
+var Fa = ki({
+	tagName: "liquid-glass-vacuum-card",
+	component: Pa,
+	styles: [
+		ji,
+		Xr,
+		Hr,
+		Aa
+	],
+	getCardSize: () => 4,
+	getGridOptions: () => Ui(5),
+	getStubConfig: (e, t, n) => ({ entity: x(["vacuum"], e, t, n) })
+}), Ia = {
 	ease: Un(.34, 1.36, .42, 1),
 	duration: .48
-}, Aa = {
+}, La = {
 	ease: Un(.34, 1.36, .42, 1),
 	duration: .27
-}, ja = {
+}, Ra = {
 	ease: Un(.36, 0, .18, 1),
 	duration: .46
-}, Ma = {
+}, za = {
 	mapSize: 256,
 	depth: .2,
 	dispersion: .28,
@@ -5575,19 +5848,19 @@ var Oa = ki({
 	edgeShadow: "0 5px 13px rgba(0, 0, 0, 0.18)",
 	edgeInsetShadow: "0 -3px 8px rgba(0, 0, 0, 0.1)",
 	restEdgeShadow: "0 2px 6px rgba(0, 0, 0, 0.14)"
-}, Na = {
+}, Ba = {
 	scaleX: .085,
 	scaleY: .115,
 	brightness: .07,
 	glow: .38,
 	sheen: .52,
 	restEdgeShadow: "0 2px 7px rgba(0, 0, 0, 0.42)"
-}, Pa = {
+}, Va = {
 	brightness: -.02,
 	specular: 1.55,
 	glowFalloff: 2,
 	sheen: .95
-}, Fa = 3, Ia = 2, La = `
+}, Ha = 3, Ua = 2, Wa = `
   .lg-glass-segmented {
     position: relative;
     display: block;
@@ -5652,9 +5925,9 @@ var Oa = ki({
   .lg-glass-segmented > button {
     position: absolute;
     z-index: 2;
-    top: ${Fa}px;
-    bottom: ${Fa}px;
-    left: calc(${Fa}px + var(--item-i) * (var(--seg-w) + ${Ia}px));
+    top: ${Ha}px;
+    bottom: ${Ha}px;
+    left: calc(${Ha}px + var(--item-i) * (var(--seg-w) + ${Ua}px));
     width: var(--seg-w);
     min-width: 0;
     height: auto;
@@ -5712,14 +5985,14 @@ var Oa = ki({
     }
   }
 `;
-function Ra({ item: e, compact: t }) {
+function Ga({ item: e, compact: t }) {
 	return /* @__PURE__ */ X(K, { children: [e.icon && /* @__PURE__ */ X(Q, { icon: e.icon }), !t && /* @__PURE__ */ X("span", { children: e.label })] });
 }
-function za({ items: e, value: t, onValueChange: n, refraction: r, scheme: i, selectedColor: a, compact: o = !1, className: s, ariaLabel: c }) {
+function Ka({ items: e, value: t, onValueChange: n, refraction: r, scheme: i, selectedColor: a, compact: o = !1, className: s, ariaLabel: c }) {
 	let l = Er(), u = e.findIndex((e) => e.value === t), d = u >= 0, f = Math.max(u, 0), [p, m] = q(f), [h, g] = q(d), [_, v] = q({
 		width: 300,
 		height: o ? 40 : 50
-	}), [y, b] = q(!1), x = Y(null), S = Y([]), C = Y(null), w = Y(0), T = Y(0), E = Y(!1), D = Y(!1), O = Y(null), k = Y(void 0), A = Y(!1), j = Math.max(e.length, 1), M = Math.max(1, (_.width - 6 - Ia * (j - 1)) / j), N = M + Ia, P = Math.max(1, _.height - 6), F = _.width * .045, I = F * 24, L = Math.ceil(Math.max(M / 2, P / 2) * .3 + F) + 4, ee = _.width + L * 2, R = _.height + L * 2, z = Y({
+	}), [y, b] = q(!1), x = Y(null), S = Y([]), C = Y(null), w = Y(0), T = Y(0), E = Y(!1), D = Y(!1), O = Y(null), k = Y(void 0), A = Y(!1), j = Math.max(e.length, 1), M = Math.max(1, (_.width - 6 - Ua * (j - 1)) / j), N = M + Ua, P = Math.max(1, _.height - 6), F = _.width * .045, I = F * 24, L = Math.ceil(Math.max(M / 2, P / 2) * .3 + F) + 4, ee = _.width + L * 2, R = _.height + L * 2, z = Y({
 		segmentWidth: M,
 		stepWidth: N,
 		pillHeight: P,
@@ -5748,7 +6021,7 @@ function za({ items: e, value: t, onValueChange: n, refraction: r, scheme: i, se
 			stretch: s,
 			lensWidth: Hn([t, s], () => t.get() * (1 - .16 * s.get()) * 2),
 			lensHeight: Hn([n, s], () => n.get() * (1 + .34 * s.get()) * 2),
-			lensX: Hn([e, t], () => (z.current.lensPad + Fa + z.current.segmentWidth / 2 + e.get()) / z.current.lensSurfaceWidth)
+			lensX: Hn([e, t], () => (z.current.lensPad + Ha + z.current.segmentWidth / 2 + e.get()) / z.current.lensSurfaceWidth)
 		};
 	}, []), te = Y(0), ne = Y(() => {});
 	Sr(V.position, V.stretch, te, ne);
@@ -5771,7 +6044,7 @@ function za({ items: e, value: t, onValueChange: n, refraction: r, scheme: i, se
 		let e = re.current !== f, t = H.current !== N;
 		re.current = f, H.current = N, m(f), g(d), O.current?.stop();
 		let n = f * N;
-		t && !e ? V.position.set(n) : O.current = $(V.position, n, ka);
+		t && !e ? V.position.set(n) : O.current = $(V.position, n, Ia);
 	}, [
 		d,
 		V.position,
@@ -5789,20 +6062,20 @@ function za({ items: e, value: t, onValueChange: n, refraction: r, scheme: i, se
 		} catch {}
 	}, []);
 	let ie = mt(() => Ar({
-		...Ma,
-		...i === "dark" ? Na : Pa,
+		...za,
+		...i === "dark" ? Ba : Va,
 		sheenDark: i !== "dark"
 	}, l), [l, i]), U = () => {
 		clearTimeout(k.current), b(!0);
 		let e = z.current;
-		$(V.halfWidth, e.segmentWidth * .62, Aa), $(V.halfHeight, e.pillHeight * .59, Aa), $(V.radius, e.pillHeight * .59, Aa), $(V.tintOpacity, .08, Aa), $(V.shadowOpacity, 1, Aa), Ji(te, ne);
+		$(V.halfWidth, e.segmentWidth * .62, La), $(V.halfHeight, e.pillHeight * .59, La), $(V.radius, e.pillHeight * .59, La), $(V.tintOpacity, .08, La), $(V.shadowOpacity, 1, La), Ji(te, ne);
 	}, W = () => {
 		b(!1), te.current = 0;
 		let e = z.current;
-		$(V.halfWidth, e.segmentWidth / 2, ja), $(V.halfHeight, e.pillHeight / 2, ja), $(V.radius, e.pillHeight / 2, ja), $(V.tintOpacity, B.current, ja), $(V.shadowOpacity, 0, ja);
+		$(V.halfWidth, e.segmentWidth / 2, Ra), $(V.halfHeight, e.pillHeight / 2, Ra), $(V.radius, e.pillHeight / 2, Ra), $(V.tintOpacity, B.current, Ra), $(V.shadowOpacity, 0, Ra);
 	}, G = (r, i) => {
 		let a = Math.max(0, Math.min(e.length - 1, r)), o = e[a];
-		o && (m(a), g(!0), O.current?.stop(), O.current = $(V.position, a * z.current.stepWidth, ka), i ? W() : k.current = setTimeout(W, 260), o.value !== t && n(o.value));
+		o && (m(a), g(!0), O.current?.stop(), O.current = $(V.position, a * z.current.stepWidth, Ia), i ? W() : k.current = setTimeout(W, 260), o.value !== t && n(o.value));
 	}, ae = (t) => {
 		let n = x.current?.getBoundingClientRect();
 		if (!n || n.width <= 0) return p;
@@ -5840,7 +6113,7 @@ function za({ items: e, value: t, onValueChange: n, refraction: r, scheme: i, se
 	}, le = (e) => {
 		e.pointerId === C.current && (C.current = null, A.current = !1, D.current = !0, requestAnimationFrame(() => {
 			D.current = !1;
-		}), m(f), g(d), O.current = $(V.position, f * z.current.stepWidth, ka), W());
+		}), m(f), g(d), O.current = $(V.position, f * z.current.stepWidth, Ia), W());
 	}, ue = (e) => {
 		U(), G(e, !1), S.current[e]?.focus();
 	};
@@ -5857,7 +6130,7 @@ function za({ items: e, value: t, onValueChange: n, refraction: r, scheme: i, se
 		"data-lg-segment-pressed": y ? "" : void 0,
 		style: {
 			"--n": String(j),
-			"--seg-w": `calc((100% - 6px - ${(j - 1) * Ia}px) / ${j})`,
+			"--seg-w": `calc((100% - 6px - ${(j - 1) * Ua}px) / ${j})`,
 			"--selected-color": a,
 			"--glass-segment-track": i === "dark" ? "#2a2828" : "#e1dfdf",
 			"--glass-segment-pill": i === "dark" ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.62)",
@@ -5915,8 +6188,8 @@ function za({ items: e, value: t, onValueChange: n, refraction: r, scheme: i, se
 			x: V.position,
 			"aria-hidden": "true",
 			style: {
-				left: Fa,
-				top: Fa,
+				left: Ha,
+				top: Ha,
 				width: M,
 				height: P,
 				opacity: +!!h
@@ -5947,7 +6220,7 @@ function za({ items: e, value: t, onValueChange: n, refraction: r, scheme: i, se
 				else return;
 				t.preventDefault(), ue(r);
 			},
-			children: /* @__PURE__ */ X(Ra, {
+			children: /* @__PURE__ */ X(Ga, {
 				item: t,
 				compact: o
 			})
@@ -5956,11 +6229,11 @@ function za({ items: e, value: t, onValueChange: n, refraction: r, scheme: i, se
 }
 //#endregion
 //#region src/cards/climate-card.tsx
-var Ba = 250, Va = 24, Ha = Ba / 2 - Va / 2, Ua = 135, Wa = 4e3, Ga = 270, Ka = 22, qa = 34, Ja = (e, t = Ha) => {
+var qa = 250, Ja = 24, Ya = qa / 2 - Ja / 2, Xa = 135, Za = 4e3, Qa = 270, $a = 22, eo = 34, to = (e, t = Ya) => {
 	let n = e * Math.PI / 180;
-	return [Ba / 2 + t * Math.cos(n), Ba / 2 + t * Math.sin(n)];
+	return [qa / 2 + t * Math.cos(n), qa / 2 + t * Math.sin(n)];
 };
-function Ya({ id: e, x: t, y: n, rotation: r, motionPosition: i, active: a, refraction: o, scheme: s, sourceBackground: c, label: l, value: u, min: d, max: f, onKeyDown: p }) {
+function no({ id: e, x: t, y: n, rotation: r, motionPosition: i, active: a, refraction: o, scheme: s, sourceBackground: c, label: l, value: u, min: d, max: f, onKeyDown: p }) {
 	let m = ia(o, s), h = mt(() => ({
 		...m,
 		edgeShadow: "",
@@ -5968,7 +6241,7 @@ function Ya({ id: e, x: t, y: n, rotation: r, motionPosition: i, active: a, refr
 		restEdgeShadow: "",
 		restEdgeInsetShadow: ""
 	}), [m]), g = mt(() => {
-		let e = Z(i), t = Z(Ka / 2), n = Z(qa / 2), r = Z(Ka / 2), a = Z(1), o = Z(0);
+		let e = Z(i), t = Z($a / 2), n = Z(eo / 2), r = Z($a / 2), a = Z(1), o = Z(0);
 		return {
 			position: e,
 			halfW: t,
@@ -5983,7 +6256,7 @@ function Ya({ id: e, x: t, y: n, rotation: r, motionPosition: i, active: a, refr
 	return Sr(o ? g.position : b, g.stretch, _, v), ft(() => {
 		g.position.get() !== i && g.position.set(i);
 	}, [g, i]), J(() => {
-		o && a !== y.current && (y.current = a, a ? ($(g.halfW, 1.5 * Ka / 2, Zi), $(g.halfH, 1.5 * qa / 2, Zi), $(g.radius, 1.5 * Ka / 2, Zi), $(g.tintOpacity, 0, Zi), Ji(_, v)) : (_.current = 0, $(g.halfW, Ka / 2, Qi), $(g.halfH, qa / 2, Qi), $(g.radius, Ka / 2, Qi), $(g.tintOpacity, 1, Qi)));
+		o && a !== y.current && (y.current = a, a ? ($(g.halfW, 1.5 * $a / 2, Zi), $(g.halfH, 1.5 * eo / 2, Zi), $(g.radius, 1.5 * $a / 2, Zi), $(g.tintOpacity, 0, Zi), Ji(_, v)) : (_.current = 0, $(g.halfW, $a / 2, Qi), $(g.halfH, eo / 2, Qi), $(g.radius, $a / 2, Qi), $(g.tintOpacity, 1, Qi)));
 	}, [
 		a,
 		g,
@@ -6040,11 +6313,11 @@ function Ya({ id: e, x: t, y: n, rotation: r, motionPosition: i, active: a, refr
 		})
 	});
 }
-function Xa(e, t) {
-	let [n, r] = Ja(e), [i, a] = Ja(t);
-	return `M ${n} ${r} A ${Ha} ${Ha} 0 ${+(t - e > 180)} 1 ${i} ${a}`;
+function ro(e, t) {
+	let [n, r] = to(e), [i, a] = to(t);
+	return `M ${n} ${r} A ${Ya} ${Ya} 0 ${+(t - e > 180)} 1 ${i} ${a}`;
 }
-var Za = `
+var io = `
   .dial-row {
     display: flex;
     justify-content: center;
@@ -6053,7 +6326,7 @@ var Za = `
      percentages of the dial rather than in the 250px design units. */
   .dial {
     position: relative;
-    width: min(${Ba}px, 100%);
+    width: min(${qa}px, 100%);
     aspect-ratio: 1;
     touch-action: none;
     user-select: none;
@@ -6067,7 +6340,7 @@ var Za = `
   .ring-track {
     fill: none;
     stroke: var(--lg-track-bg);
-    stroke-width: ${Va}px;
+    stroke-width: ${Ja}px;
   }
   .ring-track-stroke {
     fill: none;
@@ -6076,7 +6349,7 @@ var Za = `
   }
   .ring-fill {
     fill: none;
-    stroke-width: ${Va}px;
+    stroke-width: ${Ja}px;
     stroke-linecap: butt;
     filter: drop-shadow(0 0 7px var(--ring-glow));
     transition:
@@ -6110,9 +6383,9 @@ var Za = `
     position: absolute;
     left: 50%;
     top: 50%;
-    width: ${Ka}px;
-    height: ${qa}px;
-    border-radius: ${Ka / 2}px;
+    width: ${$a}px;
+    height: ${eo}px;
+    border-radius: ${$a / 2}px;
     transform: translate(-50%, -50%) rotate(var(--dial-thumb-rotation));
     background: var(--lg-knob-solid);
     box-shadow: var(--lg-knob-shadow), inset 0 0 0 1px var(--lg-knob-solid-rim);
@@ -6337,7 +6610,7 @@ var Za = `
     cursor: pointer;
   }
 `;
-function Qa(e, t) {
+function ao(e, t) {
 	let n = "rgba(255,255,255,0.7)";
 	switch (e) {
 		case "heat": return {
@@ -6459,7 +6732,7 @@ function Qa(e, t) {
 		};
 	}
 }
-function $a(e, t, n, r) {
+function oo(e, t, n, r) {
 	return {
 		icon: {
 			auto: "mdi:refresh-auto",
@@ -6473,12 +6746,12 @@ function $a(e, t, n, r) {
 		label: g(n, r, t(`mode_${e}`), e)
 	};
 }
-function eo({ config: e, hass: t, host: n }) {
+function so({ config: e, hass: t, host: n }) {
 	let { isDark: r, refraction: i } = Ai(n, e, t), a = s(e.language ?? t?.locale?.language ?? t?.language), [o, c] = q(), l = Y(null), d = e.entity ? t?.states[e.entity] : void 0, p = h(t, d, e.name, e.entity ?? ""), m = d?.attributes ?? {}, v = m.target_temp_step ?? .5, b = Ca({
 		single: m.temperature,
 		low: m.target_temp_low,
 		high: m.target_temp_high
-	}, Math.max(v / 2, .01), Wa);
+	}, Math.max(v / 2, .01), Za);
 	if (!d || y(d)) return /* @__PURE__ */ X(K, { children: /* @__PURE__ */ X(Yr, {
 		refraction: i,
 		variant: e.glass_variant,
@@ -6490,7 +6763,7 @@ function eo({ config: e, hass: t, host: n }) {
 	let x = (n, r) => void t?.callService("climate", n, {
 		entity_id: e.entity,
 		...r
-	}), S = d.state, C = S === "off", [w, T] = [e.min_temp ?? m.min_temp ?? 7, e.max_temp ?? m.max_temp ?? 35], E = S === "heat_cool" && m.target_temp_low !== void 0, D = (e) => u((e - w) / (T - w || 1), 0, 1), O = (e, t) => o?.which === e ? o.value : b.value(e, t), k = O("single", w), A = O("low", w), j = O("high", T), M = Qa(S, a), N = (e.hvac_modes ?? m.hvac_modes ?? []).filter(Boolean), P = e.design === "compact" || e.design === "a", F = m.current_temperature, I = b.hold, L = (e, t) => {
+	}), S = d.state, C = S === "off", [w, T] = [e.min_temp ?? m.min_temp ?? 7, e.max_temp ?? m.max_temp ?? 35], E = S === "heat_cool" && m.target_temp_low !== void 0, D = (e) => u((e - w) / (T - w || 1), 0, 1), O = (e, t) => o?.which === e ? o.value : b.value(e, t), k = O("single", w), A = O("low", w), j = O("high", T), M = ao(S, a), N = (e.hvac_modes ?? m.hvac_modes ?? []).filter(Boolean), P = e.design === "compact" || e.design === "a", F = m.current_temperature, I = b.hold, L = (e, t) => {
 		let n = t;
 		e === "single" ? x("set_temperature", { temperature: t }) : e === "low" ? (n = Math.min(t, m.target_temp_high - v), x("set_temperature", {
 			target_temp_low: n,
@@ -6503,7 +6776,7 @@ function eo({ config: e, hass: t, host: n }) {
 		let t = l.current?.getBoundingClientRect();
 		if (!t) return k;
 		let n = e.clientX - (t.left + t.width / 2), r = e.clientY - (t.top + t.height / 2), i = Math.atan2(r, n) * 180 / Math.PI;
-		return i = ((i - Ua) % 360 + 360) % 360, i > Ga && (i = i > 315 ? 0 : Ga), u(Math.round((w + i / Ga * (T - w)) / v) * v, w, T);
+		return i = ((i - Xa) % 360 + 360) % 360, i > Qa && (i = i > 315 ? 0 : Qa), u(Math.round((w + i / Qa * (T - w)) / v) * v, w, T);
 	}, R = (e) => E ? Math.abs(e - A) <= Math.abs(e - j) ? "low" : "high" : "single", z = (e) => c({
 		which: R(e),
 		value: e
@@ -6628,11 +6901,11 @@ function eo({ config: e, hass: t, host: n }) {
 						c(void 0), L(n, e);
 					}
 				}),
-				N.length > 0 && /* @__PURE__ */ X(za, {
+				N.length > 0 && /* @__PURE__ */ X(Ka, {
 					className: "tile-modes",
 					compact: !0,
 					items: N.map((e) => {
-						let n = $a(e, a, t, d);
+						let n = oo(e, a, t, d);
 						return {
 							value: e,
 							label: n.label,
@@ -6694,7 +6967,7 @@ function eo({ config: e, hass: t, host: n }) {
 					onPointerCancel: B,
 					children: [
 						/* @__PURE__ */ X("svg", {
-							viewBox: `0 0 ${Ba} ${Ba}`,
+							viewBox: `0 0 ${qa} ${qa}`,
 							style: {
 								"--ring-glow": M.glow,
 								"--lg-ring-0": G,
@@ -6706,8 +6979,8 @@ function eo({ config: e, hass: t, host: n }) {
 									id: "ring-grad",
 									gradientUnits: "userSpaceOnUse",
 									x1: "0",
-									y1: Ba,
-									x2: Ba,
+									y1: qa,
+									x2: qa,
 									y2: "0",
 									children: [
 										/* @__PURE__ */ X("stop", {
@@ -6726,11 +6999,11 @@ function eo({ config: e, hass: t, host: n }) {
 								}) }),
 								/* @__PURE__ */ X("path", {
 									className: "ring-track",
-									d: Xa(Ua, 405)
+									d: ro(Xa, 405)
 								}),
 								/* @__PURE__ */ X("path", {
 									className: "ring-fill",
-									d: Xa(Ua, 405),
+									d: ro(Xa, 405),
 									pathLength: "1",
 									stroke: "url(#ring-grad)",
 									style: {
@@ -6742,13 +7015,13 @@ function eo({ config: e, hass: t, host: n }) {
 							]
 						}),
 						!C && ce.map(({ which: e, value: t }) => {
-							let n = Ua + D(t) * Ga, [s, c] = Ja(n);
-							return /* @__PURE__ */ X(Ya, {
+							let n = Xa + D(t) * Qa, [s, c] = to(n);
+							return /* @__PURE__ */ X(no, {
 								id: e,
-								x: s / Ba,
-								y: c / Ba,
+								x: s / qa,
+								y: c / qa,
 								rotation: n - 90,
-								motionPosition: D(t) * Ba,
+								motionPosition: D(t) * qa,
 								active: o?.which === e,
 								refraction: i,
 								scheme: r ? "dark" : "light",
@@ -6795,11 +7068,11 @@ function eo({ config: e, hass: t, host: n }) {
 					]
 				})
 			}),
-			N.length > 0 && /* @__PURE__ */ X(za, {
+			N.length > 0 && /* @__PURE__ */ X(Ka, {
 				className: "segment modes",
 				items: N.map((e) => ({
 					value: e,
-					...$a(e, a, t, d)
+					...oo(e, a, t, d)
 				})),
 				value: S,
 				selectedColor: M.selectedColor,
@@ -6818,16 +7091,16 @@ function eo({ config: e, hass: t, host: n }) {
 		]
 	}) });
 }
-var to = ki({
+var co = ki({
 	tagName: "liquid-glass-climate-card",
-	component: eo,
+	component: so,
 	styles: [
 		ji,
 		Xr,
 		Hr,
 		aa,
-		La,
-		Za
+		Wa,
+		io
 	],
 	getCardSize: () => 6,
 	getGridOptions: (e) => {
@@ -6835,8 +7108,8 @@ var to = ki({
 		return Ui(t ? 4 : 6, t ? 6 : 12);
 	},
 	getStubConfig: (e, t, n) => ({ entity: x(["climate"], e, t, n) })
-}), no = 500, ro = 10, io = "\n  .card {\n    cursor: pointer;\n    user-select: none;\n    -webkit-user-select: none;\n    transition:\n      background-color 0.38s ease,\n      box-shadow 0.38s ease;\n  }\n  .card:focus-visible {\n    outline: 2px solid var(--lg-switch-accent);\n    outline-offset: 2px;\n  }\n  /* The whole card is the control, so the title must not look separately clickable. */\n  .title {\n    cursor: inherit;\n  }\n  .card.switch-turned-on {\n    animation: lg-switch-card-on 0.48s cubic-bezier(0.2, 0.8, 0.2, 1);\n  }\n  .card.switch-turned-off {\n    animation: lg-switch-card-off 0.36s cubic-bezier(0.4, 0, 0.2, 1);\n  }\n  .card.switch-turned-on .icon-well {\n    animation: lg-switch-icon-on 0.48s cubic-bezier(0.2, 0.8, 0.2, 1);\n  }\n  .card.switch-turned-off .icon-well {\n    animation: lg-switch-icon-off 0.36s cubic-bezier(0.4, 0, 0.2, 1);\n  }\n  .card.switch-turned-on .state,\n  .card.switch-turned-off .state {\n    animation: lg-switch-state-change 0.32s ease-out;\n  }\n  @keyframes lg-switch-card-on {\n    0% { transform: scale(0.985); }\n    58% { transform: scale(1.008); }\n    100% { transform: scale(1); }\n  }\n  @keyframes lg-switch-card-off {\n    0% { transform: scale(1.006); }\n    100% { transform: scale(1); }\n  }\n  @keyframes lg-switch-icon-on {\n    0% { transform: scale(0.78) rotate(-8deg); }\n    62% { transform: scale(1.1) rotate(2deg); }\n    100% { transform: scale(1) rotate(0); }\n  }\n  @keyframes lg-switch-icon-off {\n    0% { transform: scale(1.08); }\n    55% { transform: scale(0.92); }\n    100% { transform: scale(1); }\n  }\n  @keyframes lg-switch-state-change {\n    0% { opacity: 0; transform: translateY(3px); }\n    100% { opacity: 1; transform: translateY(0); }\n  }\n";
-function ao(e) {
+}), lo = 500, uo = 10, fo = "\n  .card {\n    cursor: pointer;\n    user-select: none;\n    -webkit-user-select: none;\n    transition:\n      background-color 0.38s ease,\n      box-shadow 0.38s ease;\n  }\n  .card:focus-visible {\n    outline: 2px solid var(--lg-switch-accent);\n    outline-offset: 2px;\n  }\n  /* The whole card is the control, so the title must not look separately clickable. */\n  .title {\n    cursor: inherit;\n  }\n  .card.switch-turned-on {\n    animation: lg-switch-card-on 0.48s cubic-bezier(0.2, 0.8, 0.2, 1);\n  }\n  .card.switch-turned-off {\n    animation: lg-switch-card-off 0.36s cubic-bezier(0.4, 0, 0.2, 1);\n  }\n  .card.switch-turned-on .icon-well {\n    animation: lg-switch-icon-on 0.48s cubic-bezier(0.2, 0.8, 0.2, 1);\n  }\n  .card.switch-turned-off .icon-well {\n    animation: lg-switch-icon-off 0.36s cubic-bezier(0.4, 0, 0.2, 1);\n  }\n  .card.switch-turned-on .state,\n  .card.switch-turned-off .state {\n    animation: lg-switch-state-change 0.32s ease-out;\n  }\n  @keyframes lg-switch-card-on {\n    0% { transform: scale(0.985); }\n    58% { transform: scale(1.008); }\n    100% { transform: scale(1); }\n  }\n  @keyframes lg-switch-card-off {\n    0% { transform: scale(1.006); }\n    100% { transform: scale(1); }\n  }\n  @keyframes lg-switch-icon-on {\n    0% { transform: scale(0.78) rotate(-8deg); }\n    62% { transform: scale(1.1) rotate(2deg); }\n    100% { transform: scale(1) rotate(0); }\n  }\n  @keyframes lg-switch-icon-off {\n    0% { transform: scale(1.08); }\n    55% { transform: scale(0.92); }\n    100% { transform: scale(1); }\n  }\n  @keyframes lg-switch-state-change {\n    0% { opacity: 0; transform: translateY(3px); }\n    100% { opacity: 1; transform: translateY(0); }\n  }\n";
+function po(e) {
 	switch (e?.split(".")[0]) {
 		case "fan": return "mdi:fan";
 		case "light": return "mdi:lightbulb";
@@ -6844,7 +7117,7 @@ function ao(e) {
 		default: return "mdi:power-plug";
 	}
 }
-function oo({ config: e, hass: n, host: r }) {
+function mo({ config: e, hass: n, host: r }) {
 	let { refraction: i } = Ai(r, e, n), a = s(e.language ?? n?.locale?.language ?? n?.language), o = e.entity ? n?.states[e.entity] : void 0, l = h(n, o, e.name, e.entity ?? ""), u = Y(void 0), d = Y(void 0), p = Y(!1), m = Y(void 0), [v, b] = q(), x = o && !y(o) ? o.state === "on" : void 0, S = () => {
 		window.clearTimeout(u.current), u.current = void 0, d.current = void 0;
 	};
@@ -6872,10 +7145,10 @@ function oo({ config: e, hass: n, host: r }) {
 			y: t.clientY
 		}, u.current = window.setTimeout(() => {
 			p.current = !0, S(), f(r, e.entity);
-		}, no));
+		}, lo));
 	}, E = (e) => {
 		let t = d.current;
-		t && (Math.abs(e.clientX - t.x) > ro || Math.abs(e.clientY - t.y) > ro) && S();
+		t && (Math.abs(e.clientX - t.x) > uo || Math.abs(e.clientY - t.y) > uo) && S();
 	}, D = () => {
 		if (S(), p.current) {
 			p.current = !1;
@@ -6907,7 +7180,7 @@ function oo({ config: e, hass: n, host: r }) {
 		onPointerLeave: S,
 		onContextMenu: (e) => e.preventDefault(),
 		children: [/* @__PURE__ */ X(Kr, {
-			icon: e.icon ?? o.attributes.icon ?? ao(e.entity),
+			icon: e.icon ?? o.attributes.icon ?? po(e.entity),
 			style: C ? {
 				from: "var(--lg-switch-accent-light)",
 				to: "var(--lg-switch-accent)",
@@ -6919,23 +7192,23 @@ function oo({ config: e, hass: n, host: r }) {
 		})]
 	}) });
 }
-var so = ki({
+var ho = ki({
 	tagName: "liquid-glass-switch-card",
-	component: oo,
+	component: mo,
 	styles: [
 		ji,
 		Xr,
 		Hr,
-		io
+		fo
 	],
 	getCardSize: () => 1,
 	getGridOptions: () => Hi(),
 	getStubConfig: (e, n, r) => ({ entity: x(t, e, n, r) })
-}), co = {
+}), go = {
 	points: [],
 	trend: void 0
-}, lo = 3e5, uo = 36e5;
-function fo(e, t = 600) {
+}, _o = 3e5, vo = 36e5;
+function yo(e, t = 600) {
 	if (e.length <= t || t < 4) return e;
 	let n = [e[0]], r = Math.max(1, Math.floor((t - 2) / 2)), i = e.length - 2;
 	for (let t = 0; t < r; t++) {
@@ -6945,14 +7218,14 @@ function fo(e, t = 600) {
 	}
 	return n.push(e[e.length - 1]), n;
 }
-function po(e) {
+function bo(e) {
 	if (e.length < 2) return;
-	let t = e[e.length - 1], n = t.t - uo, r = e[0];
+	let t = e[e.length - 1], n = t.t - vo, r = e[0];
 	for (let t of e) if (t.t <= n) r = t;
 	else break;
 	return t.v - r.v;
 }
-function mo(e, t) {
+function xo(e, t) {
 	let n = -1;
 	for (let r = 0; r < e.length && e[r].t <= t; r++) n = r;
 	if (n < 0) return e;
@@ -6962,8 +7235,8 @@ function mo(e, t) {
 		v: r[0].v
 	}, ...r.slice(1)];
 }
-function ho(e, t, n, r = Date.now()) {
-	let i = mo(e, r - n * uo).slice();
+function So(e, t, n, r = Date.now()) {
+	let i = xo(e, r - n * vo).slice();
 	if (t !== void 0 && Number.isFinite(t)) {
 		let e = i[i.length - 1];
 		(!e || e.t < r) && i.push({
@@ -6971,12 +7244,12 @@ function ho(e, t, n, r = Date.now()) {
 			v: t
 		});
 	}
-	return i.length === 0 ? co : {
-		points: fo(i),
-		trend: po(i)
+	return i.length === 0 ? go : {
+		points: yo(i),
+		trend: bo(i)
 	};
 }
-function go(e, t) {
+function Co(e, t) {
 	if (!t?.length) return e;
 	let n = e.slice();
 	for (let e of t) {
@@ -6990,11 +7263,11 @@ function go(e, t) {
 	}
 	return n;
 }
-function _o(e) {
-	return (/* @__PURE__ */ new Date(Date.now() - e * uo)).toISOString();
+function wo(e) {
+	return (/* @__PURE__ */ new Date(Date.now() - e * vo)).toISOString();
 }
-async function vo(e, t, n) {
-	let r = _o(n);
+async function To(e, t, n) {
+	let r = wo(n);
 	try {
 		let n = await e.callApi("GET", `history/period/${r}?filter_entity_id=${encodeURIComponent(t)}&minimal_response&no_attributes&significant_changes_only=0`), i = [];
 		for (let e of n?.[0] ?? []) {
@@ -7009,16 +7282,16 @@ async function vo(e, t, n) {
 		return [];
 	}
 }
-async function yo(e, t, n, r) {
+async function Eo(e, t, n, r) {
 	let i = e.connection;
 	if (!i?.subscribeMessage) throw Error("history/stream is unavailable");
 	let a = [], o = await i.subscribeMessage((e) => {
 		let i = e?.states?.[t];
-		i && (a = mo(go(a, i), Date.now() - n * uo), r(a));
+		i && (a = xo(Co(a, i), Date.now() - n * vo), r(a));
 	}, {
 		type: "history/stream",
 		entity_ids: [t],
-		start_time: _o(n),
+		start_time: wo(n),
 		minimal_response: !0,
 		no_attributes: !0,
 		significant_changes_only: !1
@@ -7027,7 +7300,7 @@ async function yo(e, t, n, r) {
 }
 //#endregion
 //#region src/react/use-visible-tick.ts
-function bo(e, t = !0) {
+function Do(e, t = !0) {
 	let [n, r] = q(!0), [i, a] = q(() => typeof document > "u" || document.visibilityState === "visible");
 	return J(() => {
 		if (typeof IntersectionObserver > "u") return;
@@ -7038,7 +7311,7 @@ function bo(e, t = !0) {
 		return document.addEventListener("visibilitychange", e), () => document.removeEventListener("visibilitychange", e);
 	}, []), t && n && i;
 }
-function xo(e, t) {
+function Oo(e, t) {
 	let [n, r] = q(0), i = Y(!0);
 	return J(() => {
 		if (!e) {
@@ -7050,21 +7323,21 @@ function xo(e, t) {
 		return () => window.clearInterval(n);
 	}, [e, t]), n;
 }
-function So(e, t, n = !0) {
-	return xo(bo(e, n), t);
+function ko(e, t, n = !0) {
+	return Oo(Do(e, n), t);
 }
 //#endregion
 //#region src/react/use-entity-history.ts
-function Co(e, t, n, r, i = !0) {
+function Ao(e, t, n, r, i = !0) {
 	let [a, o] = q([]), [s, c] = q(!1), l = Y(t);
 	l.current = t;
-	let u = !!(i && n && t), d = bo(e, u), f = t?.connection, p = !!(u && f?.subscribeMessage && !s), m = xo(d && !p, lo);
+	let u = !!(i && n && t), d = Do(e, u), f = t?.connection, p = !!(u && f?.subscribeMessage && !s), m = Oo(d && !p, _o);
 	J(() => {
 		if (!p || !d || !n) return;
 		let e = l.current;
 		if (!e) return;
 		let t = !0, i;
-		return yo(e, n, r, (e) => {
+		return Eo(e, n, r, (e) => {
 			t && o(e);
 		}).then((e) => {
 			t ? i = e : e();
@@ -7083,7 +7356,7 @@ function Co(e, t, n, r, i = !0) {
 		let e = l.current;
 		if (!e) return;
 		let t = !1;
-		return vo(e, n, r).then((e) => {
+		return To(e, n, r).then((e) => {
 			t || o(e);
 		}), () => {
 			t = !0;
@@ -7096,7 +7369,7 @@ function Co(e, t, n, r, i = !0) {
 		m
 	]);
 	let h = n ? t?.states[n] : void 0, g = h ? Number(h.state) : void 0;
-	return mt(() => u ? ho(a, g, r) : co, [
+	return mt(() => u ? So(a, g, r) : go, [
 		u,
 		a,
 		g,
@@ -7106,7 +7379,7 @@ function Co(e, t, n, r, i = !0) {
 }
 //#endregion
 //#region src/cards/sensor-card.tsx
-var wo = 340, To = 84, Eo = `
+var jo = 340, Mo = 84, No = `
   .card {
     gap: 16px;
   }
@@ -7165,7 +7438,7 @@ var wo = 340, To = 84, Eo = `
   }
   .spark {
     width: 100%;
-    height: var(--lg-spark, ${To}px);
+    height: var(--lg-spark, ${Mo}px);
     overflow: visible;
     display: block;
   }
@@ -7173,7 +7446,7 @@ var wo = 340, To = 84, Eo = `
     .card {
       --lg-value: clamp(26px, 13.5cqi, 52px);
       --lg-value-unit: clamp(13px, 5.8cqi, 22px);
-      --lg-spark: clamp(52px, 22cqi, ${To}px);
+      --lg-spark: clamp(52px, 22cqi, ${Mo}px);
     }
   }
   /* The 24 h range needs more room than a narrow column can spare, and the sparkline
@@ -7211,7 +7484,7 @@ var wo = 340, To = 84, Eo = `
     gap: 4px;
   }
 `;
-function Do(e) {
+function Po(e) {
 	if (e.length < 2) return;
 	let t = e[0].t, n = e[e.length - 1].t, r = Infinity, i = -Infinity;
 	for (let t of e) r = Math.min(r, t.v), i = Math.max(i, t.v);
@@ -7224,14 +7497,14 @@ function Do(e) {
 	let c = a[a.length - 1];
 	return {
 		line: s,
-		area: `${s} L ${c.toFixed(1)} ${To} L ${a[0].toFixed(1)} ${To} Z`,
+		area: `${s} L ${c.toFixed(1)} ${Mo} L ${a[0].toFixed(1)} ${Mo} Z`,
 		last: [c, o[o.length - 1]]
 	};
 }
-function Oo(e, t) {
+function Fo(e, t) {
 	return t ? /^[°%]/.test(t) ? `${e}${t}` : `${e} ${t}` : e;
 }
-function ko(e, t, n, r, i) {
+function Io(e, t, n, r, i) {
 	let a = r ? [r] : [];
 	a.push(i("updated_ago", { t: c(e.last_updated, i) }));
 	let o = t.secondary_entity ? n?.states[t.secondary_entity] : void 0;
@@ -7241,8 +7514,8 @@ function ko(e, t, n, r, i) {
 	}
 	return a.join(" · ");
 }
-function Ao({ config: e, hass: t, host: n }) {
-	let { refraction: r } = Ai(n, e, t), i = s(e.language ?? t?.locale?.language ?? t?.language), a = e.entity ? t?.states[e.entity] : void 0, o = h(t, a, e.name, e.entity ?? ""), c = e.hours_to_show ?? 24, l = e.value_in_caption === !0, u = e.graph !== !1 && !l, d = e.trend !== !1, p = u || d, { points: m, trend: v } = Co(n, t, e.entity, u ? c : 1, p);
+function Lo({ config: e, hass: t, host: n }) {
+	let { refraction: r } = Ai(n, e, t), i = s(e.language ?? t?.locale?.language ?? t?.language), a = e.entity ? t?.states[e.entity] : void 0, o = h(t, a, e.name, e.entity ?? ""), c = e.hours_to_show ?? 24, l = e.value_in_caption === !0, u = e.graph !== !1 && !l, d = e.trend !== !1, p = u || d, { points: m, trend: v } = Ao(n, t, e.entity, u ? c : 1, p);
 	if (!a || y(a)) return /* @__PURE__ */ X(K, { children: /* @__PURE__ */ X(Yr, {
 		refraction: r,
 		variant: e.glass_variant,
@@ -7251,9 +7524,9 @@ function Ao({ config: e, hass: t, host: n }) {
 		label: i("unavailable"),
 		onOpen: () => f(n, e.entity)
 	}) });
-	let b = e.accent ?? "#FF9F0A", x = Number(a.state), S = Number.isFinite(x), C = e.decimals, w = a.attributes.unit_of_measurement ?? "", E = S && d ? v : void 0, O = u ? Do(m) : void 0, k, A;
+	let b = e.accent ?? "#FF9F0A", x = Number(a.state), S = Number.isFinite(x), C = e.decimals, w = a.attributes.unit_of_measurement ?? "", E = S && d ? v : void 0, O = u ? Po(m) : void 0, k, A;
 	for (let e of m) k = k === void 0 ? e.v : Math.min(k, e.v), A = A === void 0 ? e.v : Math.max(A, e.v);
-	let j = e.icon ?? a.attributes.icon ?? (a.attributes.device_class === "humidity" ? "mdi:water-percent" : "mdi:thermometer"), M = (E ?? 0) >= 0, N = w === "°C" || w === "°F" ? "°" : w.length <= 3 ? w : "", P = S ? _(t, x, C) : g(t, a, a.state), F = ko(a, e, t, l ? Oo(P, w) : void 0, i), I = () => f(n, e.entity), L = /* @__PURE__ */ X(K, { children: [
+	let j = e.icon ?? a.attributes.icon ?? (a.attributes.device_class === "humidity" ? "mdi:water-percent" : "mdi:thermometer"), M = (E ?? 0) >= 0, N = w === "°C" || w === "°F" ? "°" : w.length <= 3 ? w : "", P = S ? _(t, x, C) : g(t, a, a.state), F = Io(a, e, t, l ? Fo(P, w) : void 0, i), I = () => f(n, e.entity), L = /* @__PURE__ */ X(K, { children: [
 		/* @__PURE__ */ X(Kr, {
 			icon: j,
 			style: {
@@ -7327,7 +7600,7 @@ function Ao({ config: e, hass: t, host: n }) {
 			}),
 			u && /* @__PURE__ */ X(K, { children: [/* @__PURE__ */ X("svg", {
 				className: "spark",
-				viewBox: `0 0 ${wo} ${To}`,
+				viewBox: `0 0 ${jo} ${Mo}`,
 				preserveAspectRatio: "none",
 				children: [/* @__PURE__ */ X("defs", { children: /* @__PURE__ */ X("linearGradient", {
 					id: "area",
@@ -7371,14 +7644,14 @@ function Ao({ config: e, hass: t, host: n }) {
 		]
 	}) });
 }
-var jo = ki({
+var Ro = ki({
 	tagName: "liquid-glass-sensor-card",
-	component: Ao,
+	component: Lo,
 	styles: [
 		ji,
 		Xr,
 		Hr,
-		Eo
+		No
 	],
 	getCardSize: (e) => e.graph === !1 || e.value_in_caption ? e.value_in_caption ? 1 : 2 : 4,
 	getGridOptions: (e) => e.value_in_caption ? Hi() : Ui(e.graph === !1 ? 3 : 4),
@@ -7386,7 +7659,7 @@ var jo = ki({
 });
 //#endregion
 //#region src/cards/binary-sensor-card.tsx
-function Mo(e, t) {
+function zo(e, t) {
 	let n = {
 		iconOn: "mdi:checkbox-marked-circle",
 		iconOff: "mdi:checkbox-blank-circle-outline",
@@ -7497,7 +7770,7 @@ function Mo(e, t) {
 		default: return n;
 	}
 }
-function No({ config: e, hass: t, host: n }) {
+function Bo({ config: e, hass: t, host: n }) {
 	let { refraction: r } = Ai(n, e, t), i = s(e.language ?? t?.locale?.language ?? t?.language), a = e.entity ? t?.states[e.entity] : void 0, o = h(t, a, e.name, e.entity ?? ""), l = () => f(n, e.entity);
 	if (!a || y(a)) return /* @__PURE__ */ X(K, { children: /* @__PURE__ */ X(Yr, {
 		refraction: r,
@@ -7507,7 +7780,7 @@ function No({ config: e, hass: t, host: n }) {
 		label: i("unavailable"),
 		onOpen: l
 	}) });
-	let u = a.state === "on", d = Mo(a.attributes.device_class, i), p = e.accent ?? d.accent, m = e.accent ? T(e.accent) : d.accentLight, _ = (u ? e.icon_on : e.icon_off) ?? e.icon ?? a.attributes.icon ?? (u ? d.iconOn : d.iconOff), v = u ? {
+	let u = a.state === "on", d = zo(a.attributes.device_class, i), p = e.accent ?? d.accent, m = e.accent ? T(e.accent) : d.accentLight, _ = (u ? e.icon_on : e.icon_off) ?? e.icon ?? a.attributes.icon ?? (u ? d.iconOn : d.iconOff), v = u ? {
 		from: m,
 		to: p,
 		glow: D(p, .24)
@@ -7543,9 +7816,9 @@ function No({ config: e, hass: t, host: n }) {
 		]
 	}) });
 }
-var Po = ki({
+var Vo = ki({
 	tagName: "liquid-glass-binary-sensor-card",
-	component: No,
+	component: Bo,
 	styles: [
 		ji,
 		Xr,
@@ -7554,8 +7827,8 @@ var Po = ki({
 	getCardSize: () => 1,
 	getGridOptions: () => Hi(),
 	getStubConfig: (e, t, n) => ({ entity: x(["binary_sensor"], e, t, n) })
-}), Fo = "\n  .card {\n    gap: 16px;\n    width: 100%;\n  }\n  .lock-control {\n    position: relative;\n    display: grid;\n    gap: 6px;\n    --lg-slider-height: var(--lg-lock-track-h, 54px);\n    --lg-slider-bar-height: var(--lg-lock-bar-h, 42px);\n    --lg-slider-thumb-width: var(--lg-lock-thumb-w, 58px);\n    --lg-slider-thumb-height: var(--lg-lock-thumb-h, 44px);\n  }\n  .lock-control .slider-track:focus-visible {\n    outline-color: var(--thumb-color);\n  }\n  .lock-control .slider-anchor { display: none; }\n  .lock-control .slider-bar,\n  .lock-control .slider-refraction-bar {\n    border: 1px solid var(--lg-glass-stroke);\n    box-shadow:\n      inset 0 1px 0 rgba(255,255,255,0.46),\n      inset 0 -1px 0 rgba(255,255,255,0.1),\n      0 4px 14px rgba(0,0,0,0.05);\n    -webkit-backdrop-filter: blur(10px) saturate(1.25);\n    backdrop-filter: blur(10px) saturate(1.25);\n  }\n  .lock-instruction {\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    gap: 6px;\n    font-size: var(--lg-hint, 14px);\n    line-height: 20px;\n    font-weight: 600;\n    color: var(--lg-text-secondary);\n    pointer-events: none;\n    white-space: nowrap;\n  }\n  .lock-instruction::before {\n    content: \"\";\n    width: 5px;\n    height: 5px;\n    flex: none;\n    border-radius: 50%;\n    background: var(--thumb-color);\n    box-shadow: 0 0 8px color-mix(in srgb, var(--thumb-color) 70%, transparent);\n  }\n  .lock-instruction > span {\n    min-width: 0;\n    overflow: hidden;\n    text-overflow: ellipsis;\n  }\n  .lock-instruction lg-icon {\n    flex: none;\n    --mdc-icon-size: 16px;\n  }\n  .chips .chip {\n    flex: 1;\n    justify-content: center;\n    padding: 0;\n    border-radius: 22px;\n  }\n  .chip-button {\n    width: 100%;\n    min-width: 0;\n    min-height: 42px;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    gap: 6px;\n    padding: 12px 10px;\n    border: 0;\n    border-radius: inherit;\n    background: transparent;\n    color: inherit;\n    font: inherit;\n    font-size: var(--lg-label);\n    font-weight: 600;\n    cursor: pointer;\n  }\n  .chip-button > span {\n    min-width: 0;\n    overflow: hidden;\n    text-overflow: ellipsis;\n    white-space: nowrap;\n  }\n  .chip-button lg-icon {\n    --mdc-icon-size: clamp(15px, 4.7cqi, 18px);\n    width: clamp(15px, 4.7cqi, 18px);\n    height: clamp(15px, 4.7cqi, 18px);\n  }\n  @container (max-width: 300px) {\n    .lock-instruction lg-icon { display: none; }\n  }\n  @supports (container-type: inline-size) {\n    .card {\n      --lg-hint: clamp(11.5px, 3.7cqi, 14px);\n      --lg-lock-track-h: clamp(48px, 14.2cqi, 54px);\n      --lg-lock-bar-h: clamp(38px, 11.1cqi, 42px);\n      --lg-lock-thumb-w: clamp(52px, 15.3cqi, 58px);\n      --lg-lock-thumb-h: clamp(40px, 11.6cqi, 44px);\n    }\n  }\n";
-function Io(e, t, n, r, i) {
+}), Ho = "\n  .card {\n    gap: 16px;\n    width: 100%;\n  }\n  .lock-control {\n    position: relative;\n    display: grid;\n    gap: 6px;\n    --lg-slider-height: var(--lg-lock-track-h, 54px);\n    --lg-slider-bar-height: var(--lg-lock-bar-h, 42px);\n    --lg-slider-thumb-width: var(--lg-lock-thumb-w, 58px);\n    --lg-slider-thumb-height: var(--lg-lock-thumb-h, 44px);\n  }\n  .lock-control .slider-track:focus-visible {\n    outline-color: var(--thumb-color);\n  }\n  .lock-control .slider-anchor { display: none; }\n  .lock-control .slider-bar,\n  .lock-control .slider-refraction-bar {\n    border: 1px solid var(--lg-glass-stroke);\n    box-shadow:\n      inset 0 1px 0 rgba(255,255,255,0.46),\n      inset 0 -1px 0 rgba(255,255,255,0.1),\n      0 4px 14px rgba(0,0,0,0.05);\n    -webkit-backdrop-filter: blur(10px) saturate(1.25);\n    backdrop-filter: blur(10px) saturate(1.25);\n  }\n  .lock-instruction {\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    gap: 6px;\n    font-size: var(--lg-hint, 14px);\n    line-height: 20px;\n    font-weight: 600;\n    color: var(--lg-text-secondary);\n    pointer-events: none;\n    white-space: nowrap;\n  }\n  .lock-instruction::before {\n    content: \"\";\n    width: 5px;\n    height: 5px;\n    flex: none;\n    border-radius: 50%;\n    background: var(--thumb-color);\n    box-shadow: 0 0 8px color-mix(in srgb, var(--thumb-color) 70%, transparent);\n  }\n  .lock-instruction > span {\n    min-width: 0;\n    overflow: hidden;\n    text-overflow: ellipsis;\n  }\n  .lock-instruction lg-icon {\n    flex: none;\n    --mdc-icon-size: 16px;\n  }\n  .chips .chip {\n    flex: 1;\n    justify-content: center;\n    padding: 0;\n    border-radius: 22px;\n  }\n  .chip-button {\n    width: 100%;\n    min-width: 0;\n    min-height: 42px;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    gap: 6px;\n    padding: 12px 10px;\n    border: 0;\n    border-radius: inherit;\n    background: transparent;\n    color: inherit;\n    font: inherit;\n    font-size: var(--lg-label);\n    font-weight: 600;\n    cursor: pointer;\n  }\n  .chip-button > span {\n    min-width: 0;\n    overflow: hidden;\n    text-overflow: ellipsis;\n    white-space: nowrap;\n  }\n  .chip-button lg-icon {\n    --mdc-icon-size: clamp(15px, 4.7cqi, 18px);\n    width: clamp(15px, 4.7cqi, 18px);\n    height: clamp(15px, 4.7cqi, 18px);\n  }\n  @container (max-width: 300px) {\n    .lock-instruction lg-icon { display: none; }\n  }\n  @supports (container-type: inline-size) {\n    .card {\n      --lg-hint: clamp(11.5px, 3.7cqi, 14px);\n      --lg-lock-track-h: clamp(48px, 14.2cqi, 54px);\n      --lg-lock-bar-h: clamp(38px, 11.1cqi, 42px);\n      --lg-lock-thumb-w: clamp(52px, 15.3cqi, 58px);\n      --lg-lock-thumb-h: clamp(40px, 11.6cqi, 44px);\n    }\n  }\n";
+function Uo(e, t, n, r, i) {
 	let a = c(t.last_changed, i), o = (n) => g(e, t, n);
 	return r ? {
 		icon: "mdi:alert",
@@ -7608,7 +7881,7 @@ function Io(e, t, n, r, i) {
 		state: t.state === "unlocking" ? i("unlocking") : `${i("is_unlocked")} · ${a}`
 	};
 }
-function Lo({ config: e, hass: t, host: n }) {
+function Wo({ config: e, hass: t, host: n }) {
 	let { isDark: r, refraction: i } = Ai(n, e, t), [a, o] = q(), [c, l] = q(), u = Y(void 0), d = s(e.language ?? t?.locale?.language ?? t?.language), p = e.entity ? t?.states[e.entity] : void 0, m = p?.state;
 	if (J(() => () => window.clearTimeout(u.current), []), J(() => {
 		(c === "lock" && m === "locked" || c === "unlock" && m === "unlocked") && (window.clearTimeout(u.current), l(void 0));
@@ -7644,7 +7917,7 @@ function Lo({ config: e, hass: t, host: n }) {
 			})
 		}) });
 	}
-	let g = p.state === "locked" || p.state === "locking", _ = p.state === "jammed", v = c !== void 0 || p.state === "locking" || p.state === "unlocking", b = Io(t, p, g, _, d), x = (n) => {
+	let g = p.state === "locked" || p.state === "locking", _ = p.state === "jammed", v = c !== void 0 || p.state === "locking" || p.state === "unlocking", b = Uo(t, p, g, _, d), x = (n) => {
 		t && e.entity && (l(n), t.callService("lock", n, { entity_id: e.entity }), window.clearTimeout(u.current), u.current = window.setTimeout(() => l(void 0), 4e3));
 	}, S = (e) => {
 		o(void 0), g && e >= .8 ? x("unlock") : !g && e <= .2 && x("lock");
@@ -7753,26 +8026,26 @@ function Lo({ config: e, hass: t, host: n }) {
 		]
 	}) });
 }
-var Ro = ki({
+var Go = ki({
 	tagName: "liquid-glass-lock-card",
-	component: Lo,
+	component: Wo,
 	styles: [
 		ji,
 		Xr,
 		Hr,
 		aa,
-		Fo
+		Ho
 	],
 	getCardSize: () => 2,
 	getGridOptions: (e) => Ui(3 + Math.ceil((e.buttons?.length ?? 0) / 2)),
 	getStubConfig: (e, t, n) => ({ entity: x(["lock"], e, t, n) })
-}), zo = {
+}), Ko = {
 	OPEN: 1,
 	CLOSE: 2,
 	SET_POSITION: 4,
 	STOP: 8,
 	SET_TILT: 128
-}, Bo = 180, Vo = `
+}, qo = 180, Jo = `
   .card {
     gap: 16px;
   }
@@ -7784,7 +8057,7 @@ var Ro = ki({
     position: relative;
     flex: 1;
     min-width: 0;
-    height: var(--lg-track-h, ${Bo}px);
+    height: var(--lg-track-h, ${qo}px);
     border-radius: 20px;
     overflow: hidden;
     background: var(--lg-track-bg);
@@ -7901,7 +8174,7 @@ var Ro = ki({
   }
   @supports (container-type: inline-size) {
     .card {
-      --lg-track-h: clamp(120px, 47cqi, ${Bo}px);
+      --lg-track-h: clamp(120px, 47cqi, ${qo}px);
       --lg-pos: clamp(20px, 8cqi, 30px);
     }
   }
@@ -7936,7 +8209,7 @@ var Ro = ki({
     --fill-to: rgba(43, 179, 208, 0.75);
   }
 `;
-function Ho({ config: e, hass: t, host: n }) {
+function Yo({ config: e, hass: t, host: n }) {
 	let { isDark: r, refraction: i } = Ai(n, e, t), a = s(e.language ?? t?.locale?.language ?? t?.language), [o, c] = q(), d = Y("left"), p = Y(null), m = e.entity ? t?.states[e.entity] : void 0, _ = Sa(m?.attributes.current_position, 1), v = Sa(m?.attributes.current_tilt_position, 1), x = h(t, m, e.name, e.entity ?? ""), S = () => f(n, e.entity);
 	if (!m || y(m)) return /* @__PURE__ */ X(K, { children: /* @__PURE__ */ X(Yr, {
 		refraction: i,
@@ -7949,7 +8222,7 @@ function Ho({ config: e, hass: t, host: n }) {
 	let C = (n, r) => void t?.callService("cover", n, {
 		entity_id: e.entity,
 		...r
-	}), w = m.attributes, T = o ?? _.value ?? (m.state === "closed" ? 0 : 100), E = (e.style ?? (w.device_class === "curtain" ? "curtain" : "blind")) === "curtain", D = E && (e.curtain ?? "double") === "single", O = m.state === "opening" || m.state === "closing" ? m.state : void 0, k = b(m, zo.SET_POSITION), A = b(m, zo.OPEN) || k, j = b(m, zo.CLOSE) || k, M = b(m, zo.STOP), N = e.show_tilt !== !1 && b(m, zo.SET_TILT) && w.current_tilt_position !== void 0, P = (e) => {
+	}), w = m.attributes, T = o ?? _.value ?? (m.state === "closed" ? 0 : 100), E = (e.style ?? (w.device_class === "curtain" ? "curtain" : "blind")) === "curtain", D = E && (e.curtain ?? "double") === "single", O = m.state === "opening" || m.state === "closing" ? m.state : void 0, k = b(m, Ko.SET_POSITION), A = b(m, Ko.OPEN) || k, j = b(m, Ko.CLOSE) || k, M = b(m, Ko.STOP), N = e.show_tilt !== !1 && b(m, Ko.SET_TILT) && w.current_tilt_position !== void 0, P = (e) => {
 		let t = p.current?.getBoundingClientRect();
 		if (!t) return T;
 		let n;
@@ -7977,7 +8250,7 @@ function Ho({ config: e, hass: t, host: n }) {
 		else return;
 		e.preventDefault(), L(Math.round(u(t, 0, 100)));
 	}, z = (e) => {
-		let t = e ? zo.OPEN : zo.CLOSE;
+		let t = e ? Ko.OPEN : Ko.CLOSE;
 		b(m, t) ? C(e ? "open_cover" : "close_cover") : k && L(e ? 100 : 0);
 	}, B = T === 0 && !O, V = 1 - T / 100, te = B ? void 0 : {
 		from: "#8FE3F4",
@@ -8167,20 +8440,20 @@ function Ho({ config: e, hass: t, host: n }) {
 		]
 	}) });
 }
-var Uo = ki({
+var Xo = ki({
 	tagName: "liquid-glass-cover-card",
-	component: Ho,
+	component: Yo,
 	styles: [
 		ji,
 		Xr,
 		Hr,
 		aa,
-		Vo
+		Jo
 	],
 	getCardSize: () => 4,
 	getGridOptions: () => Ui(5),
-	getStubConfig: (e, t, n) => ({ entity: x(["cover"], e, t, n, (e) => !!((e.attributes.supported_features ?? 0) & zo.SET_POSITION)) })
-}), Wo = {
+	getStubConfig: (e, t, n) => ({ entity: x(["cover"], e, t, n, (e) => !!((e.attributes.supported_features ?? 0) & Ko.SET_POSITION)) })
+}), Zo = {
 	PAUSE: 1,
 	SEEK: 2,
 	VOLUME_SET: 4,
@@ -8190,22 +8463,22 @@ var Uo = ki({
 	SHUFFLE: 32768,
 	REPEAT: 262144
 };
-function Go(e) {
+function Qo(e) {
 	let t = Math.max(0, Math.round(e)), n = Math.floor(t / 3600), r = Math.floor(t % 3600 / 60), i = t % 60;
 	return n ? `${n}:${String(r).padStart(2, "0")}:${String(i).padStart(2, "0")}` : `${r}:${String(i).padStart(2, "0")}`;
 }
-var Ko = "\n  .card {\n    gap: 16px;\n  }\n  .device {\n    display: flex;\n    align-items: center;\n    gap: 6px;\n    font-size: 12px;\n    font-weight: 600;\n    color: var(--lg-text-secondary);\n    --mdc-icon-size: 14px;\n    cursor: pointer;\n  }\n  .art {\n    flex: none;\n    width: var(--lg-art, 72px);\n    height: var(--lg-art, 72px);\n    border-radius: 20px;\n    overflow: hidden;\n    background: var(--lg-track-bg);\n    background-size: cover;\n    background-position: center;\n    box-shadow:\n      0 8px 20px rgba(0, 0, 0, 0.25),\n      inset 0 0 0 1px rgba(255, 255, 255, 0.4);\n    display: grid;\n    place-items: center;\n    color: var(--lg-text-secondary);\n    --mdc-icon-size: 28px;\n  }\n  .art.idle {\n    box-shadow:\n      0 1px 1px var(--lg-glass-inner),\n      inset 0 0 0 1px var(--lg-glass-stroke);\n  }\n  .title {\n    gap: 3px;\n  }\n  .source {\n    display: flex;\n    align-items: center;\n    gap: 5px;\n    font-size: 11px;\n    font-weight: 600;\n    color: var(--source-color);\n    --mdc-icon-size: 12px;\n  }\n  .source.muted-text {\n    color: var(--lg-text-secondary);\n  }\n  .media-control-glass {\n    flex: none;\n    border-radius: 50%;\n    overflow: hidden;\n    background: none;\n    box-shadow: none;\n  }\n  .media-control-glass[data-lg-static-lens=\"\"] {\n    background: rgba(255, 255, 255, 0.08);\n    -webkit-backdrop-filter: blur(5px);\n    backdrop-filter: blur(5px);\n    box-shadow:\n      0 5px 14px rgba(0, 0, 0, 0.22),\n      inset 1px 1px 0 rgba(255, 255, 255, 0.36),\n      inset -1px -1px 0 rgba(0, 0, 0, 0.14);\n  }\n  .more-glass {\n    width: 36px;\n    height: 36px;\n  }\n  .more {\n    width: 100%;\n    height: 100%;\n    border: 0;\n    border-radius: inherit;\n    padding: 0;\n    display: grid;\n    place-items: center;\n    background: transparent;\n    color: var(--lg-text-primary);\n    cursor: pointer;\n    --mdc-icon-size: 18px;\n    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.32));\n    transition: transform 120ms ease;\n  }\n  .more:active {\n    transform: scale(0.9);\n  }\n  .progress {\n    display: flex;\n    flex-direction: column;\n    gap: 8px;\n  }\n  /* Playback bars carry no accent of their own, so they fill in the text colour. */\n  .progress .lg-react-slider,\n  .volume .lg-react-slider {\n    --lg-slider-fill: color-mix(in srgb, var(--lg-text-primary) 82%, transparent);\n    --fill-from: color-mix(in srgb, var(--lg-text-primary) 70%, transparent);\n    --fill-to: color-mix(in srgb, var(--lg-text-primary) 82%, transparent);\n  }\n  /* The seek bar uses a compact instance of the same glass slider as volume. */\n  .progress .lg-react-slider {\n    --lg-slider-height: 14px;\n    --lg-slider-bar-height: 6px;\n    --lg-slider-knob-size: 18px;\n    --lg-slider-thumb-height: 26px;\n  }\n  .times {\n    display: flex;\n    justify-content: space-between;\n    font-family: var(--lg-font-ui);\n    font-size: 11px;\n    font-weight: 500;\n    letter-spacing: -0.2px;\n    color: var(--lg-text-secondary);\n    font-variant-numeric: tabular-nums;\n  }\n  .transport {\n    display: flex;\n    align-items: center;\n    justify-content: space-between;\n    padding: 0 8px;\n  }\n  .transport button {\n    border: 0;\n    background: transparent;\n    padding: 0;\n    color: var(--lg-text-primary);\n    cursor: pointer;\n    display: grid;\n    place-items: center;\n    transition: opacity 0.2s ease, transform 0.1s ease;\n  }\n  .transport button:active {\n    transform: scale(0.94);\n  }\n  .transport button:disabled {\n    opacity: 0.35;\n    cursor: default;\n  }\n  .transport .aux {\n    color: var(--lg-text-secondary);\n    --mdc-icon-size: var(--lg-aux, 20px);\n  }\n  .transport .aux.on {\n    color: var(--source-color);\n  }\n  .transport .skip {\n    --mdc-icon-size: var(--lg-skip, 32px);\n  }\n  .play-glass {\n    flex: none;\n    width: var(--lg-play, 68px);\n    height: var(--lg-play, 68px);\n    border-radius: 50%;\n    color: var(--lg-text-primary);\n  }\n  .play {\n    width: 100%;\n    height: 100%;\n    border-radius: inherit;\n    display: grid;\n    place-items: center;\n    cursor: pointer;\n    color: inherit;\n    --mdc-icon-size: calc(var(--lg-play, 68px) * 0.44);\n    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.32));\n  }\n  .play-glass.idle {\n    color: var(--lg-text-secondary);\n  }\n  .volume {\n    display: flex;\n    align-items: center;\n    gap: 10px;\n    color: var(--lg-text-secondary);\n    --mdc-icon-size: 20px;\n  }\n  .volume .lg-react-slider {\n    flex: 1;\n    --lg-slider-height: 26px;\n    --lg-slider-bar-height: 6px;\n    --lg-slider-knob-size: 20px;\n    --lg-slider-thumb-height: 30px;\n  }\n  .dim,\n  .fade {\n    opacity: 0.4;\n  }\n  @supports (container-type: inline-size) {\n    .card {\n      --lg-art: clamp(48px, 19cqi, 72px);\n      --lg-play: clamp(48px, 18cqi, 68px);\n      --lg-skip: clamp(24px, 8.4cqi, 32px);\n      --lg-aux: clamp(17px, 5.3cqi, 20px);\n    }\n  }\n  @container (max-width: 250px) {\n    .transport {\n      padding: 0;\n    }\n  }\n";
-function qo(e, t) {
+var $o = "\n  .card {\n    gap: 16px;\n  }\n  .device {\n    display: flex;\n    align-items: center;\n    gap: 6px;\n    font-size: 12px;\n    font-weight: 600;\n    color: var(--lg-text-secondary);\n    --mdc-icon-size: 14px;\n    cursor: pointer;\n  }\n  .art {\n    flex: none;\n    width: var(--lg-art, 72px);\n    height: var(--lg-art, 72px);\n    border-radius: 20px;\n    overflow: hidden;\n    background: var(--lg-track-bg);\n    background-size: cover;\n    background-position: center;\n    box-shadow:\n      0 8px 20px rgba(0, 0, 0, 0.25),\n      inset 0 0 0 1px rgba(255, 255, 255, 0.4);\n    display: grid;\n    place-items: center;\n    color: var(--lg-text-secondary);\n    --mdc-icon-size: 28px;\n  }\n  .art.idle {\n    box-shadow:\n      0 1px 1px var(--lg-glass-inner),\n      inset 0 0 0 1px var(--lg-glass-stroke);\n  }\n  .title {\n    gap: 3px;\n  }\n  .source {\n    display: flex;\n    align-items: center;\n    gap: 5px;\n    font-size: 11px;\n    font-weight: 600;\n    color: var(--source-color);\n    --mdc-icon-size: 12px;\n  }\n  .source.muted-text {\n    color: var(--lg-text-secondary);\n  }\n  .media-control-glass {\n    flex: none;\n    border-radius: 50%;\n    overflow: hidden;\n    background: none;\n    box-shadow: none;\n  }\n  .media-control-glass[data-lg-static-lens=\"\"] {\n    background: rgba(255, 255, 255, 0.08);\n    -webkit-backdrop-filter: blur(5px);\n    backdrop-filter: blur(5px);\n    box-shadow:\n      0 5px 14px rgba(0, 0, 0, 0.22),\n      inset 1px 1px 0 rgba(255, 255, 255, 0.36),\n      inset -1px -1px 0 rgba(0, 0, 0, 0.14);\n  }\n  .more-glass {\n    width: 36px;\n    height: 36px;\n  }\n  .more {\n    width: 100%;\n    height: 100%;\n    border: 0;\n    border-radius: inherit;\n    padding: 0;\n    display: grid;\n    place-items: center;\n    background: transparent;\n    color: var(--lg-text-primary);\n    cursor: pointer;\n    --mdc-icon-size: 18px;\n    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.32));\n    transition: transform 120ms ease;\n  }\n  .more:active {\n    transform: scale(0.9);\n  }\n  .progress {\n    display: flex;\n    flex-direction: column;\n    gap: 8px;\n  }\n  /* Playback bars carry no accent of their own, so they fill in the text colour. */\n  .progress .lg-react-slider,\n  .volume .lg-react-slider {\n    --lg-slider-fill: color-mix(in srgb, var(--lg-text-primary) 82%, transparent);\n    --fill-from: color-mix(in srgb, var(--lg-text-primary) 70%, transparent);\n    --fill-to: color-mix(in srgb, var(--lg-text-primary) 82%, transparent);\n  }\n  /* The seek bar uses a compact instance of the same glass slider as volume. */\n  .progress .lg-react-slider {\n    --lg-slider-height: 14px;\n    --lg-slider-bar-height: 6px;\n    --lg-slider-knob-size: 18px;\n    --lg-slider-thumb-height: 26px;\n  }\n  .times {\n    display: flex;\n    justify-content: space-between;\n    font-family: var(--lg-font-ui);\n    font-size: 11px;\n    font-weight: 500;\n    letter-spacing: -0.2px;\n    color: var(--lg-text-secondary);\n    font-variant-numeric: tabular-nums;\n  }\n  .transport {\n    display: flex;\n    align-items: center;\n    justify-content: space-between;\n    padding: 0 8px;\n  }\n  .transport button {\n    border: 0;\n    background: transparent;\n    padding: 0;\n    color: var(--lg-text-primary);\n    cursor: pointer;\n    display: grid;\n    place-items: center;\n    transition: opacity 0.2s ease, transform 0.1s ease;\n  }\n  .transport button:active {\n    transform: scale(0.94);\n  }\n  .transport button:disabled {\n    opacity: 0.35;\n    cursor: default;\n  }\n  .transport .aux {\n    color: var(--lg-text-secondary);\n    --mdc-icon-size: var(--lg-aux, 20px);\n  }\n  .transport .aux.on {\n    color: var(--source-color);\n  }\n  .transport .skip {\n    --mdc-icon-size: var(--lg-skip, 32px);\n  }\n  .play-glass {\n    flex: none;\n    width: var(--lg-play, 68px);\n    height: var(--lg-play, 68px);\n    border-radius: 50%;\n    color: var(--lg-text-primary);\n  }\n  .play {\n    width: 100%;\n    height: 100%;\n    border-radius: inherit;\n    display: grid;\n    place-items: center;\n    cursor: pointer;\n    color: inherit;\n    --mdc-icon-size: calc(var(--lg-play, 68px) * 0.44);\n    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.32));\n  }\n  .play-glass.idle {\n    color: var(--lg-text-secondary);\n  }\n  .volume {\n    display: flex;\n    align-items: center;\n    gap: 10px;\n    color: var(--lg-text-secondary);\n    --mdc-icon-size: 20px;\n  }\n  .volume .lg-react-slider {\n    flex: 1;\n    --lg-slider-height: 26px;\n    --lg-slider-bar-height: 6px;\n    --lg-slider-knob-size: 20px;\n    --lg-slider-thumb-height: 30px;\n  }\n  .dim,\n  .fade {\n    opacity: 0.4;\n  }\n  @supports (container-type: inline-size) {\n    .card {\n      --lg-art: clamp(48px, 19cqi, 72px);\n      --lg-play: clamp(48px, 18cqi, 68px);\n      --lg-skip: clamp(24px, 8.4cqi, 32px);\n      --lg-aux: clamp(17px, 5.3cqi, 20px);\n    }\n  }\n  @container (max-width: 250px) {\n    .transport {\n      padding: 0;\n    }\n  }\n";
+function es(e, t) {
 	let n = e.attributes, r = n.media_duration, i = n.media_position;
 	if (r && i !== void 0) return t && n.media_position_updated_at && (i += (Date.now() - new Date(n.media_position_updated_at).getTime()) / 1e3), {
 		pos: u(i, 0, r),
 		duration: r
 	};
 }
-function Jo({ config: e, hass: t, host: n }) {
+function ts({ config: e, hass: t, host: n }) {
 	let { isDark: r, refraction: i } = Ai(n, e, t), a = s(e.language ?? t?.locale?.language ?? t?.language), o = e.entity ? t?.states[e.entity] : void 0, c = h(t, o, e.name, e.entity ?? ""), l = () => f(n, e.entity), u = o?.state === "playing" || o?.state === "buffering";
-	So(n, 1e3, u);
-	let d = o ? qo(o, u) : void 0, p = Sa(d ? d.pos / d.duration : void 0, d ? Math.max(1 / d.duration, .005) : .005), m = Sa(o?.attributes.volume_level, .005);
+	ko(n, 1e3, u);
+	let d = o ? es(o, u) : void 0, p = Sa(d ? d.pos / d.duration : void 0, d ? Math.max(1 / d.duration, .005) : .005), m = Sa(o?.attributes.volume_level, .005);
 	if (!o || y(o)) return /* @__PURE__ */ X(K, { children: /* @__PURE__ */ X(Yr, {
 		refraction: i,
 		variant: e.glass_variant,
@@ -8217,7 +8490,7 @@ function Jo({ config: e, hass: t, host: n }) {
 	let _ = (n, r) => void t?.callService("media_player", n, {
 		entity_id: e.entity,
 		...r
-	}), v = o.attributes, x = o.state === "paused", S = !u && !x, C = e.source_color ?? "#FF375F", w = S ? void 0 : v.entity_picture, T = S ? a("not_playing") : v.media_title ?? c, E = [v.media_artist, v.media_album_name].filter(Boolean), D = S ? g(t, o, a("standby")) : E.join(" — ") || (v.source ?? ""), O = v.app_name ?? v.source, k = d, A = p.value ?? 0, j = k ? A * k.duration : 0, M = k ? k.duration - j : 0, N = m.value ?? .5, P = !!v.shuffle, F = v.repeat ?? "off", I = b(o, Wo.SEEK) && !!k && !S, L = e.show_volume !== !1 && b(o, Wo.VOLUME_SET);
+	}), v = o.attributes, x = o.state === "paused", S = !u && !x, C = e.source_color ?? "#FF375F", w = S ? void 0 : v.entity_picture, T = S ? a("not_playing") : v.media_title ?? c, E = [v.media_artist, v.media_album_name].filter(Boolean), D = S ? g(t, o, a("standby")) : E.join(" — ") || (v.source ?? ""), O = v.app_name ?? v.source, k = d, A = p.value ?? 0, j = k ? A * k.duration : 0, M = k ? k.duration - j : 0, N = m.value ?? .5, P = !!v.shuffle, F = v.repeat ?? "off", I = b(o, Zo.SEEK) && !!k && !S, L = e.show_volume !== !1 && b(o, Zo.VOLUME_SET);
 	return /* @__PURE__ */ X(K, { children: /* @__PURE__ */ X(Wr, {
 		className: "card",
 		refraction: i,
@@ -8295,7 +8568,7 @@ function Jo({ config: e, hass: t, host: n }) {
 					}
 				}), /* @__PURE__ */ X("div", {
 					className: "times",
-					children: [/* @__PURE__ */ X("span", { children: k ? Go(j) : "0:00" }), /* @__PURE__ */ X("span", { children: ["−", k ? Go(M) : "0:00"] })]
+					children: [/* @__PURE__ */ X("span", { children: k ? Qo(j) : "0:00" }), /* @__PURE__ */ X("span", { children: ["−", k ? Qo(M) : "0:00"] })]
 				})]
 			}),
 			/* @__PURE__ */ X("div", {
@@ -8303,14 +8576,14 @@ function Jo({ config: e, hass: t, host: n }) {
 				children: [
 					/* @__PURE__ */ X("button", {
 						className: `aux${P ? " on" : ""}${S ? " fade" : ""}`,
-						disabled: !b(o, Wo.SHUFFLE),
+						disabled: !b(o, Zo.SHUFFLE),
 						onClick: () => _("shuffle_set", { shuffle: !P }),
 						title: "Shuffle",
 						children: /* @__PURE__ */ X(Q, { icon: "mdi:shuffle-variant" })
 					}),
 					/* @__PURE__ */ X("button", {
 						className: `skip${S ? " fade" : ""}`,
-						disabled: !b(o, Wo.PREVIOUS),
+						disabled: !b(o, Zo.PREVIOUS),
 						onClick: () => _("media_previous_track"),
 						title: "Previous",
 						children: /* @__PURE__ */ X(Q, { icon: "mdi:skip-previous-outline" })
@@ -8324,21 +8597,21 @@ function Jo({ config: e, hass: t, host: n }) {
 							type: "button",
 							title: "Play / Pause",
 							onClick: () => {
-								(!S || b(o, Wo.PLAY)) && _("media_play_pause");
+								(!S || b(o, Zo.PLAY)) && _("media_play_pause");
 							},
 							children: /* @__PURE__ */ X(Q, { icon: u ? "mdi:pause" : "mdi:play-outline" })
 						})
 					}),
 					/* @__PURE__ */ X("button", {
 						className: `skip${S ? " fade" : ""}`,
-						disabled: !b(o, Wo.NEXT),
+						disabled: !b(o, Zo.NEXT),
 						onClick: () => _("media_next_track"),
 						title: "Next",
 						children: /* @__PURE__ */ X(Q, { icon: "mdi:skip-next-outline" })
 					}),
 					/* @__PURE__ */ X("button", {
 						className: `aux${F === "off" ? "" : " on"}${S ? " fade" : ""}`,
-						disabled: !b(o, Wo.REPEAT),
+						disabled: !b(o, Zo.REPEAT),
 						onClick: () => _("repeat_set", { repeat: F === "off" ? "all" : F === "all" ? "one" : "off" }),
 						title: "Repeat",
 						children: /* @__PURE__ */ X(Q, { icon: F === "one" ? "mdi:repeat-once" : "mdi:repeat" })
@@ -8368,32 +8641,32 @@ function Jo({ config: e, hass: t, host: n }) {
 		]
 	}) });
 }
-var Yo = ki({
+var ns = ki({
 	tagName: "liquid-glass-media-card",
-	component: Jo,
+	component: ts,
 	styles: [
 		ji,
 		Xr,
 		Hr,
 		aa,
-		Ko
+		$o
 	],
 	getCardSize: () => 4,
 	getGridOptions: () => Ui(6),
 	getStubConfig: (e, t, n) => ({ entity: x(["media_player"], e, t, n) })
-}), Xo = (e) => e !== null && e !== "" && Number.isFinite(Number(e)) ? Number(e) : void 0;
-function Zo(e, t) {
+}), rs = (e) => e !== null && e !== "" && Number.isFinite(Number(e)) ? Number(e) : void 0;
+function is(e, t) {
 	let n = e.attributes, r = e.entity_id.split(".")[0], i;
 	switch (r) {
 		case "input_number":
 		case "number":
 			i = {
-				min: Xo(n.min) ?? 0,
-				max: Xo(n.max) ?? 100,
-				step: Xo(n.step) ?? 1,
+				min: rs(n.min) ?? 0,
+				max: rs(n.max) ?? 100,
+				step: rs(n.step) ?? 1,
 				unit: n.unit_of_measurement ?? "",
 				icon: "mdi:tune-variant",
-				value: Xo(e.state),
+				value: rs(e.state),
 				call: (e) => [
 					r,
 					"set_value",
@@ -8405,10 +8678,10 @@ function Zo(e, t) {
 			i = {
 				min: 0,
 				max: 100,
-				step: Xo(n.percentage_step) ?? 1,
+				step: rs(n.percentage_step) ?? 1,
 				unit: "%",
 				icon: "mdi:fan",
-				value: e.state === "on" ? Xo(n.percentage) ?? 0 : 0,
+				value: e.state === "on" ? rs(n.percentage) ?? 0 : 0,
 				call: (e) => [
 					"fan",
 					"set_percentage",
@@ -8423,7 +8696,7 @@ function Zo(e, t) {
 				step: 1,
 				unit: "%",
 				icon: "mdi:lightbulb",
-				value: e.state === "on" ? Math.round((Xo(n.brightness) ?? 0) / 255 * 100) : 0,
+				value: e.state === "on" ? Math.round((rs(n.brightness) ?? 0) / 255 * 100) : 0,
 				call: (e) => [
 					"light",
 					"turn_on",
@@ -8438,7 +8711,7 @@ function Zo(e, t) {
 				step: 1,
 				unit: "%",
 				icon: "mdi:volume-high",
-				value: Math.round((Xo(n.volume_level) ?? 0) * 100),
+				value: Math.round((rs(n.volume_level) ?? 0) * 100),
 				call: (e) => [
 					"media_player",
 					"volume_set",
@@ -8453,7 +8726,7 @@ function Zo(e, t) {
 				step: 1,
 				unit: "%",
 				icon: "mdi:blinds-horizontal",
-				value: Xo(n.current_position) ?? (e.state === "closed" ? 0 : 100),
+				value: rs(n.current_position) ?? (e.state === "closed" ? 0 : 100),
 				call: (e) => [
 					"cover",
 					"set_cover_position",
@@ -8468,7 +8741,7 @@ function Zo(e, t) {
 				step: 1,
 				unit: "%",
 				icon: "mdi:pipe-valve",
-				value: Xo(n.current_position) ?? (e.state === "closed" ? 0 : 100),
+				value: rs(n.current_position) ?? (e.state === "closed" ? 0 : 100),
 				call: (e) => [
 					"valve",
 					"set_valve_position",
@@ -8478,12 +8751,12 @@ function Zo(e, t) {
 			break;
 		case "humidifier":
 			i = {
-				min: Xo(n.min_humidity) ?? 0,
-				max: Xo(n.max_humidity) ?? 100,
+				min: rs(n.min_humidity) ?? 0,
+				max: rs(n.max_humidity) ?? 100,
 				step: 1,
 				unit: "%",
 				icon: "mdi:air-humidifier",
-				value: Xo(n.humidity),
+				value: rs(n.humidity),
 				call: (e) => [
 					"humidifier",
 					"set_humidity",
@@ -8493,12 +8766,12 @@ function Zo(e, t) {
 			break;
 		case "water_heater":
 			i = {
-				min: Xo(n.min_temp) ?? 30,
-				max: Xo(n.max_temp) ?? 60,
-				step: Xo(n.target_temp_step) ?? 1,
+				min: rs(n.min_temp) ?? 30,
+				max: rs(n.max_temp) ?? 60,
+				step: rs(n.target_temp_step) ?? 1,
 				unit: "°",
 				icon: "mdi:water-boiler",
-				value: Xo(n.temperature),
+				value: rs(n.temperature),
 				call: (e) => [
 					"water_heater",
 					"set_temperature",
@@ -8508,12 +8781,12 @@ function Zo(e, t) {
 			break;
 		case "climate":
 			i = {
-				min: Xo(n.min_temp) ?? 7,
-				max: Xo(n.max_temp) ?? 35,
-				step: Xo(n.target_temp_step) ?? .5,
+				min: rs(n.min_temp) ?? 7,
+				max: rs(n.max_temp) ?? 35,
+				step: rs(n.target_temp_step) ?? .5,
 				unit: "°",
 				icon: "mdi:thermostat",
-				value: Xo(n.temperature),
+				value: rs(n.temperature),
 				call: (e) => [
 					"climate",
 					"set_temperature",
@@ -8527,7 +8800,7 @@ function Zo(e, t) {
 			step: 1,
 			unit: n.unit_of_measurement ?? "",
 			icon: "mdi:tune-variant",
-			value: Xo(e.state)
+			value: rs(e.state)
 		};
 	}
 	let a = i.call;
@@ -8545,18 +8818,18 @@ function Zo(e, t) {
 		step: t.step ?? i.step,
 		unit: t.unit ?? i.unit,
 		icon: t.icon ?? n.icon ?? i.icon,
-		value: t.attribute ? Xo(n[t.attribute]) : i.value,
+		value: t.attribute ? rs(n[t.attribute]) : i.value,
 		call: a
 	};
 }
-var Qo = "\n  .card {\n    gap: 16px;\n    width: 100%;\n  }\n  .value {\n    flex: none;\n    display: flex;\n    align-items: flex-end;\n    gap: 2px;\n    font-family: var(--lg-font-ui);\n    font-weight: 600;\n    font-variant-numeric: tabular-nums;\n  }\n  .value .num {\n    font-size: var(--lg-sv, 28px);\n    line-height: 1.1;\n    letter-spacing: -1px;\n    color: var(--lg-text-primary);\n  }\n  .value .unit {\n    font-size: var(--lg-sv-unit, 15px);\n    line-height: 1.6;\n    letter-spacing: -0.2px;\n    color: var(--lg-text-secondary);\n  }\n  .value.zero .num { color: var(--lg-text-secondary); }\n  .track-wrap {\n    position: relative;\n    --lg-slider-height: var(--lg-track-h, 44px);\n    --lg-slider-bar-height: var(--lg-bar-h, 6px);\n    --lg-slider-knob-size: var(--lg-knob-size, 22px);\n    --lg-slider-fill: linear-gradient(90deg, var(--fill-from), var(--fill-to));\n  }\n  @supports (container-type: inline-size) {\n    .card {\n      --lg-sv: clamp(20px, 7.4cqi, 28px);\n      --lg-sv-unit: clamp(11px, 3.9cqi, 15px);\n      --lg-track-h: clamp(34px, 11.6cqi, 44px);\n      --lg-bar-h: clamp(5px, 1.6cqi, 6px);\n      --lg-knob-size: clamp(18px, 5.8cqi, 22px);\n    }\n  }\n";
-function $o(e, t) {
+var as = "\n  .card {\n    gap: 16px;\n    width: 100%;\n  }\n  .value {\n    flex: none;\n    display: flex;\n    align-items: flex-end;\n    gap: 2px;\n    font-family: var(--lg-font-ui);\n    font-weight: 600;\n    font-variant-numeric: tabular-nums;\n  }\n  .value .num {\n    font-size: var(--lg-sv, 28px);\n    line-height: 1.1;\n    letter-spacing: -1px;\n    color: var(--lg-text-primary);\n  }\n  .value .unit {\n    font-size: var(--lg-sv-unit, 15px);\n    line-height: 1.6;\n    letter-spacing: -0.2px;\n    color: var(--lg-text-secondary);\n  }\n  .value.zero .num { color: var(--lg-text-secondary); }\n  .track-wrap {\n    position: relative;\n    --lg-slider-height: var(--lg-track-h, 44px);\n    --lg-slider-bar-height: var(--lg-bar-h, 6px);\n    --lg-slider-knob-size: var(--lg-knob-size, 22px);\n    --lg-slider-fill: linear-gradient(90deg, var(--fill-from), var(--fill-to));\n  }\n  @supports (container-type: inline-size) {\n    .card {\n      --lg-sv: clamp(20px, 7.4cqi, 28px);\n      --lg-sv-unit: clamp(11px, 3.9cqi, 15px);\n      --lg-track-h: clamp(34px, 11.6cqi, 44px);\n      --lg-bar-h: clamp(5px, 1.6cqi, 6px);\n      --lg-knob-size: clamp(18px, 5.8cqi, 22px);\n    }\n  }\n";
+function os(e, t) {
 	return t === void 0 || e.value !== void 0 && Math.abs(e.value - t) <= Math.max(e.step / 2, 1);
 }
-function es({ config: e, hass: t, host: n }) {
+function ss({ config: e, hass: t, host: n }) {
 	let { isDark: r, refraction: i } = Ai(n, e, t), [a, o] = q(), [c, l] = q(), d = Y(void 0), p = s(e.language ?? t?.locale?.language ?? t?.language), m = e.entity ? t?.states[e.entity] : void 0;
 	J(() => () => window.clearTimeout(d.current), []);
-	let g = m && !y(m) ? Zo(m, e) : void 0, v = !g || $o(g, c);
+	let g = m && !y(m) ? is(m, e) : void 0, v = !g || os(g, c);
 	if (J(() => {
 		c !== void 0 && v && (window.clearTimeout(d.current), l(void 0));
 	}, [v, c]), !m || y(m) || !g) {
@@ -8676,28 +8949,28 @@ function es({ config: e, hass: t, host: n }) {
 		]
 	}) });
 }
-var ts = ki({
+var cs = ki({
 	tagName: "liquid-glass-slider-card",
-	component: es,
+	component: ss,
 	styles: [
 		ji,
 		Xr,
 		Hr,
 		aa,
-		Qo
+		as
 	],
 	getCardSize: () => 2,
 	getGridOptions: (e) => Ui(e.show_range === !1 ? 2 : 3),
 	getStubConfig: (e, t, r) => ({ entity: x(n, e, t, r) })
-}), ns = 4e3, rs = "\n  .card {\n    gap: 14px;\n  }\n  .select-control {\n    width: 100%;\n  }\n  .select-control .lg-glass-segmented > button {\n    flex-direction: row;\n    padding: 0 8px;\n    font-size: var(--lg-select-label, 13px);\n    font-weight: 550;\n  }\n  .option-chips {\n    display: flex;\n    flex-wrap: wrap;\n    gap: 8px;\n  }\n  .option-chip {\n    position: relative;\n    isolation: isolate;\n    flex: 1 1 auto;\n    min-width: min(112px, 100%);\n    height: var(--lg-select-chip-h, 42px);\n    border-radius: 999px;\n    overflow: hidden;\n    color: var(--lg-text-secondary);\n    transition: color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;\n  }\n  .option-chip.selected {\n    color: var(--lg-text-primary);\n    background: var(--lg-press-fill);\n    box-shadow:\n      inset 0 0 0 2px var(--lg-select-accent),\n      0 4px 14px var(--lg-select-glow);\n  }\n  .option-chip button {\n    width: 100%;\n    height: 100%;\n    min-width: 0;\n    padding: 0 15px;\n    border: 0;\n    border-radius: inherit;\n    background: transparent;\n    color: inherit;\n    font: inherit;\n    font-size: var(--lg-select-label, 13px);\n    font-weight: 600;\n    cursor: pointer;\n    overflow: hidden;\n    text-overflow: ellipsis;\n    white-space: nowrap;\n  }\n  .option-chip button:active {\n    transform: scale(0.97);\n  }\n  .option-chip button:focus-visible {\n    outline: 2px solid var(--lg-select-accent);\n    outline-offset: -3px;\n  }\n  @supports (container-type: inline-size) {\n    .card {\n      --lg-select-label: clamp(11px, 3.4cqi, 13px);\n      --lg-select-chip-h: clamp(36px, 11cqi, 42px);\n    }\n  }\n";
-function is(e) {
+}), ls = 4e3, us = "\n  .card {\n    gap: 14px;\n  }\n  .select-control {\n    width: 100%;\n  }\n  .select-control .lg-glass-segmented > button {\n    flex-direction: row;\n    padding: 0 8px;\n    font-size: var(--lg-select-label, 13px);\n    font-weight: 550;\n  }\n  .option-chips {\n    display: flex;\n    flex-wrap: wrap;\n    gap: 8px;\n  }\n  .option-chip {\n    position: relative;\n    isolation: isolate;\n    flex: 1 1 auto;\n    min-width: min(112px, 100%);\n    height: var(--lg-select-chip-h, 42px);\n    border-radius: 999px;\n    overflow: hidden;\n    color: var(--lg-text-secondary);\n    transition: color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;\n  }\n  .option-chip.selected {\n    color: var(--lg-text-primary);\n    background: var(--lg-press-fill);\n    box-shadow:\n      inset 0 0 0 2px var(--lg-select-accent),\n      0 4px 14px var(--lg-select-glow);\n  }\n  .option-chip button {\n    width: 100%;\n    height: 100%;\n    min-width: 0;\n    padding: 0 15px;\n    border: 0;\n    border-radius: inherit;\n    background: transparent;\n    color: inherit;\n    font: inherit;\n    font-size: var(--lg-select-label, 13px);\n    font-weight: 600;\n    cursor: pointer;\n    overflow: hidden;\n    text-overflow: ellipsis;\n    white-space: nowrap;\n  }\n  .option-chip button:active {\n    transform: scale(0.97);\n  }\n  .option-chip button:focus-visible {\n    outline: 2px solid var(--lg-select-accent);\n    outline-offset: -3px;\n  }\n  @supports (container-type: inline-size) {\n    .card {\n      --lg-select-label: clamp(11px, 3.4cqi, 13px);\n      --lg-select-chip-h: clamp(36px, 11cqi, 42px);\n    }\n  }\n";
+function ds(e) {
 	return Array.isArray(e) ? e.filter((e) => typeof e == "string") : [];
 }
-function as(e) {
+function fs(e) {
 	return e === "input_select" ? "mdi:form-select" : "mdi:form-dropdown";
 }
-function os({ config: e, hass: t, host: n }) {
-	let { isDark: r, refraction: i } = Ai(n, e, t), a = s(e.language ?? t?.locale?.language ?? t?.language), o = e.entity ? t?.states[e.entity] : void 0, [c, l] = q(), u = Y(void 0), d = e.entity?.split(".")[0] ?? "select", p = is(o?.attributes.options), m = c !== void 0 && o?.state === c;
+function ps({ config: e, hass: t, host: n }) {
+	let { isDark: r, refraction: i } = Ai(n, e, t), a = s(e.language ?? t?.locale?.language ?? t?.language), o = e.entity ? t?.states[e.entity] : void 0, [c, l] = q(), u = Y(void 0), d = e.entity?.split(".")[0] ?? "select", p = ds(o?.attributes.options), m = c !== void 0 && o?.state === c;
 	J(() => () => window.clearTimeout(u.current), []), J(() => {
 		m && (window.clearTimeout(u.current), u.current = window.setTimeout(() => l(void 0), 0));
 	}, [m]);
@@ -8705,7 +8978,7 @@ function os({ config: e, hass: t, host: n }) {
 	if (!o || y(o) || p.length === 0) return /* @__PURE__ */ X(K, { children: /* @__PURE__ */ X(Yr, {
 		refraction: i,
 		variant: e.glass_variant,
-		icon: e.icon ?? as(d),
+		icon: e.icon ?? fs(d),
 		name: _,
 		label: o && !y(o) ? a("select_no_options") : a("unavailable"),
 		onOpen: () => f(n, e.entity)
@@ -8715,7 +8988,7 @@ function os({ config: e, hass: t, host: n }) {
 		to: x ? E(x, .2) : "var(--lg-slider-accent)",
 		glow: x ? D(x, .3) : "rgba(94, 92, 230, 0.3)"
 	}, w = (n) => {
-		t && e.entity && n !== v && (l(n), window.clearTimeout(u.current), u.current = window.setTimeout(() => l(void 0), ns), t.callService(d, "select_option", {
+		t && e.entity && n !== v && (l(n), window.clearTimeout(u.current), u.current = window.setTimeout(() => l(void 0), ls), t.callService(d, "select_option", {
 			entity_id: e.entity,
 			option: n
 		}));
@@ -8734,7 +9007,7 @@ function os({ config: e, hass: t, host: n }) {
 		children: [/* @__PURE__ */ X("div", {
 			className: "header",
 			children: [/* @__PURE__ */ X(Kr, {
-				icon: e.icon ?? o.attributes.icon ?? as(d),
+				icon: e.icon ?? o.attributes.icon ?? fs(d),
 				style: C,
 				onClick: () => f(n, e.entity)
 			}), /* @__PURE__ */ X(qr, {
@@ -8766,7 +9039,7 @@ function os({ config: e, hass: t, host: n }) {
 			})
 		}) : /* @__PURE__ */ X("div", {
 			className: "select-control",
-			children: /* @__PURE__ */ X(za, {
+			children: /* @__PURE__ */ X(Ka, {
 				items: p.map((e) => ({
 					value: e,
 					label: b(e)
@@ -8781,20 +9054,20 @@ function os({ config: e, hass: t, host: n }) {
 		})]
 	}) });
 }
-var ss = ki({
+var ms = ki({
 	tagName: "liquid-glass-select-card",
-	component: os,
+	component: ps,
 	styles: [
 		ji,
 		Xr,
 		Hr,
-		La,
-		rs
+		Wa,
+		us
 	],
 	getCardSize: () => 2,
 	getGridOptions: () => Ui(3),
 	getStubConfig: (e, t, n) => ({ entity: x(r, e, t, n) })
-}), cs = 1, ls = 2, us = 4, ds = {
+}), hs = 1, gs = 2, _s = 4, vs = {
 	"clear-night": {
 		icon: "mdi:weather-night",
 		color: "#9AB6FF"
@@ -8856,18 +9129,18 @@ var ss = ki({
 		icon: "mdi:weather-windy-variant",
 		color: "#A0AEC0"
 	}
-}, fs = {
+}, ys = {
 	icon: "mdi:weather-cloudy",
 	color: "#A0AEC0"
-}, ps = 9e5, ms = "\n  .card {\n    gap: 16px;\n  }\n\n  /* Current conditions */\n  .current {\n    display: flex;\n    justify-content: space-between;\n    align-items: center;\n    gap: 12px;\n  }\n  .now {\n    display: flex;\n    flex-direction: column;\n    gap: 2px;\n    min-width: 0;\n    cursor: pointer;\n  }\n  .city {\n    font-size: var(--lg-name);\n    font-weight: 600;\n    color: var(--lg-text-primary);\n    white-space: nowrap;\n    overflow: hidden;\n    text-overflow: ellipsis;\n  }\n  .condition {\n    font-size: var(--lg-state);\n    color: var(--lg-text-secondary);\n    white-space: nowrap;\n    overflow: hidden;\n    text-overflow: ellipsis;\n  }\n  .temp-row {\n    display: flex;\n    align-items: flex-start;\n    gap: 2px;\n    font-family: var(--lg-font-ui);\n    font-weight: 600;\n    font-variant-numeric: tabular-nums;\n  }\n  .temp-row .temp {\n    font-size: var(--lg-wx-temp, 52px);\n    line-height: 1.05;\n    letter-spacing: -2px;\n    color: var(--lg-text-primary);\n  }\n  .temp-row .deg {\n    font-size: var(--lg-wx-deg, 26px);\n    line-height: 1.2;\n    letter-spacing: -0.2px;\n    color: var(--lg-text-secondary);\n  }\n  .hilo {\n    display: flex;\n    gap: 10px;\n    font-size: var(--lg-label);\n    letter-spacing: -0.2px;\n  }\n  .hilo .hi {\n    font-weight: 600;\n    color: var(--lg-text-primary);\n  }\n  .hilo .lo {\n    font-weight: 500;\n    color: var(--lg-text-secondary);\n  }\n  .big-icon {\n    flex: none;\n    display: grid;\n    place-items: center;\n    width: var(--lg-wx-icon-box, 110px);\n    height: var(--lg-wx-icon-box, 110px);\n  }\n  .big-icon lg-icon {\n    --mdc-icon-size: var(--lg-wx-icon, 96px);\n    width: var(--lg-wx-icon, 96px);\n    height: var(--lg-wx-icon, 96px);\n    color: var(--wx-color);\n    filter: drop-shadow(0 6px 20px var(--wx-glow));\n  }\n\n  /* Hourly strip */\n  .hourly {\n    display: flex;\n    justify-content: space-between;\n    gap: 2px;\n    padding: 12px 10px;\n    border-radius: 20px;\n    background: var(--lg-track-bg);\n    box-shadow: inset 0 0 0 1px var(--lg-glass-stroke);\n  }\n  .hour {\n    flex: 1;\n    min-width: 0;\n    display: flex;\n    flex-direction: column;\n    align-items: center;\n    gap: 6px;\n    padding: 6px 0;\n    border-radius: 14px;\n  }\n  .hour.now {\n    background: var(--lg-segment-selected);\n  }\n  .hour .time {\n    font-size: var(--lg-tick);\n    font-weight: 500;\n    color: var(--lg-text-secondary);\n    white-space: nowrap;\n  }\n  .hour.now .time {\n    font-weight: 600;\n    color: var(--lg-text-primary);\n  }\n  .hour lg-icon {\n    --mdc-icon-size: var(--lg-wx-hour-icon, 22px);\n    width: var(--lg-wx-hour-icon, 22px);\n    height: var(--lg-wx-hour-icon, 22px);\n    color: var(--wx-color);\n  }\n  .hour .t {\n    font-family: var(--lg-font-ui);\n    font-size: var(--lg-label);\n    font-weight: 600;\n    letter-spacing: -0.2px;\n    color: var(--lg-text-primary);\n    font-variant-numeric: tabular-nums;\n  }\n\n  /* Daily rows */\n  .daily {\n    display: flex;\n    flex-direction: column;\n  }\n  .day {\n    display: flex;\n    align-items: center;\n    gap: 12px;\n    height: 44px;\n  }\n  .day .label {\n    flex: none;\n    width: var(--lg-wx-day, 44px);\n    font-size: var(--lg-name-sm, 14px);\n    font-weight: 500;\n    color: var(--lg-text-secondary);\n    white-space: nowrap;\n    overflow: hidden;\n    text-overflow: ellipsis;\n  }\n  .day.today .label {\n    font-weight: 600;\n    color: var(--lg-text-primary);\n  }\n  .day lg-icon {\n    flex: none;\n    --mdc-icon-size: var(--lg-wx-hour-icon, 22px);\n    width: var(--lg-wx-hour-icon, 22px);\n    height: var(--lg-wx-hour-icon, 22px);\n    color: var(--wx-color);\n  }\n  .day .lo,\n  .day .hi {\n    flex: none;\n    width: var(--lg-wx-temp-col, 30px);\n    text-align: right;\n    font-family: var(--lg-font-ui);\n    font-size: var(--lg-label);\n    letter-spacing: -0.2px;\n    font-variant-numeric: tabular-nums;\n  }\n  .day .lo {\n    font-weight: 500;\n    color: var(--lg-text-secondary);\n  }\n  .day .hi {\n    font-weight: 600;\n    color: var(--lg-text-primary);\n  }\n  /* Every bar shares one scale, so a day's segment shows where it sits in the week. */\n  .bar {\n    position: relative;\n    flex: 1;\n    min-width: 0;\n    height: 6px;\n    border-radius: 3px;\n    background: var(--lg-track-bg);\n    overflow: hidden;\n  }\n  .bar span {\n    position: absolute;\n    top: 0;\n    bottom: 0;\n    border-radius: 3px;\n    background: linear-gradient(90deg, #5ac8fa, #ffd60a 55%, #ff9f0a);\n  }\n\n  /* Metric tiles */\n  .metrics {\n    display: flex;\n    gap: 8px;\n  }\n  .metric {\n    flex: 1;\n    min-width: 0;\n    display: flex;\n    flex-direction: column;\n    gap: 3px;\n    padding: 10px 12px;\n    border-radius: 18px;\n    background: var(--lg-track-bg);\n    box-shadow: inset 0 0 0 1px var(--lg-glass-stroke);\n  }\n  .metric .head {\n    display: flex;\n    align-items: center;\n    gap: 5px;\n    min-width: 0;\n    font-size: var(--lg-tick);\n    font-weight: 500;\n    color: var(--lg-text-secondary);\n  }\n  .metric .head span {\n    overflow: hidden;\n    text-overflow: ellipsis;\n    white-space: nowrap;\n  }\n  .metric lg-icon {\n    flex: none;\n    --mdc-icon-size: 14px;\n    width: 14px;\n    height: 14px;\n  }\n  .metric .v {\n    font-family: var(--lg-font-ui);\n    font-size: var(--lg-wx-metric, 15px);\n    font-weight: 600;\n    letter-spacing: -0.2px;\n    color: var(--lg-text-primary);\n    white-space: nowrap;\n    overflow: hidden;\n    text-overflow: ellipsis;\n  }\n\n  /*\n   * Row layout: the icon shrinks to the size of a card's icon well and the reading\n   * moves to the trailing edge, which puts the card at a switch card's height.\n   */\n  .card.row .big-icon {\n    width: var(--lg-well);\n    height: var(--lg-well);\n  }\n  .card.row .big-icon lg-icon {\n    --mdc-icon-size: var(--lg-well);\n    width: var(--lg-well);\n    height: var(--lg-well);\n    filter: drop-shadow(0 3px 10px var(--wx-glow));\n  }\n  .card.row .temp-row {\n    flex: none;\n  }\n  .card.row .temp-row .temp {\n    font-size: var(--lg-wx-row-temp, 28px);\n    line-height: 1.1;\n    letter-spacing: -1px;\n  }\n  .card.row .temp-row .deg {\n    font-size: var(--lg-wx-row-deg, 15px);\n    line-height: 1.6;\n  }\n\n  @supports (container-type: inline-size) {\n    .card {\n      --lg-wx-row-temp: clamp(20px, 7.4cqi, 28px);\n      --lg-wx-row-deg: clamp(11px, 3.9cqi, 15px);\n      --lg-wx-temp: clamp(34px, 13.7cqi, 52px);\n      --lg-wx-deg: clamp(17px, 6.8cqi, 26px);\n      --lg-wx-icon-box: clamp(64px, 29cqi, 110px);\n      --lg-wx-icon: clamp(54px, 25cqi, 96px);\n      --lg-wx-hour-icon: clamp(17px, 5.8cqi, 22px);\n      --lg-wx-day: clamp(32px, 11.6cqi, 44px);\n      --lg-wx-temp-col: clamp(24px, 7.9cqi, 30px);\n      --lg-wx-metric: clamp(12px, 3.9cqi, 15px);\n      --lg-name-sm: clamp(11.5px, 3.7cqi, 14px);\n    }\n  }\n  /* Three tiles side by side stop being readable long before the card does. */\n  @container (max-width: 300px) {\n    .metrics {\n      flex-wrap: wrap;\n    }\n    .metric {\n      flex-basis: calc(50% - 4px);\n    }\n  }\n  @container (max-width: 250px) {\n    .day {\n      gap: 8px;\n    }\n    .hourly {\n      padding: 10px 6px;\n    }\n  }\n";
-async function hs(e, t, n) {
+}, bs = 9e5, xs = "\n  .card {\n    gap: 16px;\n  }\n\n  /* Current conditions */\n  .current {\n    display: flex;\n    justify-content: space-between;\n    align-items: center;\n    gap: 12px;\n  }\n  .now {\n    display: flex;\n    flex-direction: column;\n    gap: 2px;\n    min-width: 0;\n    cursor: pointer;\n  }\n  .city {\n    font-size: var(--lg-name);\n    font-weight: 600;\n    color: var(--lg-text-primary);\n    white-space: nowrap;\n    overflow: hidden;\n    text-overflow: ellipsis;\n  }\n  .condition {\n    font-size: var(--lg-state);\n    color: var(--lg-text-secondary);\n    white-space: nowrap;\n    overflow: hidden;\n    text-overflow: ellipsis;\n  }\n  .temp-row {\n    display: flex;\n    align-items: flex-start;\n    gap: 2px;\n    font-family: var(--lg-font-ui);\n    font-weight: 600;\n    font-variant-numeric: tabular-nums;\n  }\n  .temp-row .temp {\n    font-size: var(--lg-wx-temp, 52px);\n    line-height: 1.05;\n    letter-spacing: -2px;\n    color: var(--lg-text-primary);\n  }\n  .temp-row .deg {\n    font-size: var(--lg-wx-deg, 26px);\n    line-height: 1.2;\n    letter-spacing: -0.2px;\n    color: var(--lg-text-secondary);\n  }\n  .hilo {\n    display: flex;\n    gap: 10px;\n    font-size: var(--lg-label);\n    letter-spacing: -0.2px;\n  }\n  .hilo .hi {\n    font-weight: 600;\n    color: var(--lg-text-primary);\n  }\n  .hilo .lo {\n    font-weight: 500;\n    color: var(--lg-text-secondary);\n  }\n  .big-icon {\n    flex: none;\n    display: grid;\n    place-items: center;\n    width: var(--lg-wx-icon-box, 110px);\n    height: var(--lg-wx-icon-box, 110px);\n  }\n  .big-icon lg-icon {\n    --mdc-icon-size: var(--lg-wx-icon, 96px);\n    width: var(--lg-wx-icon, 96px);\n    height: var(--lg-wx-icon, 96px);\n    color: var(--wx-color);\n    filter: drop-shadow(0 6px 20px var(--wx-glow));\n  }\n\n  /* Hourly strip */\n  .hourly {\n    display: flex;\n    justify-content: space-between;\n    gap: 2px;\n    padding: 12px 10px;\n    border-radius: 20px;\n    background: var(--lg-track-bg);\n    box-shadow: inset 0 0 0 1px var(--lg-glass-stroke);\n  }\n  .hour {\n    flex: 1;\n    min-width: 0;\n    display: flex;\n    flex-direction: column;\n    align-items: center;\n    gap: 6px;\n    padding: 6px 0;\n    border-radius: 14px;\n  }\n  .hour.now {\n    background: var(--lg-segment-selected);\n  }\n  .hour .time {\n    font-size: var(--lg-tick);\n    font-weight: 500;\n    color: var(--lg-text-secondary);\n    white-space: nowrap;\n  }\n  .hour.now .time {\n    font-weight: 600;\n    color: var(--lg-text-primary);\n  }\n  .hour lg-icon {\n    --mdc-icon-size: var(--lg-wx-hour-icon, 22px);\n    width: var(--lg-wx-hour-icon, 22px);\n    height: var(--lg-wx-hour-icon, 22px);\n    color: var(--wx-color);\n  }\n  .hour .t {\n    font-family: var(--lg-font-ui);\n    font-size: var(--lg-label);\n    font-weight: 600;\n    letter-spacing: -0.2px;\n    color: var(--lg-text-primary);\n    font-variant-numeric: tabular-nums;\n  }\n\n  /* Daily rows */\n  .daily {\n    display: flex;\n    flex-direction: column;\n  }\n  .day {\n    display: flex;\n    align-items: center;\n    gap: 12px;\n    height: 44px;\n  }\n  .day .label {\n    flex: none;\n    width: var(--lg-wx-day, 44px);\n    font-size: var(--lg-name-sm, 14px);\n    font-weight: 500;\n    color: var(--lg-text-secondary);\n    white-space: nowrap;\n    overflow: hidden;\n    text-overflow: ellipsis;\n  }\n  .day.today .label {\n    font-weight: 600;\n    color: var(--lg-text-primary);\n  }\n  .day lg-icon {\n    flex: none;\n    --mdc-icon-size: var(--lg-wx-hour-icon, 22px);\n    width: var(--lg-wx-hour-icon, 22px);\n    height: var(--lg-wx-hour-icon, 22px);\n    color: var(--wx-color);\n  }\n  .day .lo,\n  .day .hi {\n    flex: none;\n    width: var(--lg-wx-temp-col, 30px);\n    text-align: right;\n    font-family: var(--lg-font-ui);\n    font-size: var(--lg-label);\n    letter-spacing: -0.2px;\n    font-variant-numeric: tabular-nums;\n  }\n  .day .lo {\n    font-weight: 500;\n    color: var(--lg-text-secondary);\n  }\n  .day .hi {\n    font-weight: 600;\n    color: var(--lg-text-primary);\n  }\n  /* Every bar shares one scale, so a day's segment shows where it sits in the week. */\n  .bar {\n    position: relative;\n    flex: 1;\n    min-width: 0;\n    height: 6px;\n    border-radius: 3px;\n    background: var(--lg-track-bg);\n    overflow: hidden;\n  }\n  .bar span {\n    position: absolute;\n    top: 0;\n    bottom: 0;\n    border-radius: 3px;\n    background: linear-gradient(90deg, #5ac8fa, #ffd60a 55%, #ff9f0a);\n  }\n\n  /* Metric tiles */\n  .metrics {\n    display: flex;\n    gap: 8px;\n  }\n  .metric {\n    flex: 1;\n    min-width: 0;\n    display: flex;\n    flex-direction: column;\n    gap: 3px;\n    padding: 10px 12px;\n    border-radius: 18px;\n    background: var(--lg-track-bg);\n    box-shadow: inset 0 0 0 1px var(--lg-glass-stroke);\n  }\n  .metric .head {\n    display: flex;\n    align-items: center;\n    gap: 5px;\n    min-width: 0;\n    font-size: var(--lg-tick);\n    font-weight: 500;\n    color: var(--lg-text-secondary);\n  }\n  .metric .head span {\n    overflow: hidden;\n    text-overflow: ellipsis;\n    white-space: nowrap;\n  }\n  .metric lg-icon {\n    flex: none;\n    --mdc-icon-size: 14px;\n    width: 14px;\n    height: 14px;\n  }\n  .metric .v {\n    font-family: var(--lg-font-ui);\n    font-size: var(--lg-wx-metric, 15px);\n    font-weight: 600;\n    letter-spacing: -0.2px;\n    color: var(--lg-text-primary);\n    white-space: nowrap;\n    overflow: hidden;\n    text-overflow: ellipsis;\n  }\n\n  /*\n   * Row layout: the icon shrinks to the size of a card's icon well and the reading\n   * moves to the trailing edge, which puts the card at a switch card's height.\n   */\n  .card.row .big-icon {\n    width: var(--lg-well);\n    height: var(--lg-well);\n  }\n  .card.row .big-icon lg-icon {\n    --mdc-icon-size: var(--lg-well);\n    width: var(--lg-well);\n    height: var(--lg-well);\n    filter: drop-shadow(0 3px 10px var(--wx-glow));\n  }\n  .card.row .temp-row {\n    flex: none;\n  }\n  .card.row .temp-row .temp {\n    font-size: var(--lg-wx-row-temp, 28px);\n    line-height: 1.1;\n    letter-spacing: -1px;\n  }\n  .card.row .temp-row .deg {\n    font-size: var(--lg-wx-row-deg, 15px);\n    line-height: 1.6;\n  }\n\n  @supports (container-type: inline-size) {\n    .card {\n      --lg-wx-row-temp: clamp(20px, 7.4cqi, 28px);\n      --lg-wx-row-deg: clamp(11px, 3.9cqi, 15px);\n      --lg-wx-temp: clamp(34px, 13.7cqi, 52px);\n      --lg-wx-deg: clamp(17px, 6.8cqi, 26px);\n      --lg-wx-icon-box: clamp(64px, 29cqi, 110px);\n      --lg-wx-icon: clamp(54px, 25cqi, 96px);\n      --lg-wx-hour-icon: clamp(17px, 5.8cqi, 22px);\n      --lg-wx-day: clamp(32px, 11.6cqi, 44px);\n      --lg-wx-temp-col: clamp(24px, 7.9cqi, 30px);\n      --lg-wx-metric: clamp(12px, 3.9cqi, 15px);\n      --lg-name-sm: clamp(11.5px, 3.7cqi, 14px);\n    }\n  }\n  /* Three tiles side by side stop being readable long before the card does. */\n  @container (max-width: 300px) {\n    .metrics {\n      flex-wrap: wrap;\n    }\n    .metric {\n      flex-basis: calc(50% - 4px);\n    }\n  }\n  @container (max-width: 250px) {\n    .day {\n      gap: 8px;\n    }\n    .hourly {\n      padding: 10px 6px;\n    }\n  }\n";
+async function Ss(e, t, n) {
 	try {
 		return ((await e.callService("weather", "get_forecasts", { type: n }, { entity_id: t }, !1, !0))?.response ?? {})[t]?.forecast ?? [];
 	} catch {
 		return e.states[t]?.attributes.forecast ?? [];
 	}
 }
-function gs(e) {
+function Cs(e) {
 	let t = /* @__PURE__ */ new Map();
 	for (let n of e) {
 		let e = n.datetime.slice(0, 10), r = t.get(e) ?? [];
@@ -8884,14 +9157,14 @@ function gs(e) {
 		};
 	});
 }
-function _s({ config: e, hass: t, host: n }) {
-	let { refraction: r } = Ai(n, e, t), i = e.language ?? t?.locale?.language ?? t?.language ?? "en", a = s(e.language ?? t?.locale?.language ?? t?.language), [o, c] = q([]), [l, d] = q([]), p = e.entity ? t?.states[e.entity] : void 0, m = h(t, p, e.name, e.entity ?? ""), v = e.layout === "row", b = () => f(n, e.entity), x = !!(t && e.entity), S = So(n, ps, x), C = p?.attributes.supported_features, w = typeof C == "number", T = !w || C & cs ? "daily" : C & us ? "twice_daily" : void 0, E = !w || !!(C & ls);
+function ws({ config: e, hass: t, host: n }) {
+	let { refraction: r } = Ai(n, e, t), i = e.language ?? t?.locale?.language ?? t?.language ?? "en", a = s(e.language ?? t?.locale?.language ?? t?.language), [o, c] = q([]), [l, d] = q([]), p = e.entity ? t?.states[e.entity] : void 0, m = h(t, p, e.name, e.entity ?? ""), v = e.layout === "row", b = () => f(n, e.entity), x = !!(t && e.entity), S = ko(n, bs, x), C = p?.attributes.supported_features, w = typeof C == "number", T = !w || C & hs ? "daily" : C & _s ? "twice_daily" : void 0, E = !w || !!(C & gs);
 	if (J(() => {
 		if (!t || !e.entity) return;
 		let n = !1, r = e.entity;
-		return T && hs(t, r, T).then((e) => {
-			n || c(T === "twice_daily" ? gs(e) : e);
-		}), !v && e.show_hourly !== !1 && E && hs(t, r, "hourly").then((e) => {
+		return T && Ss(t, r, T).then((e) => {
+			n || c(T === "twice_daily" ? Cs(e) : e);
+		}), !v && e.show_hourly !== !1 && E && Ss(t, r, "hourly").then((e) => {
 			n || d(e);
 		}), () => {
 			n = !0;
@@ -8913,7 +9186,7 @@ function _s({ config: e, hass: t, host: n }) {
 		onOpen: b
 	}) });
 	let O = t?.states["sun.sun"], k = O ? O.state === "below_horizon" : p.state === "clear-night", A = (e) => {
-		let t = ds[e ?? ""] ?? fs;
+		let t = vs[e ?? ""] ?? ys;
 		return k && t.night ? {
 			...t,
 			icon: t.night,
@@ -9096,14 +9369,14 @@ function _s({ config: e, hass: t, host: n }) {
 		]
 	}) });
 }
-var vs = ki({
+var Ts = ki({
 	tagName: "liquid-glass-weather-card",
-	component: _s,
+	component: ws,
 	styles: [
 		ji,
 		Xr,
 		Hr,
-		ms
+		xs
 	],
 	getCardSize: (e) => {
 		if (e.layout === "row") return 1;
@@ -9116,7 +9389,7 @@ var vs = ki({
 		return e.show_hourly !== !1 && (t += 1), e.show_daily !== !1 && (t += Math.ceil(u(e.daily_count ?? 4, 1, 10) * 44 / 64)), e.show_metrics !== !1 && (t += 1), Ui(t, 12);
 	},
 	getStubConfig: (e, t, n) => ({ entity: x(["weather"], e, t, n) })
-}), ys = [
+}), Es = [
 	{
 		from: "#FFD36B",
 		to: "#FF8A1F"
@@ -9142,7 +9415,7 @@ var vs = ki({
 		to: "#E05A2B"
 	}
 ];
-function bs(e, t) {
+function Ds(e, t) {
 	let n = e ? {
 		from: T(e, .45),
 		to: e
@@ -9152,50 +9425,50 @@ function bs(e, t) {
 		glow: D(n.to, .3)
 	};
 }
-var xs = {
+var Os = {
 	scene: {
 		service: "scene.turn_on",
 		icon: "mdi:palette",
-		well: ys[0],
+		well: Es[0],
 		label: "btn_scene"
 	},
 	script: {
 		service: "script.turn_on",
 		icon: "mdi:script-text-play",
-		well: ys[1],
+		well: Es[1],
 		label: "btn_script"
 	},
 	automation: {
 		service: "automation.trigger",
 		icon: "mdi:robot",
-		well: ys[3],
+		well: Es[3],
 		label: "btn_automation"
 	},
 	button: {
 		service: "button.press",
 		icon: "mdi:gesture-tap-button",
-		well: ys[3],
+		well: Es[3],
 		label: "btn_button"
 	},
 	input_button: {
 		service: "input_button.press",
 		icon: "mdi:gesture-tap-button",
-		well: ys[3],
+		well: Es[3],
 		label: "btn_button"
 	}
-}, Ss = 2600, Cs = "\n  .card {\n    cursor: pointer;\n    user-select: none;\n    -webkit-user-select: none;\n  }\n  .card:focus-visible {\n    outline: 2px solid var(--lg-slider-accent);\n    outline-offset: 2px;\n  }\n  .title {\n    cursor: inherit;\n  }\n  .action {\n    flex: none;\n    width: 36px;\n    height: 36px;\n    border-radius: 50%;\n    display: grid;\n    place-items: center;\n    background: var(--lg-track-bg);\n    box-shadow: inset 0 0 0 1px var(--lg-glass-stroke);\n    color: var(--lg-text-primary);\n    --mdc-icon-size: 16px;\n    transition: background 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;\n  }\n  .action.done {\n    background: rgba(48, 209, 88, 0.18);\n    box-shadow: inset 0 0 0 1px rgba(48, 209, 88, 0.3);\n    color: var(--lg-lock-locked-deep);\n  }\n  .card:active .action {\n    background: var(--lg-segment-selected);\n  }\n";
-function ws(e) {
+}, ks = 2600, As = "\n  .card {\n    cursor: pointer;\n    user-select: none;\n    -webkit-user-select: none;\n  }\n  .card:focus-visible {\n    outline: 2px solid var(--lg-slider-accent);\n    outline-offset: 2px;\n  }\n  .title {\n    cursor: inherit;\n  }\n  .action {\n    flex: none;\n    width: 36px;\n    height: 36px;\n    border-radius: 50%;\n    display: grid;\n    place-items: center;\n    background: var(--lg-track-bg);\n    box-shadow: inset 0 0 0 1px var(--lg-glass-stroke);\n    color: var(--lg-text-primary);\n    --mdc-icon-size: 16px;\n    transition: background 0.2s ease, box-shadow 0.2s ease, color 0.2s ease;\n  }\n  .action.done {\n    background: rgba(48, 209, 88, 0.18);\n    box-shadow: inset 0 0 0 1px rgba(48, 209, 88, 0.3);\n    color: var(--lg-lock-locked-deep);\n  }\n  .card:active .action {\n    background: var(--lg-segment-selected);\n  }\n";
+function js(e) {
 	return e.attributes.last_triggered || (Number.isNaN(Date.parse(e.state)) ? void 0 : e.state);
 }
-function Ts(e, t, n, r, i) {
+function Ms(e, t, n, r, i) {
 	if (t.subtitle !== void 0) return t.subtitle;
 	if (r) return `${i("btn_done")} · ${i("just_now")}`;
-	let a = xs[n], o = a ? i(a.label) : n, s = ws(e);
+	let a = Os[n], o = a ? i(a.label) : n, s = js(e);
 	if (!s) return o;
 	let u = Date.now() - new Date(s).getTime() < 432e5 ? c(s, i) : l(s);
 	return `${o} · ${i("last")} ${u}`;
 }
-function Es({ config: e, hass: t, host: n }) {
+function Ns({ config: e, hass: t, host: n }) {
 	let { refraction: r } = Ai(n, e, t), i = s(e.language ?? t?.locale?.language ?? t?.language), [a, o] = q(!1), c = Y(void 0), l = e.entity ? t?.states[e.entity] : void 0, u = h(t, l, e.name, e.entity ?? "");
 	if (J(() => () => window.clearTimeout(c.current), []), !l || y(l)) return /* @__PURE__ */ X(K, { children: /* @__PURE__ */ X(Yr, {
 		refraction: r,
@@ -9205,11 +9478,11 @@ function Es({ config: e, hass: t, host: n }) {
 		label: i("unavailable"),
 		onOpen: () => f(n, e.entity)
 	}) });
-	let d = e.entity?.split(".")[0] ?? "", p = xs[d], m = bs(e.accent, p?.well ?? ys[0]), g = e.icon ?? l.attributes.icon ?? p?.icon ?? "mdi:gesture-tap-button", _ = () => {
+	let d = e.entity?.split(".")[0] ?? "", p = Os[d], m = Ds(e.accent, p?.well ?? Es[0]), g = e.icon ?? l.attributes.icon ?? p?.icon ?? "mdi:gesture-tap-button", _ = () => {
 		v(t, e.service ?? p?.service, {
 			entity_id: e.entity,
 			...e.service_data ?? {}
-		}) && (o(!0), window.clearTimeout(c.current), c.current = window.setTimeout(() => o(!1), Ss));
+		}) && (o(!0), window.clearTimeout(c.current), c.current = window.setTimeout(() => o(!1), ks));
 	};
 	return /* @__PURE__ */ X(K, { children: /* @__PURE__ */ X(Wr, {
 		className: "card row",
@@ -9234,7 +9507,7 @@ function Es({ config: e, hass: t, host: n }) {
 			}),
 			/* @__PURE__ */ X(qr, {
 				name: u,
-				state: Ts(l, e, d, a, i)
+				state: Ms(l, e, d, a, i)
 			}),
 			/* @__PURE__ */ X("div", {
 				className: `action${a ? " done" : ""}`,
@@ -9243,20 +9516,20 @@ function Es({ config: e, hass: t, host: n }) {
 		]
 	}) });
 }
-var Ds = ki({
+var Ps = ki({
 	tagName: "liquid-glass-button-card",
-	component: Es,
+	component: Ns,
 	styles: [
 		ji,
 		Xr,
 		Hr,
-		Cs
+		As
 	],
 	getCardSize: () => 1,
 	getGridOptions: () => Hi(),
 	getStubConfig: (t, n, r) => ({ entity: x(e, t, n, r) })
-}), Os = 900, ks = "\n  .card {\n    gap: 14px;\n  }\n  .head {\n    display: flex;\n    justify-content: space-between;\n    align-items: center;\n    gap: 8px;\n  }\n  .head .heading {\n    font-size: var(--lg-scene-title, 15px);\n    font-weight: 600;\n    color: var(--lg-text-primary);\n    min-width: 0;\n    overflow: hidden;\n    text-overflow: ellipsis;\n    white-space: nowrap;\n  }\n  .head .count {\n    flex: none;\n    font-size: var(--lg-tick);\n    font-weight: 500;\n    color: var(--lg-text-secondary);\n  }\n  /* The chips row variant labels itself quietly rather than as a heading. */\n  .card.chips .head .heading {\n    font-size: var(--lg-label);\n    color: var(--lg-text-secondary);\n  }\n\n  .grid {\n    display: grid;\n    grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr));\n    gap: 10px;\n  }\n  .card.chips .grid {\n    gap: 8px;\n  }\n\n  button {\n    border: 0;\n    font: inherit;\n    cursor: pointer;\n    color: var(--lg-text-primary);\n    min-width: 0;\n    transition: background 0.18s ease, box-shadow 0.18s ease, color 0.18s ease, transform 0.1s ease;\n  }\n  .tile {\n    background: var(--lg-track-bg);\n    box-shadow: inset 0 0 0 1px var(--lg-glass-stroke);\n  }\n  .tile:active,\n  .chip:active {\n    transform: scale(0.97);\n  }\n  .tile.on,\n  .chip.on {\n    background: var(--lg-press-fill);\n    color: var(--lg-press-label);\n    box-shadow:\n      inset 0 0 0 2px var(--lg-press-stroke),\n      0 0 0 3px var(--lg-press-glow),\n      0 6px 16px var(--lg-press-glow);\n  }\n\n  .tile {\n    display: flex;\n    flex-direction: column;\n    align-items: center;\n    gap: 8px;\n    padding: 14px 10px;\n    border-radius: 20px;\n  }\n  .tile .well {\n    width: var(--lg-scene-well, 40px);\n    height: var(--lg-scene-well, 40px);\n    border-radius: 50%;\n    display: grid;\n    place-items: center;\n    color: #fff;\n    background: linear-gradient(180deg, var(--from), var(--to));\n    box-shadow:\n      0 4px 12px var(--glow),\n      0 1px 1px rgba(255, 255, 255, 0.7),\n      inset 0 0 0 1px rgba(255, 255, 255, 0.5);\n    --mdc-icon-size: calc(var(--lg-scene-well, 40px) * 0.5);\n  }\n  .tile.on .well {\n    box-shadow:\n      0 4px 16px var(--glow-strong),\n      0 1px 1px rgba(255, 255, 255, 0.7),\n      inset 0 0 0 1px rgba(255, 255, 255, 0.5);\n  }\n  .tile .label {\n    font-size: var(--lg-scene-label, 12px);\n    font-weight: 600;\n    max-width: 100%;\n    overflow: hidden;\n    text-overflow: ellipsis;\n    white-space: nowrap;\n  }\n\n  /* A chip is its own small glass surface, with the button filling it. */\n  .chip {\n    position: relative;\n    isolation: isolate;\n    height: var(--lg-chip-h, 42px);\n    border-radius: 999px;\n    background: var(--lg-track-bg);\n    box-shadow: inset 0 0 0 1px var(--lg-glass-stroke);\n    overflow: hidden;\n  }\n  .chip-button {\n    width: 100%;\n    height: 100%;\n    padding: 0 10px;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    gap: 6px;\n    background: transparent;\n    color: inherit;\n    font-size: var(--lg-chip-label, 13px);\n    font-weight: 600;\n  }\n  .chip-button span {\n    overflow: hidden;\n    text-overflow: ellipsis;\n    white-space: nowrap;\n  }\n  .chip-button lg-icon {\n    flex: none;\n    --mdc-icon-size: 15px;\n    width: 15px;\n    height: 15px;\n  }\n\n  @supports (container-type: inline-size) {\n    .card {\n      --lg-scene-title: clamp(12.5px, 3.9cqi, 15px);\n      --lg-scene-well: clamp(30px, 10.5cqi, 40px);\n      --lg-scene-label: clamp(10px, 3.2cqi, 12px);\n      --lg-chip-h: clamp(34px, 11cqi, 42px);\n      --lg-chip-label: clamp(11px, 3.4cqi, 13px);\n    }\n  }\n";
-function As({ config: e, hass: t, host: n }) {
+}), Fs = 900, Is = "\n  .card {\n    gap: 14px;\n  }\n  .head {\n    display: flex;\n    justify-content: space-between;\n    align-items: center;\n    gap: 8px;\n  }\n  .head .heading {\n    font-size: var(--lg-scene-title, 15px);\n    font-weight: 600;\n    color: var(--lg-text-primary);\n    min-width: 0;\n    overflow: hidden;\n    text-overflow: ellipsis;\n    white-space: nowrap;\n  }\n  .head .count {\n    flex: none;\n    font-size: var(--lg-tick);\n    font-weight: 500;\n    color: var(--lg-text-secondary);\n  }\n  /* The chips row variant labels itself quietly rather than as a heading. */\n  .card.chips .head .heading {\n    font-size: var(--lg-label);\n    color: var(--lg-text-secondary);\n  }\n\n  .grid {\n    display: grid;\n    grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr));\n    gap: 10px;\n  }\n  .card.chips .grid {\n    gap: 8px;\n  }\n\n  button {\n    border: 0;\n    font: inherit;\n    cursor: pointer;\n    color: var(--lg-text-primary);\n    min-width: 0;\n    transition: background 0.18s ease, box-shadow 0.18s ease, color 0.18s ease, transform 0.1s ease;\n  }\n  .tile {\n    background: var(--lg-track-bg);\n    box-shadow: inset 0 0 0 1px var(--lg-glass-stroke);\n  }\n  .tile:active,\n  .chip:active {\n    transform: scale(0.97);\n  }\n  .tile.on,\n  .chip.on {\n    background: var(--lg-press-fill);\n    color: var(--lg-press-label);\n    box-shadow:\n      inset 0 0 0 2px var(--lg-press-stroke),\n      0 0 0 3px var(--lg-press-glow),\n      0 6px 16px var(--lg-press-glow);\n  }\n\n  .tile {\n    display: flex;\n    flex-direction: column;\n    align-items: center;\n    gap: 8px;\n    padding: 14px 10px;\n    border-radius: 20px;\n  }\n  .tile .well {\n    width: var(--lg-scene-well, 40px);\n    height: var(--lg-scene-well, 40px);\n    border-radius: 50%;\n    display: grid;\n    place-items: center;\n    color: #fff;\n    background: linear-gradient(180deg, var(--from), var(--to));\n    box-shadow:\n      0 4px 12px var(--glow),\n      0 1px 1px rgba(255, 255, 255, 0.7),\n      inset 0 0 0 1px rgba(255, 255, 255, 0.5);\n    --mdc-icon-size: calc(var(--lg-scene-well, 40px) * 0.5);\n  }\n  .tile.on .well {\n    box-shadow:\n      0 4px 16px var(--glow-strong),\n      0 1px 1px rgba(255, 255, 255, 0.7),\n      inset 0 0 0 1px rgba(255, 255, 255, 0.5);\n  }\n  .tile .label {\n    font-size: var(--lg-scene-label, 12px);\n    font-weight: 600;\n    max-width: 100%;\n    overflow: hidden;\n    text-overflow: ellipsis;\n    white-space: nowrap;\n  }\n\n  /* A chip is its own small glass surface, with the button filling it. */\n  .chip {\n    position: relative;\n    isolation: isolate;\n    height: var(--lg-chip-h, 42px);\n    border-radius: 999px;\n    background: var(--lg-track-bg);\n    box-shadow: inset 0 0 0 1px var(--lg-glass-stroke);\n    overflow: hidden;\n  }\n  .chip-button {\n    width: 100%;\n    height: 100%;\n    padding: 0 10px;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    gap: 6px;\n    background: transparent;\n    color: inherit;\n    font-size: var(--lg-chip-label, 13px);\n    font-weight: 600;\n  }\n  .chip-button span {\n    overflow: hidden;\n    text-overflow: ellipsis;\n    white-space: nowrap;\n  }\n  .chip-button lg-icon {\n    flex: none;\n    --mdc-icon-size: 15px;\n    width: 15px;\n    height: 15px;\n  }\n\n  @supports (container-type: inline-size) {\n    .card {\n      --lg-scene-title: clamp(12.5px, 3.9cqi, 15px);\n      --lg-scene-well: clamp(30px, 10.5cqi, 40px);\n      --lg-scene-label: clamp(10px, 3.2cqi, 12px);\n      --lg-chip-h: clamp(34px, 11cqi, 42px);\n      --lg-chip-label: clamp(11px, 3.4cqi, 13px);\n    }\n  }\n";
+function Ls({ config: e, hass: t, host: n }) {
 	let { refraction: r } = Ai(n, e, t), i = s(e.language ?? t?.locale?.language ?? t?.language), [a, o] = q(), c = Y(void 0), l = e.scenes ?? [], d = u(Math.round(e.columns ?? 3), 1, 6), f = e.style === "chips";
 	if (J(() => () => window.clearTimeout(c.current), []), !l.length) return /* @__PURE__ */ X(K, { children: /* @__PURE__ */ X(Yr, {
 		refraction: r,
@@ -9265,17 +9538,17 @@ function As({ config: e, hass: t, host: n }) {
 		name: e.title ?? h(t, void 0, e.name, ""),
 		label: i("unavailable")
 	}) });
-	let p = (e) => h(t, e.entity ? t?.states[e.entity] : void 0, e.name, e.entity ?? ""), m = (e) => e.icon ? e.icon : (e.entity ? t?.states[e.entity] : void 0)?.attributes.icon ?? xs[e.entity?.split(".")[0] ?? ""]?.icon ?? "mdi:palette", g = (e, n) => {
-		v(t, e.service ?? xs[e.entity?.split(".")[0] ?? ""]?.service, {
+	let p = (e) => h(t, e.entity ? t?.states[e.entity] : void 0, e.name, e.entity ?? ""), m = (e) => e.icon ? e.icon : (e.entity ? t?.states[e.entity] : void 0)?.attributes.icon ?? Os[e.entity?.split(".")[0] ?? ""]?.icon ?? "mdi:palette", g = (e, n) => {
+		v(t, e.service ?? Os[e.entity?.split(".")[0] ?? ""]?.service, {
 			...e.entity ? { entity_id: e.entity } : {},
 			...e.service_data ?? {}
-		}), o(n), window.clearTimeout(c.current), c.current = window.setTimeout(() => o(void 0), Os);
+		}), o(n), window.clearTimeout(c.current), c.current = window.setTimeout(() => o(void 0), Fs);
 	};
 	return /* @__PURE__ */ X(K, { children: /* @__PURE__ */ X(Wr, {
 		className: `card${f ? " chips" : ""}`,
 		refraction: r,
 		variant: e.glass_variant,
-		sourceAccent: bs(e.scenes?.[0]?.accent, ys[0]).to,
+		sourceAccent: Ds(e.scenes?.[0]?.accent, Es[0]).to,
 		style: {
 			display: "flex",
 			position: "relative"
@@ -9307,7 +9580,7 @@ function As({ config: e, hass: t, host: n }) {
 						children: [t.icon && /* @__PURE__ */ X(Q, { icon: t.icon }), /* @__PURE__ */ X("span", { children: p(t) })]
 					})
 				}, `${t.entity ?? t.service ?? ""}:${n}`);
-				let o = bs(t.accent, ys[n % ys.length]);
+				let o = Ds(t.accent, Es[n % Es.length]);
 				return /* @__PURE__ */ X("button", {
 					className: `tile${i ? " on" : ""}`,
 					style: {
@@ -9329,14 +9602,14 @@ function As({ config: e, hass: t, host: n }) {
 		})]
 	}) });
 }
-var js = ki({
+var Rs = ki({
 	tagName: "liquid-glass-scene-card",
-	component: As,
+	component: Ls,
 	styles: [
 		ji,
 		Xr,
 		Hr,
-		ks
+		Is
 	],
 	getCardSize: (e) => {
 		let t = u(Math.round(e.columns ?? 3), 1, 6);
@@ -9351,8 +9624,8 @@ var js = ki({
 		n,
 		Object.keys(e?.states ?? {})
 	].find((e) => e?.some((e) => e.startsWith("scene.")))?.filter((e) => e.startsWith("scene.")).slice(0, 6) ?? ["scene.example"]).map((e) => ({ entity: e })) })
-}), Ms = 10, Ns = 32, Ps = 34, Fs = 8;
-function Is(e, t, n) {
+}), zs = 10, Bs = 32, Vs = 34, Hs = 8;
+function Us(e, t, n) {
 	return e.tick === n && t !== void 0 == (e.url !== void 0) ? e : t === void 0 ? {
 		tick: n,
 		url: void 0
@@ -9361,7 +9634,7 @@ function Is(e, t, n) {
 		url: `${t}${t.includes("?") ? "&" : "?"}_=${n}`
 	};
 }
-function Ls(e, t = document.createElement("canvas")) {
+function Ws(e, t = document.createElement("canvas")) {
 	let n;
 	return (r) => {
 		let i = r.canvas.width, a = r.canvas.height;
@@ -9381,13 +9654,13 @@ function Ls(e, t = document.createElement("canvas")) {
 		n && r.drawImage(t, 0, 0, i, a);
 	};
 }
-var Rs = "\n  .card {\n    padding: 0;\n    gap: 0;\n  }\n  .feed {\n    position: relative;\n    width: 100%;\n    aspect-ratio: var(--lg-cam-ratio, 16 / 9);\n    overflow: hidden;\n    background: #0e1014;\n  }\n  /*\n   * The still is an element rather than a CSS background so the lens can reuse the\n   * very same decode. A background image is fetched in no-cors mode, which cannot\n   * share a cache entry with the cors-mode load a canvas needs — the camera would be\n   * pulled twice per refresh.\n   */\n  .still {\n    position: absolute;\n    inset: 0;\n    display: block;\n    width: 100%;\n    height: 100%;\n    object-fit: cover;\n  }\n  /*\n   * Camera refreshes are double-buffered. Keep the decoded frame visible while\n   * the other image element fetches the next one; swapping the visible source\n   * element exposes an empty frame to both the browser and the WebGL lens.\n   */\n  .still.staging {\n    visibility: hidden;\n  }\n  /* Darkens the top and bottom just enough for white text to hold up. */\n  .scrim {\n    position: absolute;\n    inset: 0;\n    background: linear-gradient(\n      to bottom,\n      rgba(0, 0, 0, 0.6) 0%,\n      rgba(0, 0, 0, 0) 42%,\n      rgba(0, 0, 0, 0) 62%,\n      rgba(0, 0, 0, 0.65) 100%\n    );\n    pointer-events: none;\n  }\n  .bar {\n    position: absolute;\n    left: 0;\n    right: 0;\n    display: flex;\n    align-items: center;\n    justify-content: space-between;\n    gap: 8px;\n    padding: 0 14px;\n    height: 56px;\n  }\n  .bar.top {\n    top: 0;\n  }\n  .bar.bottom {\n    bottom: 0;\n  }\n  .trail {\n    display: flex;\n    align-items: center;\n    gap: 8px;\n  }\n\n  /* Display-only badges retain their lightweight translucent treatment. */\n  .float {\n    position: relative;\n    overflow: hidden;\n    border: 0;\n    padding: 0;\n    color: #fff;\n    background: rgba(11, 11, 15, 0.34);\n    -webkit-backdrop-filter: blur(5px) saturate(1.35);\n    backdrop-filter: blur(5px) saturate(1.35);\n    box-shadow:\n      0 4px 12px rgba(0, 0, 0, 0.2),\n      inset 0 0 0 1px rgba(255, 255, 255, 0.18);\n  }\n  .round {\n    width: 32px;\n    height: 32px;\n    border: 0;\n    border-radius: 50%;\n    padding: 0;\n    color: #fff;\n    display: grid;\n    place-items: center;\n    cursor: pointer;\n    --mdc-icon-size: 15px;\n    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));\n    transition: transform 120ms ease, opacity 160ms ease;\n  }\n  .round:active {\n    transform: scale(0.9);\n  }\n  .round.big {\n    width: 34px;\n    height: 34px;\n    --mdc-icon-size: 16px;\n  }\n  /*\n   * Like GlassVideoControls, the WebGL surface paints the lens underneath while\n   * the actual control stays crisp and has no fill of its own.\n   */\n  .feed.glass-active .lens-control {\n    overflow: visible;\n    background: none;\n    -webkit-backdrop-filter: none;\n    backdrop-filter: none;\n    box-shadow: none;\n  }\n  /*\n   * Everything else floating over the feed keeps its own fill, but not its blur: a\n   * backdrop filter over the lens canvas makes the compositor re-read and re-blur that\n   * canvas on every frame it presents, which is every frame. A denser fill reads the\n   * same over a photo and costs the compositor nothing.\n   */\n  .feed.glass-active .float:not(.lens-control) {\n    background: rgba(11, 11, 15, 0.52);\n    -webkit-backdrop-filter: none;\n    backdrop-filter: none;\n  }\n  .camera-glass-stage {\n    position: absolute !important;\n    inset: 0;\n    width: 100%;\n    height: 100%;\n  }\n  .live {\n    display: inline-flex;\n    align-items: center;\n    gap: 6px;\n    padding: 5px 10px;\n    border-radius: 14px;\n    font-size: 11px;\n    font-weight: 700;\n    color: #fff;\n  }\n  .live .dot {\n    width: 7px;\n    height: 7px;\n    border-radius: 50%;\n    background: var(--dot, #8e8e93);\n    box-shadow: 0 0 6px var(--dot-glow, transparent);\n  }\n\n  .name {\n    display: flex;\n    flex-direction: column;\n    gap: 1px;\n    min-width: 0;\n    cursor: pointer;\n  }\n  .name .who {\n    font-size: 15px;\n    font-weight: 600;\n    color: #fff;\n    overflow: hidden;\n    text-overflow: ellipsis;\n    white-space: nowrap;\n  }\n  .name .when {\n    font-size: 11px;\n    font-weight: 500;\n    color: rgba(255, 255, 255, 0.7);\n  }\n  .card.offline .name .who {\n    color: rgba(255, 255, 255, 0.5);\n  }\n\n  .nosignal {\n    position: absolute;\n    inset: 0;\n    display: flex;\n    flex-direction: column;\n    align-items: center;\n    justify-content: center;\n    gap: 8px;\n    color: rgba(255, 255, 255, 0.5);\n    --mdc-icon-size: 32px;\n  }\n  .nosignal span {\n    font-size: 12px;\n    font-weight: 500;\n  }\n\n  .actions {\n    display: flex;\n    align-items: center;\n    gap: 8px;\n    padding: 14px 16px;\n  }\n  .motion {\n    display: inline-flex;\n    align-items: center;\n    gap: 6px;\n    padding: 7px 11px;\n    border-radius: 16px;\n    font-size: 11px;\n    font-weight: 600;\n    min-width: 0;\n    background: var(--chip-bg, var(--lg-track-bg));\n    box-shadow: inset 0 0 0 1px var(--chip-stroke, var(--lg-glass-stroke));\n    color: var(--chip-label, var(--lg-text-secondary));\n  }\n  .motion .dot {\n    flex: none;\n    width: 7px;\n    height: 7px;\n    border-radius: 50%;\n    background: var(--chip-dot, var(--lg-text-secondary));\n    box-shadow: 0 0 6px var(--chip-glow, transparent);\n  }\n  .motion span {\n    overflow: hidden;\n    text-overflow: ellipsis;\n    white-space: nowrap;\n  }\n  .actions .spacer {\n    flex: 1;\n  }\n  .history {\n    display: inline-flex;\n    align-items: center;\n    gap: 6px;\n    padding: 7px 12px;\n    border-radius: 16px;\n    border: 0;\n    font: inherit;\n    font-size: 12px;\n    font-weight: 600;\n    cursor: pointer;\n    background: var(--lg-track-bg);\n    box-shadow: inset 0 0 0 1px var(--lg-glass-stroke);\n    color: var(--lg-text-primary);\n    --mdc-icon-size: 14px;\n  }\n  .dimmed {\n    opacity: 0.4;\n    pointer-events: none;\n  }\n\n  @container (max-width: 260px) {\n    .bar {\n      height: 46px;\n      padding: 0 10px;\n    }\n    .actions {\n      padding: 12px;\n    }\n  }\n";
-function zs({ config: e, hass: t, host: n }) {
-	let { refraction: r } = Ai(n, e, t), i = Er(), a = mt(() => Ar(Fr, i), [i]), o = s(e.language ?? t?.locale?.language ?? t?.language), l = e.entity ? t?.states[e.entity] : void 0, u = h(t, l, e.name, e.entity ?? ""), d = () => f(n, e.entity), p = y(l), m = l?.state === "streaming", g = l?.attributes.entity_picture, _ = !(!g || p), b = So(n, Math.max(e.refresh_interval ?? Ms, 1) * 1e3, _), x = Y({
+var Gs = "\n  .card {\n    padding: 0;\n    gap: 0;\n  }\n  .feed {\n    position: relative;\n    width: 100%;\n    aspect-ratio: var(--lg-cam-ratio, 16 / 9);\n    overflow: hidden;\n    background: #0e1014;\n  }\n  /*\n   * The still is an element rather than a CSS background so the lens can reuse the\n   * very same decode. A background image is fetched in no-cors mode, which cannot\n   * share a cache entry with the cors-mode load a canvas needs — the camera would be\n   * pulled twice per refresh.\n   */\n  .still {\n    position: absolute;\n    inset: 0;\n    display: block;\n    width: 100%;\n    height: 100%;\n    object-fit: cover;\n  }\n  /*\n   * Camera refreshes are double-buffered. Keep the decoded frame visible while\n   * the other image element fetches the next one; swapping the visible source\n   * element exposes an empty frame to both the browser and the WebGL lens.\n   */\n  .still.staging {\n    visibility: hidden;\n  }\n  /* Darkens the top and bottom just enough for white text to hold up. */\n  .scrim {\n    position: absolute;\n    inset: 0;\n    background: linear-gradient(\n      to bottom,\n      rgba(0, 0, 0, 0.6) 0%,\n      rgba(0, 0, 0, 0) 42%,\n      rgba(0, 0, 0, 0) 62%,\n      rgba(0, 0, 0, 0.65) 100%\n    );\n    pointer-events: none;\n  }\n  .bar {\n    position: absolute;\n    left: 0;\n    right: 0;\n    display: flex;\n    align-items: center;\n    justify-content: space-between;\n    gap: 8px;\n    padding: 0 14px;\n    height: 56px;\n  }\n  .bar.top {\n    top: 0;\n  }\n  .bar.bottom {\n    bottom: 0;\n  }\n  .trail {\n    display: flex;\n    align-items: center;\n    gap: 8px;\n  }\n\n  /* Display-only badges retain their lightweight translucent treatment. */\n  .float {\n    position: relative;\n    overflow: hidden;\n    border: 0;\n    padding: 0;\n    color: #fff;\n    background: rgba(11, 11, 15, 0.34);\n    -webkit-backdrop-filter: blur(5px) saturate(1.35);\n    backdrop-filter: blur(5px) saturate(1.35);\n    box-shadow:\n      0 4px 12px rgba(0, 0, 0, 0.2),\n      inset 0 0 0 1px rgba(255, 255, 255, 0.18);\n  }\n  .round {\n    width: 32px;\n    height: 32px;\n    border: 0;\n    border-radius: 50%;\n    padding: 0;\n    color: #fff;\n    display: grid;\n    place-items: center;\n    cursor: pointer;\n    --mdc-icon-size: 15px;\n    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));\n    transition: transform 120ms ease, opacity 160ms ease;\n  }\n  .round:active {\n    transform: scale(0.9);\n  }\n  .round.big {\n    width: 34px;\n    height: 34px;\n    --mdc-icon-size: 16px;\n  }\n  /*\n   * Like GlassVideoControls, the WebGL surface paints the lens underneath while\n   * the actual control stays crisp and has no fill of its own.\n   */\n  .feed.glass-active .lens-control {\n    overflow: visible;\n    background: none;\n    -webkit-backdrop-filter: none;\n    backdrop-filter: none;\n    box-shadow: none;\n  }\n  /*\n   * Everything else floating over the feed keeps its own fill, but not its blur: a\n   * backdrop filter over the lens canvas makes the compositor re-read and re-blur that\n   * canvas on every frame it presents, which is every frame. A denser fill reads the\n   * same over a photo and costs the compositor nothing.\n   */\n  .feed.glass-active .float:not(.lens-control) {\n    background: rgba(11, 11, 15, 0.52);\n    -webkit-backdrop-filter: none;\n    backdrop-filter: none;\n  }\n  .camera-glass-stage {\n    position: absolute !important;\n    inset: 0;\n    width: 100%;\n    height: 100%;\n  }\n  .live {\n    display: inline-flex;\n    align-items: center;\n    gap: 6px;\n    padding: 5px 10px;\n    border-radius: 14px;\n    font-size: 11px;\n    font-weight: 700;\n    color: #fff;\n  }\n  .live .dot {\n    width: 7px;\n    height: 7px;\n    border-radius: 50%;\n    background: var(--dot, #8e8e93);\n    box-shadow: 0 0 6px var(--dot-glow, transparent);\n  }\n\n  .name {\n    display: flex;\n    flex-direction: column;\n    gap: 1px;\n    min-width: 0;\n    cursor: pointer;\n  }\n  .name .who {\n    font-size: 15px;\n    font-weight: 600;\n    color: #fff;\n    overflow: hidden;\n    text-overflow: ellipsis;\n    white-space: nowrap;\n  }\n  .name .when {\n    font-size: 11px;\n    font-weight: 500;\n    color: rgba(255, 255, 255, 0.7);\n  }\n  .card.offline .name .who {\n    color: rgba(255, 255, 255, 0.5);\n  }\n\n  .nosignal {\n    position: absolute;\n    inset: 0;\n    display: flex;\n    flex-direction: column;\n    align-items: center;\n    justify-content: center;\n    gap: 8px;\n    color: rgba(255, 255, 255, 0.5);\n    --mdc-icon-size: 32px;\n  }\n  .nosignal span {\n    font-size: 12px;\n    font-weight: 500;\n  }\n\n  .actions {\n    display: flex;\n    align-items: center;\n    gap: 8px;\n    padding: 14px 16px;\n  }\n  .motion {\n    display: inline-flex;\n    align-items: center;\n    gap: 6px;\n    padding: 7px 11px;\n    border-radius: 16px;\n    font-size: 11px;\n    font-weight: 600;\n    min-width: 0;\n    background: var(--chip-bg, var(--lg-track-bg));\n    box-shadow: inset 0 0 0 1px var(--chip-stroke, var(--lg-glass-stroke));\n    color: var(--chip-label, var(--lg-text-secondary));\n  }\n  .motion .dot {\n    flex: none;\n    width: 7px;\n    height: 7px;\n    border-radius: 50%;\n    background: var(--chip-dot, var(--lg-text-secondary));\n    box-shadow: 0 0 6px var(--chip-glow, transparent);\n  }\n  .motion span {\n    overflow: hidden;\n    text-overflow: ellipsis;\n    white-space: nowrap;\n  }\n  .actions .spacer {\n    flex: 1;\n  }\n  .history {\n    display: inline-flex;\n    align-items: center;\n    gap: 6px;\n    padding: 7px 12px;\n    border-radius: 16px;\n    border: 0;\n    font: inherit;\n    font-size: 12px;\n    font-weight: 600;\n    cursor: pointer;\n    background: var(--lg-track-bg);\n    box-shadow: inset 0 0 0 1px var(--lg-glass-stroke);\n    color: var(--lg-text-primary);\n    --mdc-icon-size: 14px;\n  }\n  .dimmed {\n    opacity: 0.4;\n    pointer-events: none;\n  }\n\n  @container (max-width: 260px) {\n    .bar {\n      height: 46px;\n      padding: 0 10px;\n    }\n    .actions {\n      padding: 12px;\n    }\n  }\n";
+function Ks({ config: e, hass: t, host: n }) {
+	let { refraction: r } = Ai(n, e, t), i = Er(), a = mt(() => Ar(Fr, i), [i]), o = s(e.language ?? t?.locale?.language ?? t?.language), l = e.entity ? t?.states[e.entity] : void 0, u = h(t, l, e.name, e.entity ?? ""), d = () => f(n, e.entity), p = y(l), m = l?.state === "streaming", g = l?.attributes.entity_picture, _ = !(!g || p), b = ko(n, Math.max(e.refresh_interval ?? zs, 1) * 1e3, _), x = Y({
 		tick: -1,
 		url: void 0
 	});
-	x.current = Is(x.current, _ ? g : void 0, b);
+	x.current = Us(x.current, _ ? g : void 0, b);
 	let S = x.current.url, C = Y(null), [w, T] = q({
 		width: 0,
 		height: 0
@@ -9428,7 +9701,7 @@ function zs({ config: e, hass: t, host: n }) {
 		let n = new ResizeObserver(t);
 		return n.observe(e), () => n.disconnect();
 	}, []);
-	let F = mt(() => Ls(() => {
+	let F = mt(() => Ws(() => {
 		let e = D.current;
 		return {
 			image: e === void 0 ? void 0 : E.current[e] ?? void 0,
@@ -9449,27 +9722,27 @@ function zs({ config: e, hass: t, host: n }) {
 			return;
 		}
 		g && window.open(g, "_blank", "noopener");
-	}, ee = e.motion_entity ? t?.states[e.motion_entity] : void 0, R = ee?.state === "on", z = !!(r && N !== void 0 && w.width > 0 && w.height > 0), B = w.width <= 260, V = B ? 46 : 56, te = B ? 10 : 14, ne = w.width - te - Ns / 2, re = [
+	}, ee = e.motion_entity ? t?.states[e.motion_entity] : void 0, R = ee?.state === "on", z = !!(r && N !== void 0 && w.width > 0 && w.height > 0), B = w.width <= 260, V = B ? 46 : 56, te = B ? 10 : 14, ne = w.width - te - Bs / 2, re = [
 		{
 			x: ne / w.width,
 			y: V / 2 / w.height,
-			w: Ns,
-			h: Ns,
-			radius: Ns / 2
+			w: Bs,
+			h: Bs,
+			radius: Bs / 2
 		},
 		...e.show_mic ? [{
-			x: (ne - Ns - Fs) / w.width,
+			x: (ne - Bs - Hs) / w.width,
 			y: V / 2 / w.height,
-			w: Ns,
-			h: Ns,
-			radius: Ns / 2
+			w: Bs,
+			h: Bs,
+			radius: Bs / 2
 		}] : [],
 		{
-			x: (w.width - te - Ps / 2) / w.width,
+			x: (w.width - te - Vs / 2) / w.width,
 			y: (w.height - V / 2) / w.height,
-			w: Ps,
-			h: Ps,
-			radius: Ps / 2
+			w: Vs,
+			h: Vs,
+			radius: Vs / 2
 		}
 	], H = /* @__PURE__ */ X(K, { children: [
 		/* @__PURE__ */ X("div", { className: "scrim" }),
@@ -9591,19 +9864,19 @@ function zs({ config: e, hass: t, host: n }) {
 		})]
 	}) });
 }
-var Bs = ki({
+var qs = ki({
 	tagName: "liquid-glass-camera-card",
-	component: zs,
+	component: Ks,
 	styles: [
 		ji,
 		Xr,
 		Hr,
-		Rs
+		Gs
 	],
 	getCardSize: (e) => e.show_actions === !1 ? 4 : 5,
 	getGridOptions: () => Wi(),
 	getStubConfig: (e, t, n) => ({ entity: x(["camera"], e, t, n) })
-}), Vs = {
+}), Js = {
 	light: "mdi:lightbulb",
 	switch: "mdi:power-plug",
 	input_boolean: "mdi:toggle-switch",
@@ -9617,7 +9890,7 @@ var Bs = ki({
 	camera: "mdi:cctv",
 	scene: "mdi:palette",
 	script: "mdi:script-text"
-}, Hs = {
+}, Ys = {
 	door: ["open", "closed"],
 	garage_door: ["open", "closed"],
 	window: ["open", "closed"],
@@ -9625,7 +9898,7 @@ var Bs = ki({
 	motion: ["detected", "clear"],
 	occupancy: ["detected", "clear"],
 	presence: ["detected", "clear"]
-}, Us = {
+}, Xs = {
 	door: ["mdi:door-open", "mdi:door-closed"],
 	garage_door: ["mdi:garage-open", "mdi:garage"],
 	window: ["mdi:window-open", "mdi:window-closed"],
@@ -9635,18 +9908,18 @@ var Bs = ki({
 	presence: ["mdi:account", "mdi:account-outline"],
 	moisture: ["mdi:water-alert", "mdi:water-off"],
 	smoke: ["mdi:smoke-detector-alert", "mdi:smoke-detector"]
-}, Ws = [
+}, Zs = [
 	["light", "custom:liquid-glass-light-card"],
 	["switch", "custom:liquid-glass-switch-card"],
 	["sensor", "custom:liquid-glass-sensor-card"]
-], Gs = [
+], Qs = [
 	"theme",
 	"refraction",
 	"refraction_quality",
 	"language",
 	"glass_variant"
-], Ks = [], qs = "\n  .panel {\n    --lg-group-pad: 16px;\n    --lg-group-gap: 12px;\n    border-radius: var(--lg-corner, var(--lg-radius));\n    padding: var(--lg-group-pad);\n    display: flex;\n    flex-direction: column;\n    gap: var(--lg-group-gap);\n    background: var(--lg-group-panel);\n    box-shadow: inset 0 0 0 1px var(--lg-group-panel-stroke);\n  }\n  @supports (container-type: inline-size) {\n    .panel {\n      --lg-group-pad: clamp(10px, 4.2cqi, 16px);\n      --lg-group-gap: clamp(8px, 3.2cqi, 12px);\n      --lg-corner: min(calc(var(--lg-radius) + 4px), 12cqi);\n      --lg-group-title: clamp(13px, 4.2cqi, 16px);\n    }\n  }\n\n  .head {\n    display: flex;\n    align-items: center;\n    gap: 12px;\n    padding: 0 4px;\n  }\n  .head.tappable {\n    cursor: pointer;\n  }\n  .head .icon-well {\n    width: 32px;\n    height: 32px;\n  }\n  .head .icon-well lg-icon {\n    --mdc-icon-size: 16px;\n    width: 16px;\n    height: 16px;\n  }\n  .head .text {\n    flex: 1;\n    min-width: 0;\n    display: flex;\n    flex-direction: column;\n    gap: 1px;\n  }\n  .head .heading {\n    font-size: var(--lg-group-title, 16px);\n    font-weight: 700;\n    color: var(--lg-text-primary);\n    overflow: hidden;\n    text-overflow: ellipsis;\n    white-space: nowrap;\n  }\n  .head .sub {\n    font-size: 11px;\n    font-weight: 500;\n    color: var(--lg-text-secondary);\n    overflow: hidden;\n    text-overflow: ellipsis;\n    white-space: nowrap;\n  }\n  .chevron {\n    flex: none;\n    width: 28px;\n    height: 28px;\n    border: 0;\n    border-radius: 50%;\n    background: var(--lg-track-bg);\n    box-shadow: inset 0 0 0 1px var(--lg-glass-stroke);\n    color: var(--lg-text-secondary);\n    display: grid;\n    place-items: center;\n    cursor: pointer;\n    padding: 0;\n    --mdc-icon-size: 15px;\n  }\n  .chevron lg-icon {\n    width: 15px;\n    height: 15px;\n    transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);\n  }\n  .chevron.closed lg-icon {\n    transform: rotate(-180deg);\n  }\n\n  .cards {\n    display: flex;\n    flex-direction: column;\n    gap: var(--lg-group-gap);\n  }\n  /* Children are full cards; they bring their own :host block layout. */\n  .cards > * {\n    display: block;\n  }\n\n  .summary {\n    display: flex;\n    flex-wrap: wrap;\n    gap: 8px;\n    padding: 0 4px;\n  }\n  .sum {\n    display: inline-flex;\n    align-items: center;\n    gap: 6px;\n    padding: 6px 10px;\n    border-radius: 15px;\n    background: var(--lg-track-bg);\n    box-shadow: inset 0 0 0 1px var(--lg-glass-stroke);\n    font-size: 11px;\n    font-weight: 600;\n    color: var(--tone, var(--lg-text-secondary));\n    max-width: 100%;\n  }\n  .sum span {\n    overflow: hidden;\n    text-overflow: ellipsis;\n    white-space: nowrap;\n  }\n  .sum lg-icon {\n    flex: none;\n    --mdc-icon-size: 14px;\n    width: 14px;\n    height: 14px;\n  }\n  .sum.warm {\n    --tone: var(--lg-motion-label);\n  }\n  .sum.good {\n    --tone: var(--lg-trend-up);\n  }\n  .sum.info {\n    --tone: var(--lg-cover-badge);\n  }\n\n  .empty {\n    padding: 6px 4px 2px;\n    font-size: var(--lg-state);\n    color: var(--lg-text-secondary);\n  }\n";
-function Js(e) {
+], $s = [], ec = "\n  .panel {\n    --lg-group-pad: 16px;\n    --lg-group-gap: 12px;\n    border-radius: var(--lg-corner, var(--lg-radius));\n    padding: var(--lg-group-pad);\n    display: flex;\n    flex-direction: column;\n    gap: var(--lg-group-gap);\n    background: var(--lg-group-panel);\n    box-shadow: inset 0 0 0 1px var(--lg-group-panel-stroke);\n  }\n  @supports (container-type: inline-size) {\n    .panel {\n      --lg-group-pad: clamp(10px, 4.2cqi, 16px);\n      --lg-group-gap: clamp(8px, 3.2cqi, 12px);\n      --lg-corner: min(calc(var(--lg-radius) + 4px), 12cqi);\n      --lg-group-title: clamp(13px, 4.2cqi, 16px);\n    }\n  }\n\n  .head {\n    display: flex;\n    align-items: center;\n    gap: 12px;\n    padding: 0 4px;\n  }\n  .head.tappable {\n    cursor: pointer;\n  }\n  .head .icon-well {\n    width: 32px;\n    height: 32px;\n  }\n  .head .icon-well lg-icon {\n    --mdc-icon-size: 16px;\n    width: 16px;\n    height: 16px;\n  }\n  .head .text {\n    flex: 1;\n    min-width: 0;\n    display: flex;\n    flex-direction: column;\n    gap: 1px;\n  }\n  .head .heading {\n    font-size: var(--lg-group-title, 16px);\n    font-weight: 700;\n    color: var(--lg-text-primary);\n    overflow: hidden;\n    text-overflow: ellipsis;\n    white-space: nowrap;\n  }\n  .head .sub {\n    font-size: 11px;\n    font-weight: 500;\n    color: var(--lg-text-secondary);\n    overflow: hidden;\n    text-overflow: ellipsis;\n    white-space: nowrap;\n  }\n  .chevron {\n    flex: none;\n    width: 28px;\n    height: 28px;\n    border: 0;\n    border-radius: 50%;\n    background: var(--lg-track-bg);\n    box-shadow: inset 0 0 0 1px var(--lg-glass-stroke);\n    color: var(--lg-text-secondary);\n    display: grid;\n    place-items: center;\n    cursor: pointer;\n    padding: 0;\n    --mdc-icon-size: 15px;\n  }\n  .chevron lg-icon {\n    width: 15px;\n    height: 15px;\n    transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);\n  }\n  .chevron.closed lg-icon {\n    transform: rotate(-180deg);\n  }\n\n  .cards {\n    display: flex;\n    flex-direction: column;\n    gap: var(--lg-group-gap);\n  }\n  /* Children are full cards; they bring their own :host block layout. */\n  .cards > * {\n    display: block;\n  }\n\n  .summary {\n    display: flex;\n    flex-wrap: wrap;\n    gap: 8px;\n    padding: 0 4px;\n  }\n  .sum {\n    display: inline-flex;\n    align-items: center;\n    gap: 6px;\n    padding: 6px 10px;\n    border-radius: 15px;\n    background: var(--lg-track-bg);\n    box-shadow: inset 0 0 0 1px var(--lg-glass-stroke);\n    font-size: 11px;\n    font-weight: 600;\n    color: var(--tone, var(--lg-text-secondary));\n    max-width: 100%;\n  }\n  .sum span {\n    overflow: hidden;\n    text-overflow: ellipsis;\n    white-space: nowrap;\n  }\n  .sum lg-icon {\n    flex: none;\n    --mdc-icon-size: 14px;\n    width: 14px;\n    height: 14px;\n  }\n  .sum.warm {\n    --tone: var(--lg-motion-label);\n  }\n  .sum.good {\n    --tone: var(--lg-trend-up);\n  }\n  .sum.info {\n    --tone: var(--lg-cover-badge);\n  }\n\n  .empty {\n    padding: 6px 4px 2px;\n    font-size: var(--lg-state);\n    color: var(--lg-text-secondary);\n  }\n";
+function tc(e) {
 	let t = String(e.type ?? ""), n = t.startsWith("custom:") ? t.slice(7) : `hui-${t}-card`, r = document.createElement(n), i = () => {
 		try {
 			r.setConfig?.(e);
@@ -9654,14 +9927,14 @@ function Js(e) {
 	};
 	return typeof r.setConfig == "function" ? i() : customElements.whenDefined(n).then(i), r;
 }
-function Ys(e, t) {
+function nc(e, t) {
 	if (t === "binary_sensor") {
-		let t = Us[e?.attributes.device_class ?? ""];
+		let t = Xs[e?.attributes.device_class ?? ""];
 		if (t) return e?.state === "on" ? t[0] : t[1];
 	}
-	return Vs[t] ?? "mdi:card-outline";
+	return Js[t] ?? "mdi:card-outline";
 }
-function Xs(e, t, n, r) {
+function rc(e, t, n, r) {
 	let i = e.state, a = i === "on", o = (t, n) => g(r, e, t, n);
 	switch (t) {
 		case "light": {
@@ -9719,7 +9992,7 @@ function Xs(e, t, n, r) {
 			};
 		}
 		case "binary_sensor": {
-			let t = e.attributes.device_class, r = (t && Hs[t]) ?? ["on", "off"];
+			let t = e.attributes.device_class, r = (t && Ys[t]) ?? ["on", "off"];
 			return a ? {
 				label: o(n(r[0])),
 				tone: "warm"
@@ -9751,12 +10024,12 @@ function Xs(e, t, n, r) {
 		};
 	}
 }
-function Zs({ config: e, hass: t, host: n }) {
+function ic({ config: e, hass: t, host: n }) {
 	Ai(n, e, t);
-	let r = s(e.language ?? t?.locale?.language ?? t?.language), [i, a] = q(e.collapsed !== !0), [o, c] = q([]), l = Y(null), u = e.cards ?? Ks, d = e.collapsible !== !1, f = mt(() => u.map((t) => {
+	let r = s(e.language ?? t?.locale?.language ?? t?.language), [i, a] = q(e.collapsed !== !0), [o, c] = q([]), l = Y(null), u = e.cards ?? $s, d = e.collapsible !== !1, f = mt(() => u.map((t) => {
 		if (!String(t.type ?? "").startsWith("custom:liquid-glass-")) return t;
 		let n = { ...t };
-		for (let t of Gs) n[t] === void 0 && e[t] !== void 0 && (n[t] = e[t]);
+		for (let t of Qs) n[t] === void 0 && e[t] !== void 0 && (n[t] = e[t]);
 		return n;
 	}), [
 		u,
@@ -9772,9 +10045,9 @@ function Zs({ config: e, hass: t, host: n }) {
 			let t = await window.loadCardHelpers?.().catch(() => void 0);
 			e || c(f.map((e) => {
 				try {
-					return t ? t.createCardElement(e) : Js(e);
+					return t ? t.createCardElement(e) : tc(e);
 				} catch {
-					return Js(e);
+					return tc(e);
 				}
 			}));
 		})(), () => {
@@ -9789,14 +10062,14 @@ function Zs({ config: e, hass: t, host: n }) {
 	let p = u.map((e) => {
 		let n = typeof e.entity == "string" ? e.entity : void 0;
 		if (!n) return;
-		let i = t?.states[n], a = n.split(".", 1)[0], o = e.icon ?? i?.attributes.icon ?? Ys(i, a);
+		let i = t?.states[n], a = n.split(".", 1)[0], o = e.icon ?? i?.attributes.icon ?? nc(i, a);
 		return y(i) ? {
 			icon: o,
 			label: r("unavailable"),
 			tone: "off"
 		} : {
 			icon: o,
-			...Xs(i, a, r, t)
+			...rc(i, a, r, t)
 		};
 	}).filter((e) => !!e);
 	return /* @__PURE__ */ X(K, { children: /* @__PURE__ */ X("div", {
@@ -9846,13 +10119,13 @@ function Zs({ config: e, hass: t, host: n }) {
 		]
 	}) });
 }
-var Qs = ki({
+var ac = ki({
 	tagName: "liquid-glass-group-card",
-	component: Zs,
+	component: ic,
 	styles: [
 		ji,
 		Xr,
-		qs
+		ec
 	],
 	getCardSize: (e, t) => t.lgGroupSize ?? (e.collapsed ? 1 : 1 + (e.cards?.length ?? 0) * 3),
 	getGridOptions: () => Wi(),
@@ -9862,7 +10135,7 @@ var Qs = ki({
 			n,
 			Object.keys(e?.states ?? {})
 		].find((e) => e?.length) ?? [];
-		return { cards: Ws.flatMap(([e, t]) => {
+		return { cards: Zs.flatMap(([e, t]) => {
 			let n = r.find((t) => t.startsWith(`${e}.`));
 			return n ? [{
 				type: t,
@@ -9870,8 +10143,8 @@ var Qs = ki({
 			}] : [];
 		}) };
 	}
-}), $s = "\n  * { box-sizing: border-box; }\n  :host {\n    display: block;\n    min-width: 0;\n    container-type: inline-size;\n    color: var(--lg-text-primary);\n    font-family: var(--lg-font-jp);\n    -webkit-font-smoothing: antialiased;\n    -webkit-tap-highlight-color: transparent;\n  }\n  .separator {\n    width: 100%;\n    min-width: 0;\n    display: flex;\n    align-items: center;\n    color: var(--lg-text-primary);\n  }\n  .separator > lg-icon,\n  .pill > lg-icon,\n  .header-well > lg-icon,\n  .chevron > lg-icon { flex: none; }\n  .plain {\n    gap: 10px;\n    padding: 16px 6px 10px;\n    color: var(--lg-text-secondary);\n  }\n  .plain > lg-icon {\n    --mdc-icon-size: 16px;\n    width: 16px;\n    height: 16px;\n  }\n  .plain-title {\n    min-width: 0;\n    overflow: hidden;\n    text-overflow: ellipsis;\n    white-space: nowrap;\n    font-size: 13px;\n    font-weight: 700;\n    line-height: 19px;\n    letter-spacing: 0.6px;\n  }\n  .line {\n    flex: 1 1 24px;\n    min-width: 12px;\n    height: 1px;\n    background: var(--lg-separator-line);\n  }\n  .plain-count {\n    flex: none;\n    font-size: 12px;\n    font-weight: 600;\n    line-height: 1;\n    font-variant-numeric: tabular-nums;\n  }\n  .pill-row {\n    gap: 10px;\n    padding: 10px 0;\n  }\n  .pill {\n    flex: none;\n    position: relative;\n    min-width: 0;\n    max-width: calc(100% - 22px);\n    display: flex;\n    align-items: center;\n    gap: 8px;\n    padding: 8px 14px;\n    border-radius: 20px;\n    color: var(--lg-text-primary);\n  }\n  .pill > lg-icon {\n    --mdc-icon-size: 15px;\n    width: 15px;\n    height: 15px;\n  }\n  .pill-title {\n    min-width: 0;\n    overflow: hidden;\n    text-overflow: ellipsis;\n    white-space: nowrap;\n    font-size: 13px;\n    font-weight: 600;\n    line-height: 20px;\n  }\n  .pill-count {\n    flex: none;\n    min-width: 20px;\n    height: 20px;\n    padding: 0 5px;\n    border-radius: 10px;\n    display: grid;\n    place-items: center;\n    background: var(--lg-track-bg);\n    color: var(--lg-text-secondary);\n    font-size: 11px;\n    font-weight: 700;\n    line-height: 1;\n    font-variant-numeric: tabular-nums;\n  }\n  .header-row {\n    gap: 12px;\n    padding: 14px 4px 8px;\n  }\n  .header-well {\n    flex: none;\n    width: 30px;\n    height: 30px;\n    border-radius: 50%;\n    display: grid;\n    place-items: center;\n    color: var(--lg-text-primary);\n  }\n  .header-well > lg-icon {\n    --mdc-icon-size: 15px;\n    width: 15px;\n    height: 15px;\n  }\n  .header-text {\n    flex: 1;\n    min-width: 0;\n    display: flex;\n    flex-direction: column;\n    gap: 1px;\n  }\n  .header-title,\n  .header-subtitle {\n    overflow: hidden;\n    text-overflow: ellipsis;\n    white-space: nowrap;\n  }\n  .header-title {\n    font-size: 16px;\n    font-weight: 700;\n    line-height: 23px;\n  }\n  .header-subtitle {\n    color: var(--lg-text-secondary);\n    font-size: 11px;\n    font-weight: 500;\n    line-height: 16px;\n  }\n  .chevron {\n    flex: none;\n    width: 28px;\n    height: 28px;\n    border-radius: 50%;\n    display: grid;\n    place-items: center;\n    color: var(--lg-text-secondary);\n    background: var(--lg-track-bg);\n    box-shadow: inset 0 0 0 1px var(--lg-glass-stroke);\n  }\n  .chevron > lg-icon {\n    --mdc-icon-size: 15px;\n    width: 15px;\n    height: 15px;\n  }\n  @container (max-width: 230px) {\n    .plain,\n    .pill-row { gap: 8px; }\n    .pill { padding-inline: 11px; }\n    .header-row { gap: 9px; }\n  }\n  @media (prefers-reduced-motion: reduce) {\n    *, *::before, *::after {\n      transition-duration: 0.01ms !important;\n      animation-duration: 0.01ms !important;\n      animation-iteration-count: 1 !important;\n    }\n  }\n";
-function ec({ config: e, hass: t, host: n }) {
+}), oc = "\n  * { box-sizing: border-box; }\n  :host {\n    display: block;\n    min-width: 0;\n    container-type: inline-size;\n    color: var(--lg-text-primary);\n    font-family: var(--lg-font-jp);\n    -webkit-font-smoothing: antialiased;\n    -webkit-tap-highlight-color: transparent;\n  }\n  .separator {\n    width: 100%;\n    min-width: 0;\n    display: flex;\n    align-items: center;\n    color: var(--lg-text-primary);\n  }\n  .separator > lg-icon,\n  .pill > lg-icon,\n  .header-well > lg-icon,\n  .chevron > lg-icon { flex: none; }\n  .plain {\n    gap: 10px;\n    padding: 16px 6px 10px;\n    color: var(--lg-text-secondary);\n  }\n  .plain > lg-icon {\n    --mdc-icon-size: 16px;\n    width: 16px;\n    height: 16px;\n  }\n  .plain-title {\n    min-width: 0;\n    overflow: hidden;\n    text-overflow: ellipsis;\n    white-space: nowrap;\n    font-size: 13px;\n    font-weight: 700;\n    line-height: 19px;\n    letter-spacing: 0.6px;\n  }\n  .line {\n    flex: 1 1 24px;\n    min-width: 12px;\n    height: 1px;\n    background: var(--lg-separator-line);\n  }\n  .plain-count {\n    flex: none;\n    font-size: 12px;\n    font-weight: 600;\n    line-height: 1;\n    font-variant-numeric: tabular-nums;\n  }\n  .pill-row {\n    gap: 10px;\n    padding: 10px 0;\n  }\n  .pill {\n    flex: none;\n    position: relative;\n    min-width: 0;\n    max-width: calc(100% - 22px);\n    display: flex;\n    align-items: center;\n    gap: 8px;\n    padding: 8px 14px;\n    border-radius: 20px;\n    color: var(--lg-text-primary);\n  }\n  .pill > lg-icon {\n    --mdc-icon-size: 15px;\n    width: 15px;\n    height: 15px;\n  }\n  .pill-title {\n    min-width: 0;\n    overflow: hidden;\n    text-overflow: ellipsis;\n    white-space: nowrap;\n    font-size: 13px;\n    font-weight: 600;\n    line-height: 20px;\n  }\n  .pill-count {\n    flex: none;\n    min-width: 20px;\n    height: 20px;\n    padding: 0 5px;\n    border-radius: 10px;\n    display: grid;\n    place-items: center;\n    background: var(--lg-track-bg);\n    color: var(--lg-text-secondary);\n    font-size: 11px;\n    font-weight: 700;\n    line-height: 1;\n    font-variant-numeric: tabular-nums;\n  }\n  .header-row {\n    gap: 12px;\n    padding: 14px 4px 8px;\n  }\n  .header-well {\n    flex: none;\n    width: 30px;\n    height: 30px;\n    border-radius: 50%;\n    display: grid;\n    place-items: center;\n    color: var(--lg-text-primary);\n  }\n  .header-well > lg-icon {\n    --mdc-icon-size: 15px;\n    width: 15px;\n    height: 15px;\n  }\n  .header-text {\n    flex: 1;\n    min-width: 0;\n    display: flex;\n    flex-direction: column;\n    gap: 1px;\n  }\n  .header-title,\n  .header-subtitle {\n    overflow: hidden;\n    text-overflow: ellipsis;\n    white-space: nowrap;\n  }\n  .header-title {\n    font-size: 16px;\n    font-weight: 700;\n    line-height: 23px;\n  }\n  .header-subtitle {\n    color: var(--lg-text-secondary);\n    font-size: 11px;\n    font-weight: 500;\n    line-height: 16px;\n  }\n  .chevron {\n    flex: none;\n    width: 28px;\n    height: 28px;\n    border-radius: 50%;\n    display: grid;\n    place-items: center;\n    color: var(--lg-text-secondary);\n    background: var(--lg-track-bg);\n    box-shadow: inset 0 0 0 1px var(--lg-glass-stroke);\n  }\n  .chevron > lg-icon {\n    --mdc-icon-size: 15px;\n    width: 15px;\n    height: 15px;\n  }\n  @container (max-width: 230px) {\n    .plain,\n    .pill-row { gap: 8px; }\n    .pill { padding-inline: 11px; }\n    .header-row { gap: 9px; }\n  }\n  @media (prefers-reduced-motion: reduce) {\n    *, *::before, *::after {\n      transition-duration: 0.01ms !important;\n      animation-duration: 0.01ms !important;\n      animation-iteration-count: 1 !important;\n    }\n  }\n";
+function sc({ config: e, hass: t, host: n }) {
 	let { refraction: r } = Ai(n, e, t), i = s(e.language ?? t?.locale?.language ?? t?.language), a = e.title ?? h(t, void 0, e.name, i("sep_title")), o = e.icon ?? "mdi:lightbulb-outline", c = e.count !== void 0 && e.count !== null && e.count !== "", l;
 	switch (e.style) {
 		case "plain":
@@ -9953,13 +10226,13 @@ function ec({ config: e, hass: t, host: n }) {
 	}
 	return l;
 }
-var tc = ki({
+var cc = ki({
 	tagName: "liquid-glass-separator-card",
-	component: ec,
+	component: sc,
 	styles: [
 		ji,
 		Hr,
-		$s
+		oc
 	],
 	getCardSize: () => 1,
 	getGridOptions: Gi,
@@ -9968,8 +10241,8 @@ var tc = ki({
 		icon: "mdi:lightbulb-outline",
 		style: "pill"
 	})
-}), nc = "0.6.0", rc = "2026-09-07 15:04", ic = "https://github.com/cos-overclock/ha-liquid-glass", ac = (e, t) => !!((e.attributes.supported_features ?? 0) & t);
-function oc(e, t, n, r, i, a = (e) => ({ entity: e })) {
+}), lc = "0.6.0", uc = "2026-09-07 15:08", dc = "https://github.com/cos-overclock/ha-liquid-glass", fc = (e, t) => !!((e.attributes.supported_features ?? 0) & t);
+function pc(e, t, n, r, i, a = (e) => ({ entity: e })) {
 	return {
 		type: e,
 		name: t,
@@ -9985,35 +10258,36 @@ function oc(e, t, n, r, i, a = (e) => ({ entity: e })) {
 		}
 	};
 }
-var sc = 1, cc = 4, lc = 4, uc = [
-	oc("liquid-glass-light-card", "Liquid Glass Light", "Brightness, color temperature, color and presets", ["light"]),
-	oc("liquid-glass-climate-card", "Liquid Glass Climate", "Thermostat dial with modes and fan / preset", ["climate"], (e) => ac(e, 3)),
-	oc("liquid-glass-switch-card", "Liquid Glass Switch", "Single row toggle", t),
-	oc("liquid-glass-sensor-card", "Liquid Glass Sensor", "Value, trend and 24h sparkline", ["sensor"]),
-	oc("liquid-glass-binary-sensor-card", "Liquid Glass Binary Sensor", "Door / motion / window status row", ["binary_sensor"]),
-	oc("liquid-glass-lock-card", "Liquid Glass Lock", "Slide to lock / unlock", ["lock"]),
-	oc("liquid-glass-cover-card", "Liquid Glass Cover", "Blinds and curtains with position and tilt", ["cover"], (e) => ac(e, 7)),
-	oc("liquid-glass-media-card", "Liquid Glass Media", "Now playing with transport and volume", ["media_player"]),
-	oc("liquid-glass-slider-card", "Liquid Glass Slider", "Any numeric value as a draggable track", n, (e) => {
+var mc = 1, hc = 4, gc = 4, _c = [
+	pc("liquid-glass-light-card", "Liquid Glass Light", "Brightness, color temperature, color and presets", ["light"]),
+	pc("liquid-glass-vacuum-card", "Liquid Glass Vacuum", "Cleaning controls, fan speed and status", ["vacuum"]),
+	pc("liquid-glass-climate-card", "Liquid Glass Climate", "Thermostat dial with modes and fan / preset", ["climate"], (e) => fc(e, 3)),
+	pc("liquid-glass-switch-card", "Liquid Glass Switch", "Single row toggle", t),
+	pc("liquid-glass-sensor-card", "Liquid Glass Sensor", "Value, trend and 24h sparkline", ["sensor"]),
+	pc("liquid-glass-binary-sensor-card", "Liquid Glass Binary Sensor", "Door / motion / window status row", ["binary_sensor"]),
+	pc("liquid-glass-lock-card", "Liquid Glass Lock", "Slide to lock / unlock", ["lock"]),
+	pc("liquid-glass-cover-card", "Liquid Glass Cover", "Blinds and curtains with position and tilt", ["cover"], (e) => fc(e, 7)),
+	pc("liquid-glass-media-card", "Liquid Glass Media", "Now playing with transport and volume", ["media_player"]),
+	pc("liquid-glass-slider-card", "Liquid Glass Slider", "Any numeric value as a draggable track", n, (e) => {
 		switch (e.entity_id.split(".", 1)[0]) {
 			case "input_number":
 			case "number": return !0;
-			case "fan": return ac(e, sc);
+			case "fan": return fc(e, mc);
 			case "light": return (e.attributes.supported_color_modes ?? []).some((e) => e !== "onoff");
-			case "media_player": return ac(e, lc);
+			case "media_player": return fc(e, gc);
 			case "cover":
-			case "valve": return ac(e, cc);
+			case "valve": return fc(e, hc);
 			case "humidifier": return "humidity" in e.attributes;
 			case "water_heater":
-			case "climate": return ac(e, sc);
+			case "climate": return fc(e, mc);
 			default: return !1;
 		}
 	}),
-	oc("liquid-glass-select-card", "Liquid Glass Select", "Choose an option with glass segments or chips", r),
-	oc("liquid-glass-weather-card", "Liquid Glass Weather", "Current conditions with hourly and daily forecast", ["weather"]),
-	oc("liquid-glass-button-card", "Liquid Glass Button", "Run a scene, script, automation or button", e),
-	oc("liquid-glass-scene-card", "Liquid Glass Scenes", "A grid of scene tiles or a row of chips", e, void 0, (e) => ({ scenes: [{ entity: e }] })),
-	oc("liquid-glass-camera-card", "Liquid Glass Camera", "Camera still with motion and history", ["camera"]),
+	pc("liquid-glass-select-card", "Liquid Glass Select", "Choose an option with glass segments or chips", r),
+	pc("liquid-glass-weather-card", "Liquid Glass Weather", "Current conditions with hourly and daily forecast", ["weather"]),
+	pc("liquid-glass-button-card", "Liquid Glass Button", "Run a scene, script, automation or button", e),
+	pc("liquid-glass-scene-card", "Liquid Glass Scenes", "A grid of scene tiles or a row of chips", e, void 0, (e) => ({ scenes: [{ entity: e }] })),
+	pc("liquid-glass-camera-card", "Liquid Glass Camera", "Camera still with motion and history", ["camera"]),
 	{
 		type: "liquid-glass-group-card",
 		name: "Liquid Glass Group",
@@ -10030,29 +10304,29 @@ var sc = 1, cc = 4, lc = 4, uc = [
 			style: "pill"
 		} })
 	}
-], dc = [{
+], vc = [{
 	type: "liquid-glass-entity-badge",
 	name: "Liquid Glass Entity",
 	description: "Entity name and state in a compact glass pill"
 }];
 window.customCards = window.customCards ?? [];
-for (let e of uc) {
+for (let e of _c) {
 	let t = {
 		...e,
 		preview: !0,
-		documentationURL: ic
+		documentationURL: dc
 	}, n = window.customCards.find((t) => t.type === e.type);
 	n ? Object.assign(n, t) : window.customCards.push(t);
 }
 window.customBadges = window.customBadges ?? [];
-for (let e of dc) {
+for (let e of vc) {
 	let t = {
 		...e,
 		preview: !0,
-		documentationURL: ic
+		documentationURL: dc
 	}, n = window.customBadges.find((t) => t.type === e.type);
 	n ? Object.assign(n, t) : window.customBadges.push(t);
 }
-console.info(`%c LIQUID-GLASS-CARDS %c v${nc} · ${uc.length} cards · ${dc.length} badge${dc.length === 1 ? "" : "s"} · built ${rc} `, "color: #1c1c1e; background: linear-gradient(90deg,#ffd36b,#ff8a1f); font-weight: 700; border-radius: 6px 0 0 6px;", "color: #fff; background: #1c1c1e; font-weight: 500; border-radius: 0 6px 6px 0;");
+console.info(`%c LIQUID-GLASS-CARDS %c v${lc} · ${_c.length} cards · ${vc.length} badge${vc.length === 1 ? "" : "s"} · built ${uc} `, "color: #1c1c1e; background: linear-gradient(90deg,#ffd36b,#ff8a1f); font-weight: 700; border-radius: 6px 0 0 6px;", "color: #fff; background: #1c1c1e; font-weight: 500; border-radius: 0 6px 6px 0;");
 //#endregion
-export { Po as LiquidGlassBinarySensorCard, Ds as LiquidGlassButtonCard, Bs as LiquidGlassCameraCard, to as LiquidGlassClimateCard, Uo as LiquidGlassCoverCard, Bi as LiquidGlassEntityBadge, Qs as LiquidGlassGroupCard, Oa as LiquidGlassLightCard, Ro as LiquidGlassLockCard, Yo as LiquidGlassMediaCard, js as LiquidGlassSceneCard, ss as LiquidGlassSelectCard, jo as LiquidGlassSensorCard, tc as LiquidGlassSeparatorCard, ts as LiquidGlassSliderCard, so as LiquidGlassSwitchCard, vs as LiquidGlassWeatherCard, _i as defineReactCard };
+export { Vo as LiquidGlassBinarySensorCard, Ps as LiquidGlassButtonCard, qs as LiquidGlassCameraCard, co as LiquidGlassClimateCard, Xo as LiquidGlassCoverCard, Bi as LiquidGlassEntityBadge, ac as LiquidGlassGroupCard, Oa as LiquidGlassLightCard, Go as LiquidGlassLockCard, ns as LiquidGlassMediaCard, Rs as LiquidGlassSceneCard, ms as LiquidGlassSelectCard, Ro as LiquidGlassSensorCard, cc as LiquidGlassSeparatorCard, cs as LiquidGlassSliderCard, ho as LiquidGlassSwitchCard, Fa as LiquidGlassVacuumCard, Ts as LiquidGlassWeatherCard, _i as defineReactCard };
