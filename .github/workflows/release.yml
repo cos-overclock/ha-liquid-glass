@@ -66,10 +66,11 @@ jobs:
           TAG: ${{ steps.version.outputs.tag }}
         shell: bash
         run: |
-          tagged_sha="$(git rev-parse "$TAG^{commit}" 2>/dev/null || true)"
-          if [[ -n "$tagged_sha" && "$tagged_sha" != "$GITHUB_SHA" ]]; then
-            echo "::error::Tag $TAG already points to $tagged_sha instead of $GITHUB_SHA."
-            exit 1
+          if tagged_sha="$(git rev-parse --verify "$TAG^{commit}" 2>/dev/null)"; then
+            if [[ "$tagged_sha" != "$GITHUB_SHA" ]]; then
+              echo "::error::Tag $TAG already points to $tagged_sha instead of $GITHUB_SHA."
+              exit 1
+            fi
           fi
 
       - name: Install dependencies
