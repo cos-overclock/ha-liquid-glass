@@ -85,6 +85,32 @@ describe("liquid-glass-switch-card", () => {
     expect(callService).toHaveBeenCalledWith("homeassistant", "toggle", { entity_id: target.entity_id });
   });
 
+  it("lets a configured tap action replace the built-in toggle", async () => {
+    const callService = vi.fn<HomeAssistant["callService"]>(async () => undefined);
+    const target = entity("switch.desk", "off", { friendly_name: "デスク" });
+    const element = document.createElement("liquid-glass-switch-card") as CardElement;
+    const tapAction = { action: "navigate" as const, navigation_path: "/dashboard/desk" };
+    element.setConfig({
+      type: "custom:liquid-glass-switch-card",
+      entity: target.entity_id,
+      tap_action: tapAction,
+    });
+    element.hass = createHass([target], callService);
+    const handled = vi.fn();
+    element.addEventListener("hass-action", handled);
+
+    await act(async () => document.body.append(element));
+    const card = element.shadowRoot?.querySelector<HTMLElement>(".card");
+    await act(async () => card?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+
+    expect(callService).not.toHaveBeenCalled();
+    expect(handled).toHaveBeenCalledOnce();
+    expect(handled.mock.calls[0][0].detail).toMatchObject({
+      action: "tap",
+      config: { entity: target.entity_id, tap_action: tapAction },
+    });
+  });
+
   it("animates only after the switch state changes", async () => {
     const callService = vi.fn<HomeAssistant["callService"]>(async () => undefined);
     const target = entity("switch.desk", "off", { friendly_name: "デスク" });

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { act } from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { HomeAssistant } from "../types";
 import { LiquidGlassSeparatorCard, type SeparatorCardConfig } from "./separator-card";
 
@@ -106,5 +106,36 @@ describe("liquid-glass-separator-card", () => {
     expect(element.shadowRoot?.querySelector(".plain-title")?.textContent).toBe("空調");
     expect(element.shadowRoot?.querySelector(".pill")).toBeNull();
     expect(element.hasAttribute("refraction")).toBe(false);
+  });
+
+  it("makes a configured card action keyboard accessible and forwards it to Home Assistant", async () => {
+    const element = document.createElement("liquid-glass-separator-card") as SeparatorElement;
+    const action = { action: "navigate" as const, navigation_path: "/dashboard/lights" };
+    element.setConfig({
+      type: "custom:liquid-glass-separator-card",
+      title: "照明",
+      tap_action: action,
+    });
+    const handled = vi.fn();
+    element.addEventListener("hass-action", handled);
+
+    await act(async () => document.body.append(element));
+    const separator = element.shadowRoot?.querySelector<HTMLElement>(".separator");
+    expect(element.hasAttribute("card-action")).toBe(true);
+    expect(separator?.getAttribute("role")).toBe("button");
+    expect(separator?.tabIndex).toBe(0);
+
+    separator?.dispatchEvent(new KeyboardEvent("keydown", {
+      key: "Enter",
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+    }));
+
+    expect(handled).toHaveBeenCalledOnce();
+    expect(handled.mock.calls[0][0].detail).toMatchObject({
+      action: "tap",
+      config: { tap_action: action },
+    });
   });
 });

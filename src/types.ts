@@ -40,6 +40,47 @@ export interface HomeAssistant {
   formatEntityState?(entity: HassEntity): string;
 }
 
+/** Confirmation options accepted by Home Assistant's dashboard action handler. */
+export interface ActionConfirmation {
+  text?: string;
+  title?: string;
+  confirm_text?: string;
+  dismiss_text?: string;
+  exemptions?: Array<{ user: string }>;
+}
+
+/**
+ * A Lovelace dashboard action. The card forwards this object to Home Assistant, which
+ * keeps confirmation dialogs, navigation, Assist and service calls aligned with core cards.
+ */
+export interface ActionConfig {
+  action:
+    | "more-info"
+    | "toggle"
+    | "perform-action"
+    | "call-service"
+    | "navigate"
+    | "url"
+    | "assist"
+    | "fire-dom-event"
+    | "none";
+  entity?: string;
+  perform_action?: string;
+  /** Legacy spelling retained because Home Assistant still accepts it. */
+  service?: string;
+  data?: Record<string, unknown>;
+  /** Legacy spelling retained because Home Assistant still accepts it. */
+  service_data?: Record<string, unknown>;
+  target?: Record<string, unknown>;
+  navigation_path?: string;
+  navigation_replace?: boolean;
+  url_path?: string;
+  pipeline_id?: string;
+  start_listening?: boolean;
+  confirmation?: boolean | ActionConfirmation;
+  [key: string]: unknown;
+}
+
 export interface BaseCardConfig {
   type: string;
   entity?: string;
@@ -54,6 +95,12 @@ export interface BaseCardConfig {
   /** Optical material: regular for legibility, clear for media-rich backgrounds. */
   glass_variant?: "regular" | "clear";
   language?: string;
+  /** Action performed on a short pointer tap or Enter / Space. */
+  tap_action?: ActionConfig;
+  /** Action performed after holding the card for 500 ms. */
+  hold_action?: ActionConfig;
+  /** Action performed when the card is tapped twice in quick succession. */
+  double_tap_action?: ActionConfig;
 }
 
 /** Any Lovelace card config: ours or a built-in one nested inside the group card. */
