@@ -1,6 +1,7 @@
 import "./editor/lg-card-editor";
 import "./badges/entity-badge";
 import "./cards/light-card";
+import "./cards/vacuum-card";
 import "./cards/climate-card";
 import "./cards/switch-card";
 import "./cards/sensor-card";
@@ -28,6 +29,7 @@ export type {
 } from "./react/define-react-card";
 
 export { LiquidGlassLightCard } from "./cards/light-card";
+export { LiquidGlassVacuumCard } from "./cards/vacuum-card";
 export { LiquidGlassClimateCard } from "./cards/climate-card";
 export { LiquidGlassSwitchCard } from "./cards/switch-card";
 export { LiquidGlassSensorCard } from "./cards/sensor-card";
@@ -128,6 +130,7 @@ const supportsSlider: EntitySupport = (entity) => {
 
 const cards: CustomCardRegistration[] = [
   entityCard("liquid-glass-light-card", "Liquid Glass Light", "Brightness, color temperature, color and presets", ["light"]),
+  entityCard("liquid-glass-vacuum-card", "Liquid Glass Vacuum", "Cleaning controls, fan speed and status", ["vacuum"]),
   entityCard(
     "liquid-glass-climate-card",
     "Liquid Glass Climate",

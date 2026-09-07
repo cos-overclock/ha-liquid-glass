@@ -96,6 +96,11 @@ describe("entity suggestions", () => {
     expect(suggestedFor(entity("light.desk"))).toContain("liquid-glass-light-card");
   });
 
+  it("offers the vacuum card for a vacuum", () => {
+    expect(suggestedFor(entity("vacuum.downstairs", { supported_features: 8192 })))
+      .toContain("liquid-glass-vacuum-card");
+  });
+
   it("offers the select card for select helpers and integrations", () => {
     expect(suggestedFor(entity("select.fan_mode", { options: ["Auto", "Turbo"] })))
       .toContain("liquid-glass-select-card");

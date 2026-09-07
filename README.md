@@ -8,6 +8,7 @@ React版カードは屈折対象となる背景レイヤーもReactで所有し�
 | カード | type | 対応ドメイン |
 | --- | --- | --- |
 | Light | `custom:liquid-glass-light-card` | `light`（明るさ / 色温度 / 色相・彩度 / お気に入り / プリセット） |
+| Vacuum | `custom:liquid-glass-vacuum-card` | `vacuum`（清掃操作 / 帰還 / 吸引力 / 状態） |
 | Climate | `custom:liquid-glass-climate-card` | `climate`（270° ダイヤル、モード、風量 / プリセット） |
 | Switch | `custom:liquid-glass-switch-card` | `switch` `input_boolean` `fan` など |
 | Sensor | `custom:liquid-glass-sensor-card` | `sensor`（数値 + 24h スパークライン + トレンド） |
@@ -208,6 +209,19 @@ favorites: ["#FF453A", "#FF9F0A", "#FFD60A", "#30D158", "#0A84FF", "#B15CFF", "#
 ```
 
 色温度と色の両方に対応するライトでは「カラー / 色温度」のセグメントが表示されます。
+
+### Vacuum
+
+```yaml
+type: custom:liquid-glass-vacuum-card
+entity: vacuum.downstairs
+show_fan_speed: true
+show_stats: true
+show_locate: true
+show_clean_spot: false
+```
+
+`supported_features` に応じて開始 / 再開、一時停止、停止、充電台への帰還、呼び出し、スポット清掃を表示します。`fan_speed_list` がある機種では吸引力を直接選べます。スポット清掃は誤操作を避けるため初期状態では非表示です。
 
 ### Climate
 
