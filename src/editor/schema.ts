@@ -155,6 +155,14 @@ export function schemaFor(
         ...common(t),
       ];
 
+    case "fan":
+      return [
+        ...head("fan"),
+        grid([bool("show_speed"), bool("show_presets")]),
+        grid([bool("show_oscillation"), bool("show_direction")]),
+        ...common(t),
+      ];
+
     case "climate":
       return [
         ...head("climate"),
@@ -369,6 +377,10 @@ export const DEFAULT_ON = new Set([
   "show_locate",
   "show_icon",
   "show_state",
+  "show_speed",
+  "show_presets",
+  "show_oscillation",
+  "show_direction",
   "graph",
   "trend",
   "show_tilt",
