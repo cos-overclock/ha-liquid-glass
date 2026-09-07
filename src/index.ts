@@ -3,6 +3,7 @@ import "./badges/entity-badge";
 import "./cards/light-card";
 import "./cards/vacuum-card";
 import "./cards/fan-card";
+import "./cards/alarm-control-panel-card";
 import "./cards/climate-card";
 import "./cards/switch-card";
 import "./cards/sensor-card";
@@ -32,6 +33,7 @@ export type {
 export { LiquidGlassLightCard } from "./cards/light-card";
 export { LiquidGlassVacuumCard } from "./cards/vacuum-card";
 export { LiquidGlassFanCard } from "./cards/fan-card";
+export { LiquidGlassAlarmControlPanelCard } from "./cards/alarm-control-panel-card";
 export { LiquidGlassClimateCard } from "./cards/climate-card";
 export { LiquidGlassSwitchCard } from "./cards/switch-card";
 export { LiquidGlassSensorCard } from "./cards/sensor-card";
@@ -134,6 +136,7 @@ const cards: CustomCardRegistration[] = [
   entityCard("liquid-glass-light-card", "Liquid Glass Light", "Brightness, color temperature, color and presets", ["light"]),
   entityCard("liquid-glass-vacuum-card", "Liquid Glass Vacuum", "Cleaning controls, fan speed and status", ["vacuum"]),
   entityCard("liquid-glass-fan-card", "Liquid Glass Fan", "Speed, presets, oscillation and direction", ["fan"]),
+  entityCard("liquid-glass-alarm-control-panel-card", "Liquid Glass Alarm", "Arm, disarm and monitor an alarm panel", ["alarm_control_panel"]),
   entityCard(
     "liquid-glass-climate-card",
     "Liquid Glass Climate",

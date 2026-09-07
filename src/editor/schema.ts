@@ -163,6 +163,9 @@ export function schemaFor(
         ...common(t),
       ];
 
+    case "alarm-control-panel":
+      return [...head("alarm_control_panel"), bool("show_trigger"), ...common(t)];
+
     case "climate":
       return [
         ...head("climate"),

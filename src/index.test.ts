@@ -106,6 +106,10 @@ describe("entity suggestions", () => {
       .toContain("liquid-glass-fan-card");
   });
 
+  it("offers the alarm card for an alarm control panel", () => {
+    expect(suggestedFor(entity("alarm_control_panel.home", { supported_features: 3 }))).toContain("liquid-glass-alarm-control-panel-card");
+  });
+
   it("offers the select card for select helpers and integrations", () => {
     expect(suggestedFor(entity("select.fan_mode", { options: ["Auto", "Turbo"] })))
       .toContain("liquid-glass-select-card");

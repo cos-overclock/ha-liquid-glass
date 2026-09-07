@@ -10,6 +10,7 @@ React版カードは屈折対象となる背景レイヤーもReactで所有し�
 | Light | `custom:liquid-glass-light-card` | `light`（明るさ / 色温度 / 色相・彩度 / お気に入り / プリセット） |
 | Vacuum | `custom:liquid-glass-vacuum-card` | `vacuum`（清掃操作 / 帰還 / 吸引力 / 状態） |
 | Fan | `custom:liquid-glass-fan-card` | `fan`（風量 / プリセット / 首振り / 風向） |
+| Alarm | `custom:liquid-glass-alarm-control-panel-card` | `alarm_control_panel`（警戒モード / 解除 / 暗証番号） |
 | Climate | `custom:liquid-glass-climate-card` | `climate`（270° ダイヤル、モード、風量 / プリセット） |
 | Switch | `custom:liquid-glass-switch-card` | `switch` `input_boolean` `fan` など |
 | Sensor | `custom:liquid-glass-sensor-card` | `sensor`（数値 + 24h スパークライン + トレンド） |
@@ -187,6 +188,16 @@ color: "#0A84FF"
 ```
 
 セクションビューの `badges:` に追加します。`show_name` を有効にすると「リビング室温 · 23.4 °C」のように名前と状態を1つのピルへまとめます。`color` は省略可能です。
+
+### Alarm Control Panel
+
+```yaml
+type: custom:liquid-glass-alarm-control-panel-card
+entity: alarm_control_panel.home
+show_trigger: false
+```
+
+対応する警戒モードだけを表示します。暗証番号はカードの一時入力として扱い、サービス呼び出し後に消去され、ダッシュボード設定には保存されません。警報作動ボタンは誤操作防止のため初期状態では非表示です。
 
 ### Light
 
