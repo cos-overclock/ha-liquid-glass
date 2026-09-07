@@ -49,6 +49,113 @@ const CONTROL_SIZE = 32;
 const SNAPSHOT_SIZE = 34;
 const CONTROL_GAP = 8;
 
+type FrameSlot = 0 | 1;
+type CameraFrames = [string | undefined, string | undefined];
+interface CameraFrameState {
+  requested: string | undefined;
+  frames: CameraFrames;
+  active: FrameSlot | undefined;
+}
+
+interface CameraFrame {
+  image: HTMLImageElement | undefined;
+  /** Bumped once per decoded still, so the painter can tell two frames apart. */
+  generation: number;
+}
+
+interface RequestedStill {
+  tick: number;
+  url: string | undefined;
+}
+
+/**
+ * The still to request, with the refresh tick appended so each refresh is a new URL.
+ *
+ * Home Assistant signs `entity_picture` with a token it rotates on a schedule of its
+ * own, so the base URL changes independently of the refresh timer. Pinning the URL to
+ * the tick keeps those two from each pulling the camera down: a rotated token is picked
+ * up by the next scheduled refresh, which is well inside the window where the previous
+ * token is still accepted. The URL is rebuilt out of turn only when the answer changes
+ * between "there is a still" and "there is not" — the camera going offline, or coming
+ * back — since neither can wait for a tick.
+ */
+export function nextStillUrl(
+  current: RequestedStill,
+  picture: string | undefined,
+  tick: number,
+): RequestedStill {
+  if (current.tick === tick && (picture !== undefined) === (current.url !== undefined)) return current;
+  if (picture === undefined) return { tick, url: undefined };
+  return { tick, url: `${picture}${picture.includes("?") ? "&" : "?"}_=${tick}` };
+}
+
+/**
+ * A `<Glass draw>` painter, backed by a scaled copy of the still.
+ *
+ * Two things have to hold at once, and only a buffer satisfies both.
+ *
+ * The lens asks for a source frame on every animation frame, but a camera still only
+ * changes once per refresh, so rescaling a full-size photo sixty times a second is pure
+ * waste — the one piece of per-frame main-thread work this card was doing.
+ *
+ * The frame handed back must never be empty, though, and the canvas holding it belongs
+ * to `<Glass>`, which resizes (and so clears) it from its own layout. An empty frame is
+ * not merely a dropped update: the lens pass writes its own alpha, so where the surface
+ * is transparent every lens still paints — as an opaque black disc over the controls,
+ * which is the flicker this replaces. Relying on the canvas to keep the pixels we left
+ * there last frame is what made that reachable.
+ *
+ * So the expensive rescale happens once per frame of camera footage, into a buffer, and
+ * every animation frame blits that buffer 1:1 onto whatever surface `<Glass>` provides.
+ */
+export function createStillPainter(
+  readFrame: () => CameraFrame,
+  buffer: HTMLCanvasElement = document.createElement("canvas"),
+): (context: CanvasRenderingContext2D) => void {
+  let scaled: { generation: number; width: number; height: number } | undefined;
+
+  return (context) => {
+    const width = context.canvas.width;
+    const height = context.canvas.height;
+    if (!width || !height) return;
+    const { image, generation } = readFrame();
+    const stale = !scaled
+      || scaled.generation !== generation
+      || scaled.width !== width
+      || scaled.height !== height;
+
+    if (stale && image && image.naturalWidth && image.naturalHeight) {
+      // Sizing the buffer clears it, which is what we want: the scale below covers it.
+      buffer.width = width;
+      buffer.height = height;
+      const target = buffer.getContext("2d");
+      if (!target) return;
+      const scale = Math.max(width / image.naturalWidth, height / image.naturalHeight);
+      const sourceWidth = width / scale;
+      const sourceHeight = height / scale;
+      target.drawImage(
+        image,
+        (image.naturalWidth - sourceWidth) / 2,
+        (image.naturalHeight - sourceHeight) / 2,
+        sourceWidth,
+        sourceHeight,
+        0,
+        0,
+        width,
+        height,
+      );
+      scaled = { generation, width, height };
+    }
+
+    // Nothing to show yet — but `<Glass>` only mounts once a still has decoded, so this
+    // is the first frame or two after a remount, not a state the lens sits in.
+    if (!scaled) return;
+    // Stretched, not offset, when a resize beat the next rescale: a pixel of softness
+    // for one frame, rather than an uncovered strip for the lens to blacken.
+    context.drawImage(buffer, 0, 0, width, height);
+  };
+}
+
 const ownStyles = `
   .card {
     padding: 0;
@@ -74,6 +181,14 @@ const ownStyles = `
     width: 100%;
     height: 100%;
     object-fit: cover;
+  }
+  /*
+   * Camera refreshes are double-buffered. Keep the decoded frame visible while
+   * the other image element fetches the next one; swapping the visible source
+   * element exposes an empty frame to both the browser and the WebGL lens.
+   */
+  .still.staging {
+    visibility: hidden;
   }
   /* Darkens the top and bottom just enough for white text to hold up. */
   .scrim {
@@ -157,6 +272,17 @@ const ownStyles = `
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
     box-shadow: none;
+  }
+  /*
+   * Everything else floating over the feed keeps its own fill, but not its blur: a
+   * backdrop filter over the lens canvas makes the compositor re-read and re-blur that
+   * canvas on every frame it presents, which is every frame. A denser fill reads the
+   * same over a photo and costs the compositor nothing.
+   */
+  .feed.glass-active .float:not(.lens-control) {
+    background: rgba(11, 11, 15, 0.52);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
   .camera-glass-stage {
     position: absolute !important;
@@ -318,21 +444,55 @@ function CameraCard({ config, hass, host }: ReactCardProps<CameraCardConfig>) {
     Math.max(config.refresh_interval ?? DEFAULT_REFRESH, 1) * 1000,
     canRefresh,
   );
-  /**
-   * The still, with the tick appended so each refresh is a new URL. Home Assistant signs
-   * `entity_picture` with a rotating token, so the base URL changes on its own as well.
-   */
-  const still = offline || !picture
-    ? undefined
-    : `${picture}${picture.includes("?") ? "&" : "?"}_=${tick}`;
+  /** The still to load, held steady between ticks — see `nextStillUrl`. */
+  const requestRef = useRef<RequestedStill>({ tick: -1, url: undefined });
+  requestRef.current = nextStillUrl(requestRef.current, canRefresh ? picture : undefined, tick);
+  const still = requestRef.current.url;
   const feedRef = useRef<HTMLDivElement>(null);
   const [feedSize, setFeedSize] = useState({ width: 0, height: 0 });
-  const stillRef = useRef<HTMLImageElement>(null);
-  /**
-   * Counts decoded stills. The lens reads the pixels off `stillRef`, so it needs a
-   * changing value — not a changing element — to know a new frame has arrived.
-   */
-  const [decodedStills, setDecodedStills] = useState(0);
+  const stillRefs = useRef<[HTMLImageElement | null, HTMLImageElement | null]>([null, null]);
+  const activeFrameRef = useRef<FrameSlot | undefined>(undefined);
+  /** Advanced once per promoted frame; the painter redraws on nothing else. */
+  const frameGenerationRef = useRef(0);
+  const requestedStillRef = useRef(still);
+  const [frameState, setFrameState] = useState<CameraFrameState>(() => ({
+    requested: still,
+    frames: still ? [still, undefined] : [undefined, undefined],
+    active: undefined,
+  }));
+  requestedStillRef.current = still;
+
+  // React supports adjusting state during render when a prop-derived value changes.
+  // Doing it here queues the next URL before paint without adding an effect/render pass.
+  if (frameState.requested !== still) {
+    if (!still) {
+      activeFrameRef.current = undefined;
+      setFrameState({
+        requested: undefined,
+        frames: [undefined, undefined],
+        active: undefined,
+      });
+    } else {
+      // Never replace the visible image. Load the new URL into the other stable
+      // element and promote it only from that element's load event.
+      const target: FrameSlot = frameState.active === 0 ? 1 : 0;
+      const frames: CameraFrames = [...frameState.frames];
+      frames[target] = still;
+      setFrameState({ ...frameState, requested: still, frames });
+    }
+  }
+
+  const activateFrame = useCallback((slot: FrameSlot, url: string) => {
+    // A slow response from an older refresh must not replace a newer request.
+    if (requestedStillRef.current !== url) return;
+    activeFrameRef.current = slot;
+    frameGenerationRef.current += 1;
+    setFrameState((current) => current.requested === url
+      ? { ...current, active: slot }
+      : current);
+  }, []);
+
+  const { active: activeFrame, frames } = frameState;
 
   useLayoutEffect(() => {
     const feed = feedRef.current;
@@ -344,35 +504,15 @@ function CameraCard({ config, hass, host }: ReactCardProps<CameraCardConfig>) {
     return () => observer.disconnect();
   }, []);
 
-  // Redraws whenever a new still has decoded; the element itself is stable across refreshes.
-  const drawStill = useCallback((context: CanvasRenderingContext2D) => {
-    const image = stillRef.current;
-    if (!image || !image.naturalWidth || !image.naturalHeight) return;
-    const width = context.canvas.width;
-    const height = context.canvas.height;
-    const scale = Math.max(width / image.naturalWidth, height / image.naturalHeight);
-    const sourceWidth = width / scale;
-    const sourceHeight = height / scale;
-    const sourceX = (image.naturalWidth - sourceWidth) / 2;
-    const sourceY = (image.naturalHeight - sourceHeight) / 2;
-    context.clearRect(0, 0, width, height);
-    context.drawImage(
-      image,
-      sourceX,
-      sourceY,
-      sourceWidth,
-      sourceHeight,
-      0,
-      0,
-      width,
-      height,
-    );
-    /*
-     * The tick is the trigger. A refreshed still arrives on the same element, so this
-     * counter is the only thing that can tell the lens a new frame is there to redraw.
-     */
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [decodedStills]);
+  // Glass asks for a frame on every animation frame, so reading the active slot
+  // through a ref swaps its source without remounting the WebGL surface.
+  const drawStill = useMemo(() => createStillPainter(() => {
+    const slot = activeFrameRef.current;
+    return {
+      image: slot === undefined ? undefined : stillRefs.current[slot] ?? undefined,
+      generation: frameGenerationRef.current,
+    };
+  }), []);
 
   if (!entity) {
     return <>
@@ -401,7 +541,7 @@ function CameraCard({ config, hass, host }: ReactCardProps<CameraCardConfig>) {
   const motion = config.motion_entity ? hass?.states[config.motion_entity] : undefined;
   const detected = motion?.state === "on";
   const glassReady = Boolean(
-    refraction && still && decodedStills > 0 && feedSize.width > 0 && feedSize.height > 0,
+    refraction && activeFrame !== undefined && feedSize.width > 0 && feedSize.height > 0,
   );
   const compact = feedSize.width <= 260;
   const barHeight = compact ? 46 : 56;
@@ -503,10 +643,11 @@ function CameraCard({ config, hass, host }: ReactCardProps<CameraCardConfig>) {
         ref={feedRef}
         className={`feed${glassReady ? " glass-active" : ""}`}
       >
-        {still && <img
-          ref={stillRef}
-          className="still"
-          src={still}
+        {frames.map((url, slot) => url && <img
+          key={slot}
+          ref={(image) => { stillRefs.current[slot as FrameSlot] = image; }}
+          className={`still${activeFrame === slot ? "" : " staging"}`}
+          src={url}
           /*
            * Only when the lens will read the pixels back: a cors-mode request is what
            * keeps the canvas untainted, and asking for it otherwise would fail on a
@@ -515,8 +656,8 @@ function CameraCard({ config, hass, host }: ReactCardProps<CameraCardConfig>) {
           crossOrigin={refraction ? "anonymous" : undefined}
           alt=""
           decoding="async"
-          onLoad={() => setDecodedStills((count) => count + 1)}
-        />}
+          onLoad={() => activateFrame(slot as FrameSlot, url)}
+        />)}
         {glassReady ? <Glass
           className="camera-glass-stage"
           draw={drawStill}
