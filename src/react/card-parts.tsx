@@ -90,8 +90,16 @@ export function CardTitle({
   );
 }
 
-/** Pill with a leading dot, used for the state at the end of a row. */
-export function Badge({ label, style }: { label: string; style?: BadgeStyle }) {
+/** Pill with a leading dot or icon, used for compact entity state. */
+export function Badge({
+  label,
+  style,
+  icon,
+}: {
+  label?: string;
+  style?: BadgeStyle;
+  icon?: string;
+}) {
   return (
     <div
       className="badge"
@@ -102,8 +110,8 @@ export function Badge({ label, style }: { label: string; style?: BadgeStyle }) {
         "--badge-glow": style.glow ?? style.color,
       } as CSSProperties : undefined}
     >
-      <span className="dot" />
-      <span>{label}</span>
+      {icon ? <span className="badge-icon"><Icon icon={icon} /></span> : <span className="dot" />}
+      {label ? <span>{label}</span> : null}
     </div>
   );
 }
