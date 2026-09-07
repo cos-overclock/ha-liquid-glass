@@ -1,0 +1,112 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - package.json
+      - package-lock.json
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.repository == 'cos-overclock/ha-liquid-glass' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Resolve release version
+        id: version
+        shell: bash
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          lock_version="$(node -p "require('./package-lock.json').version")"
+          if [[ "$version" != "$lock_version" ]]; then
+            echo "::error::package.json ($version) and package-lock.json ($lock_version) versions differ."
+            exit 1
+          fi
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Version '$version' is not a stable semantic version."
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+
+      - name: Check for an existing release
+        id: existing
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        shell: bash
+        run: |
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Release $TAG already exists; nothing to publish."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Verify release tag target
+        if: steps.existing.outputs.exists != 'true'
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        shell: bash
+        run: |
+          tagged_sha="$(git rev-parse "$TAG^{commit}" 2>/dev/null || true)"
+          if [[ -n "$tagged_sha" && "$tagged_sha" != "$GITHUB_SHA" ]]; then
+            echo "::error::Tag $TAG already points to $tagged_sha instead of $GITHUB_SHA."
+            exit 1
+          fi
+
+      - name: Install dependencies
+        if: steps.existing.outputs.exists != 'true'
+        run: npm ci
+
+      - name: Validate source
+        if: steps.existing.outputs.exists != 'true'
+        run: npm run check
+
+      - name: Build release asset
+        if: steps.existing.outputs.exists != 'true'
+        run: npm run build
+
+      - name: Verify bundled version
+        if: steps.existing.outputs.exists != 'true'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        shell: bash
+        run: |
+          expected="/*! ha-liquid-glass v$VERSION */"
+          actual="$(head -n 1 dist/liquid-glass-cards.js)"
+          if [[ "$actual" != "$expected" ]]; then
+            echo "::error::Bundle version banner mismatch: expected '$expected', got '$actual'."
+            exit 1
+          fi
+
+      - name: Create tag and GitHub Release
+        if: steps.existing.outputs.exists != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: >-
+          gh release create "$TAG"
+          dist/liquid-glass-cards.js
+          --repo "$GITHUB_REPOSITORY"
+          --target "$GITHUB_SHA"
+          --title "$TAG"
+          --generate-notes
+          --latest

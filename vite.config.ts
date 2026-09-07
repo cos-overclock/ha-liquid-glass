@@ -81,6 +81,9 @@ export default defineConfig(({ mode }) => {
       minify: developmentBuild ? false : "oxc",
       sourcemap: developmentBuild ? "inline" : false,
       copyPublicDir: false,
+      rollupOptions: {
+        output: { banner: `/*! ha-liquid-glass v${packageJson.version} */` },
+      },
       lib: {
         entry: resolve("src/index.ts"),
         formats: ["es"],

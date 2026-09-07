@@ -1,3 +1,4 @@
+/*! ha-liquid-glass v0.8.0 */
 //#region src/card-constants.ts
 var e = [
 	"scene",
@@ -10596,7 +10597,7 @@ var vc = ki({
 		icon: "mdi:lightbulb-outline",
 		style: "pill"
 	})
-}), yc = "0.6.0", bc = "2026-09-07 15:19", xc = "https://github.com/cos-overclock/ha-liquid-glass", Sc = (e, t) => !!((e.attributes.supported_features ?? 0) & t);
+}), yc = "0.8.0", bc = "2026-09-07 15:40", xc = "https://github.com/cos-overclock/ha-liquid-glass", Sc = (e, t) => !!((e.attributes.supported_features ?? 0) & t);
 function Cc(e, t, n, r, i, a = (e) => ({ entity: e })) {
 	return {
 		type: e,
