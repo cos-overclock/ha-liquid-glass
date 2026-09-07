@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { shadowCss } from "../react/test-styles";
-import { act } from "react";
+import { act } from "../react/test-act";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { HomeAssistant } from "../types";
 import { type LockCardConfig, LiquidGlassLockCard } from "./lock-card";
@@ -12,8 +12,6 @@ type LockElement = HTMLElement & {
   getCardSize(): number;
 };
 
-const reactTestScope = globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean };
-reactTestScope.IS_REACT_ACT_ENVIRONMENT = true;
 
 class ResizeObserverStub implements ResizeObserver {
   constructor(_callback: ResizeObserverCallback) {}

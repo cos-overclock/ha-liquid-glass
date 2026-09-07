@@ -1,7 +1,7 @@
 # Liquid Glass Cards for Home Assistant
 
 `pen/design.pen` の Liquid Glass デザインを、Home Assistant のダッシュボードに追加できるカスタムカード群として実装したものです。
-Vite + React + TypeScript で実装し、Home Assistant 向けには単一ファイル `dist/liquid-glass-cards.js` にバンドルされます。全カードが React と `@samasante/liquid-glass` で書かれており、Home Assistant へは Custom Element のアダプター（`react/define-react-card.tsx`）を通して公開されます。
+Vite + React + TypeScript で実装し、Home Assistant 向けには単一ファイル `dist/liquid-glass-cards.js` にバンドルされます。バンドルは React ではなく Preact（`preact/compat`）の上で動きます。ソースもテストも React のまま書きますが、ビルド時に差し替わるため配布ファイルが 370 KB（gzip 約 97 KB）に収まります。詳しくは「バンドルサイズ」を参照してください。全カードが React と `@samasante/liquid-glass` で書かれており、Home Assistant へは Custom Element のアダプター（`react/define-react-card.tsx`）を通して公開されます。
 
 React版カードは屈折対象となる背景レイヤーもReactで所有し、`Glass`の`refract`へ複製して渡します。これにより`backdrop-filter: url()`へ依存せず、Chromium / Safari / Firefoxで共通のSVG `filter: url()`経路を使用します。任意のHA壁紙そのものではなく、カード内の光学背景を屈折する方式です。
 
@@ -492,6 +492,19 @@ liquid_glass:
 ```
 
 主なトークン: `--lg-text-primary` `--lg-text-secondary` `--lg-glass-tint`（RGB 三成分）`--lg-glass-tint-alpha` `--lg-glass-stroke` `--lg-track-bg` `--lg-shadow-glass` `--lg-segment-selected` `--lg-accent` `--lg-heat` `--lg-cool` `--lg-radius` `--lg-blur` `--lg-saturation` `--lg-group-panel`。定義は `src/styles/tokens.ts` を参照してください。
+
+## バンドルサイズ
+
+Home Assistant はダッシュボードを開くたびにこのファイルを読み込みます。カードが使っているのはフック・ref・シャドウルートへの描画までで、React 19 が加えた機能は使っていないため、ビルド時に `preact/compat` へ差し替えています。
+
+| | 生 | gzip |
+| --- | --- | --- |
+| React | 606 KB | 154 KB |
+| Preact | 370 KB | 97 KB |
+
+差し替えは `vite.config.ts` の `resolve.alias` 1か所だけで行います。ソースは `react` を import したまま、型も `@types/react` のままで、テストも同じ alias の上で走ります。配布物だけが別のランタイムで動く、という状態にはなりません。
+
+`@vitejs/plugin-react` は外しました。JSX は Vite 本体の変換が扱います。このため `npm run demo` の開発サーバーでは Fast Refresh が効かず、変更時はページ全体が再読み込みされます。
 
 ## 開発
 

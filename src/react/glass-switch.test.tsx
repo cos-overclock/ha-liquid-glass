@@ -1,11 +1,9 @@
 // @vitest-environment jsdom
-import { act } from "react";
+import { act } from "./test-act";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GlassSwitch, type GlassSwitchProps } from "./glass-switch";
 
-const reactTestScope = globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean };
-reactTestScope.IS_REACT_ACT_ENVIRONMENT = true;
 
 class ResizeObserverStub implements ResizeObserver {
   constructor(_callback: ResizeObserverCallback) {}

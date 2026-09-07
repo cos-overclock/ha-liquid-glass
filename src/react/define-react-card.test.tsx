@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act } from "react";
+import { act } from "./test-act";
 import { afterEach, describe, expect, it } from "vitest";
 import type { BaseCardConfig, HomeAssistant, LovelaceGridOptions } from "../types";
 import { defineReactCard, type ReactCardProps } from "./define-react-card";
@@ -17,8 +17,6 @@ type TestElement = HTMLElement & {
 };
 
 const tagName = "liquid-glass-react-adapter-test";
-const reactTestScope = globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean };
-reactTestScope.IS_REACT_ACT_ENVIRONMENT = true;
 
 const hass: HomeAssistant = {
   states: {},
