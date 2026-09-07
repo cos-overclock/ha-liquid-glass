@@ -98,7 +98,9 @@ export function defineLiquidGlassCard<C extends BaseCardConfig>(
       createElement(CardComponent, props),
       createElement(CardActionAccessibility, {
         host: props.host,
-        actionable: props.config.tap_action?.action !== undefined && props.config.tap_action.action !== "none",
+        hasAction: [props.config.tap_action, props.config.hold_action, props.config.double_tap_action]
+          .some((action) => action?.action !== undefined && action.action !== "none"),
+        tapAccessible: props.config.tap_action?.action !== undefined && props.config.tap_action.action !== "none",
       }),
     ),
     normalizeConfig: (config) => ({
