@@ -151,6 +151,8 @@
         "media_player.idle": { entity_id: "media_player.idle", state: "idle", last_changed: ago(30), last_updated: ago(3), attributes: { friendly_name: "リビング HomePod", volume_level: 0.5, supported_features: 0x1fffff } },
         "fan.bedroom": { entity_id: "fan.bedroom", state: "on", last_changed: ago(30), last_updated: ago(3), attributes: { friendly_name: "寝室 サーキュレーター", percentage: 60, percentage_step: 20 } },
         "fan.bedroom_off": { entity_id: "fan.bedroom_off", state: "off", last_changed: ago(30), last_updated: ago(3), attributes: { friendly_name: "寝室 サーキュレーター", percentage: 0, percentage_step: 20 } },
+        "select.fan_mode": { entity_id: "select.fan_mode", state: "自動", last_changed: ago(30), last_updated: ago(3), attributes: { friendly_name: "ファンモード", options: ["自動", "静音", "標準", "ターボ"] } },
+        "input_select.cleaning_mode": { entity_id: "input_select.cleaning_mode", state: "掃除機", last_changed: ago(30), last_updated: ago(3), attributes: { friendly_name: "掃除モード", options: ["掃除機", "水拭き", "念入り掃除", "部屋指定"] } },
         "weather.tokyo": { entity_id: "weather.tokyo", state: "partlycloudy", last_changed: ago(20), last_updated: ago(20), attributes: { friendly_name: "東京", temperature: 24, temperature_unit: "°C", humidity: 52, wind_speed: 3.2, wind_speed_unit: "m/s" } },
         "scene.morning": { entity_id: "scene.morning", state: new Date(Date.now()-8*3600e3).toISOString(), last_changed: ago(480), last_updated: ago(480), attributes: { friendly_name: "おはよう" } },
         "scene.night": { entity_id: "scene.night", state: new Date(Date.now()-13*3600e3).toISOString(), last_changed: ago(780), last_updated: ago(780), attributes: { friendly_name: "おやすみモード" } },
@@ -237,6 +239,7 @@
           if (service === "media_seek") { next.attributes.media_position = data.seek_position; next.attributes.media_position_updated_at = new Date().toISOString(); }
           if (service === "set_percentage") { next.attributes.percentage = data.percentage; next.state = data.percentage > 0 ? "on" : "off"; }
           if (service === "set_value") next.state = String(data.value);
+          if (service === "select_option") next.state = data.option;
           next.last_changed = new Date().toISOString();
           states[id] = next;
           push();
@@ -281,6 +284,8 @@
         ["liquid-glass-slider-card", { entity: "fan.bedroom", ticks: true }],
         ["liquid-glass-slider-card", { entity: "input_number.hot_water", accent: "#FF9F0A", icon: "mdi:waves" }],
         ["liquid-glass-slider-card", { entity: "fan.bedroom_off" }],
+        ["liquid-glass-select-card", { entity: "select.fan_mode" }],
+        ["liquid-glass-select-card", { entity: "input_select.cleaning_mode", style: "chips", accent: "#0A84FF" }],
         ["liquid-glass-weather-card", { entity: "weather.tokyo" }],
         ["liquid-glass-weather-card", { entity: "weather.tokyo", show_daily: false, show_metrics: false }],
         ["liquid-glass-weather-card", { entity: "weather.tokyo", layout: "row" }],

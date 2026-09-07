@@ -1,5 +1,5 @@
 import type { Translator } from "../i18n";
-import { BUTTON_DOMAINS, SLIDER_DOMAINS } from "../card-constants";
+import { BUTTON_DOMAINS, SELECT_DOMAINS, SLIDER_DOMAINS } from "../card-constants";
 
 /**
  * Schema entries consumed by Home Assistant's `<ha-form>`.
@@ -215,6 +215,17 @@ export function schemaFor(type: string | undefined, t: Translator, data?: Record
           icon: "mdi:code-braces",
           schema: [text("attribute"), grid([text("service"), text("service_key")])],
         },
+        ...common(t),
+      ];
+
+    case "select":
+      return [
+        ...head(SELECT_DOMAINS),
+        select("style", [
+          { value: "segments", label: t("ed_style_segments") },
+          { value: "chips", label: t("ed_style_chips") },
+        ]),
+        text("accent"),
         ...common(t),
       ];
 

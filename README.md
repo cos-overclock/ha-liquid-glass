@@ -16,6 +16,7 @@ React版カードは屈折対象となる背景レイヤーもReactで所有し�
 | Cover | `custom:liquid-glass-cover-card` | `cover`（ブラインド / カーテン、位置ドラッグ、チルト） |
 | Media | `custom:liquid-glass-media-card` | `media_player`（再生操作、シーク、音量） |
 | Slider | `custom:liquid-glass-slider-card` | 任意の数値（`input_number` `number` `fan` `light` など） |
+| Select | `custom:liquid-glass-select-card` | `select` `input_select`（セグメント / チップ） |
 | Weather | `custom:liquid-glass-weather-card` | `weather`（現在の天気、時間ごと・日ごとの予報） |
 | Button | `custom:liquid-glass-button-card` | `scene` `script` `automation` `button` `input_button` |
 | Scenes | `custom:liquid-glass-scene-card` | 複数のシーンをタイルまたはチップで並べる |
@@ -38,7 +39,7 @@ Home Assistant 2026.6 以降では、ダッシュボード編集時に先にエ�
 Home AssistantのSectionsビューでは、各カードが`getGridOptions()`で推奨サイズと最小サイズを公開します。カード追加時から用途に合った幅になり、ダッシュボードの編集画面で半幅と全幅を切り替えられます。
 
 - Switch、Binary Sensor、Buttonと1行表示のSensor / Weather: 半幅、2行
-- Light、Slider、Lock、Cover、Media: 半幅を基準に、全幅まで変更可能
+- Light、Slider、Select、Lock、Cover、Media: 半幅を基準に、全幅まで変更可能
 - 通常表示のClimate、Weather、Scenes: 全幅を基準に、半幅まで変更可能
 - Separator: 全幅を基準に、4分の1幅まで変更可能
 - Camera: 映像のアスペクト比から高さを決定
@@ -102,14 +103,14 @@ Home Assistant はリソースを強くキャッシュします。ファイル�
 読み込まれているビルドはブラウザのコンソールで確認できます。起動時に次のような行が出ます。
 
 ```text
- LIQUID-GLASS-CARDS  v0.6.0 · 15 cards · built 2026-09-04 09:06
+ LIQUID-GLASS-CARDS  v0.6.0 · 16 cards · built 2026-09-07 10:45
 ```
 
 カード枚数とビルド時刻が、コピーしたファイルのものと一致していれば正しく読み込まれています。一致しない場合はまだ古いファイルです。
 
 ## 設定例
 
-15種類すべてビジュアルエディタに対応しています。ダッシュボードでカードを追加すると、エンティティや表示項目をフォームから設定できます。YAML を直接書く必要はありません。以下は同じ設定を YAML で表したものです。
+16種類すべてビジュアルエディタに対応しています。ダッシュボードでカードを追加すると、エンティティや表示項目をフォームから設定できます。YAML を直接書く必要はありません。以下は同じ設定を YAML で表したものです。
 
 すべてのカードに共通するオプション:
 
@@ -325,6 +326,25 @@ service_key: level        # 値を渡すキー。省略時は value
 
 値が最小値かつ最小値が 0 のときは、アイコンとトラックが待機状態の表示になります。
 
+### Select
+
+`select` と `input_select` が公開する選択肢を、動くガラスレンズのセグメントとして操作します。ファンモード、照明プロファイル、掃除モードなど、離散的な設定値に向いています。
+
+```yaml
+type: custom:liquid-glass-select-card
+entity: select.bedroom_fan_mode
+style: segments       # segments | chips（省略時は segments）
+accent: "#5E5CE6"    # アイコンと選択中の項目の色
+```
+
+選択肢が多い場合や長い名前を含む場合は、`style: chips` にすると幅に応じて複数行へ折り返します。操作直後の選択は Home Assistant が新しい状態を返すまで保持されるため、通信中に古い値へ戻って見えることはありません。
+
+```yaml
+type: custom:liquid-glass-select-card
+entity: input_select.cleaning_mode
+style: chips
+```
+
 ### Weather
 
 現在の天気、時間ごとの予報、日ごとの予報、湿度・風速・降水を1枚にまとめます。
@@ -474,7 +494,7 @@ npm run demo      # http://localhost:5173/ でモック hass を使ったデモ�
 ```
 
 デモは `?theme=dark` `?lang=en` `?refraction=on` `?quality=medium` `?width=210` のクエリで表示を切り替えられます。画面上部のスライダーでカード幅を変えられるので、狭い列での見え方を確認できます。
-React版カードを個別に確認する場合は`?focus=separator`、`?focus=lock`、`?focus=slider`を使用できます。
+React版カードを個別に確認する場合は`?focus=separator`、`?focus=lock`、`?focus=slider`、`?focus=select`を使用できます。
 
 GitHub Actions（`.github/workflows/ci.yml`）が push と pull request ごとに `typecheck` / `lint` / `test` / `build` を実行します。`dist/` は HACS がリポジトリからそのまま配信するため、コミット済みのバンドルが `src` から遅れていないかも検査します（ビルド時刻のスタンプだけは差分として無視します）。
 

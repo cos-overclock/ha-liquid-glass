@@ -10,6 +10,8 @@ export const SLIDER_DOMAINS = [
   "water_heater", "climate",
 ];
 
+export const SELECT_DOMAINS = ["select", "input_select"];
+
 /** Swatches shown by a light card until the user supplies their own list. */
 export const DEFAULT_LIGHT_FAVORITES = [
   "#FF453A", "#FF9F0A", "#FFD60A", "#30D158", "#0A84FF", "#B15CFF", "#FF375F",
