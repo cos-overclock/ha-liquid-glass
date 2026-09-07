@@ -55,6 +55,14 @@ describe("Sections grid option presets", () => {
       max_columns: 12,
     });
   });
+
+  it("clamps minimum columns to the supported range and preset width", () => {
+    expect(rowGridOptions(12).min_columns).toBe(6);
+    expect(contentGridOptions(5, 6, 12).min_columns).toBe(6);
+    expect(autoHeightGridOptions(6, 12).min_columns).toBe(6);
+    expect(contentGridOptions(5, 12, 0).min_columns).toBe(1);
+    expect(autoHeightGridOptions(12, Number.NaN).min_columns).toBe(12);
+  });
 });
 
 describe("Liquid Glass Sections sizing", () => {

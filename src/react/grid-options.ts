@@ -1,5 +1,11 @@
 import type { LovelaceGridOptions } from "../types";
 
+/** Keep a requested minimum within Home Assistant's grid and the preset's default width. */
+function clampMinColumns(minColumns: number, columns: 6 | 12): number {
+  const rounded = Number.isFinite(minColumns) ? Math.round(minColumns) : columns;
+  return Math.min(columns, Math.max(1, rounded));
+}
+
 /** A compact row card: half-width by default and exactly two 56px grid rows tall. */
 export function rowGridOptions(minColumns = 6): LovelaceGridOptions {
   return {
@@ -7,7 +13,7 @@ export function rowGridOptions(minColumns = 6): LovelaceGridOptions {
     min_rows: 2,
     max_rows: 2,
     columns: 6,
-    min_columns: minColumns,
+    min_columns: clampMinColumns(minColumns, 6),
     max_columns: 12,
   };
 }
@@ -22,7 +28,7 @@ export function contentGridOptions(
     rows,
     min_rows: rows,
     columns,
-    min_columns: minColumns,
+    min_columns: clampMinColumns(minColumns, columns),
     max_columns: 12,
   };
 }
@@ -34,7 +40,7 @@ export function autoHeightGridOptions(
 ): LovelaceGridOptions {
   return {
     columns,
-    min_columns: minColumns,
+    min_columns: clampMinColumns(minColumns, columns),
     max_columns: 12,
   };
 }
