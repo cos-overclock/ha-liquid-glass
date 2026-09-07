@@ -6868,8 +6868,8 @@ async function co(e, t, n) {
 	try {
 		let n = await e.callApi("GET", `history/period/${r}?filter_entity_id=${encodeURIComponent(t)}&minimal_response&no_attributes&significant_changes_only=0`), i = [];
 		for (let e of n?.[0] ?? []) {
-			let t = Number(e.state ?? e.s), n = e.last_changed ?? e.last_updated, r = n ? new Date(n).getTime() : (e.lu ?? 0) * 1e3;
-			Number.isFinite(t) && r && i.push({
+			let t = Number(e.state ?? e.s), n = e.last_changed ?? e.last_updated, r = n ? new Date(n).getTime() : typeof e.lu == "number" ? e.lu * 1e3 : NaN;
+			Number.isFinite(t) && Number.isFinite(r) && i.push({
 				t: r,
 				v: t
 			});
@@ -6883,8 +6883,8 @@ async function lo(e, t, n, r) {
 	let i = e.connection;
 	if (!i?.subscribeMessage) throw Error("history/stream is unavailable");
 	let a = [], o = await i.subscribeMessage((e) => {
-		let n = e?.states?.[t];
-		n && (a = oo(a, n), r(a));
+		let i = e?.states?.[t];
+		i && (a = io(oo(a, i), Date.now() - n * to), r(a));
 	}, {
 		type: "history/stream",
 		entity_ids: [t],
@@ -9838,7 +9838,7 @@ var Ks = ki({
 		icon: "mdi:lightbulb-outline",
 		style: "pill"
 	})
-}), qs = "0.6.0", Js = "2026-09-07 14:25", Ys = "https://github.com/cos-overclock/ha-liquid-glass", Xs = (e, t) => !!((e.attributes.supported_features ?? 0) & t);
+}), qs = "0.6.0", Js = "2026-09-07 14:34", Ys = "https://github.com/cos-overclock/ha-liquid-glass", Xs = (e, t) => !!((e.attributes.supported_features ?? 0) & t);
 function Zs(e, t, n, r, i, a = (e) => ({ entity: e })) {
 	return {
 		type: e,

@@ -113,6 +113,14 @@ describe("fetchHistory", () => {
     ]);
   });
 
+  it("drops a row that carries no usable timestamp", async () => {
+    const hass = hassWith({
+      callApi: (async () => [[{ state: "21" }, { s: "22", lu: 1100 }]]) as HomeAssistant["callApi"],
+    });
+
+    await expect(fetchHistory(hass, "sensor.x", 24)).resolves.toEqual([{ t: 1_100_000, v: 22 }]);
+  });
+
   it("answers with nothing when the request fails", async () => {
     const hass = hassWith({ callApi: (async () => { throw new Error("nope"); }) });
     await expect(fetchHistory(hass, "sensor.x", 24)).resolves.toEqual([]);
@@ -135,15 +143,52 @@ describe("subscribeHistory", () => {
       significant_changes_only: false,
     });
 
-    emit({ states: { "sensor.x": [{ s: "20", lu: 1000 }] } });
-    emit({ states: { "sensor.y": [{ s: "99", lu: 1100 }] } });
-    emit({ states: { "sensor.x": [{ s: "21", lu: 1200 }] } });
+    // Inside the window it asked for, so nothing here is trimmed on the way in.
+    const now = Date.now();
+    emit({ states: { "sensor.x": [{ s: "20", lu: (now - 30 * 60_000) / 1000 }] } });
+    emit({ states: { "sensor.y": [{ s: "99", lu: (now - 20 * 60_000) / 1000 }] } });
+    emit({ states: { "sensor.x": [{ s: "21", lu: (now - 10 * 60_000) / 1000 }] } });
 
     expect(seen).toHaveLength(2);
-    expect(seen[1]).toEqual([{ t: 1_000_000, v: 20 }, { t: 1_200_000, v: 21 }]);
+    expect(seen[1]).toEqual([
+      { t: now - 30 * 60_000, v: 20 },
+      { t: now - 10 * 60_000, v: 21 },
+    ]);
 
     stop();
     expect(unsubscribe).toHaveBeenCalledOnce();
+  });
+
+  /*
+   * A subscription only grows, and a wall dashboard keeps one open for days. Trimming
+   * has to happen as the chunks arrive, not only where the card draws them.
+   */
+  it("holds no more than the window it subscribed to", async () => {
+    vi.useFakeTimers();
+    const now = new Date("2026-09-07T12:00:00Z").getTime();
+    vi.setSystemTime(now);
+    try {
+      const { connection, emit } = fakeConnection();
+      const seen: HistoryPoint[][] = [];
+      await subscribeHistory(hassWith({ connection }), "sensor.x", 1, (points) => {
+        seen.push(points);
+      });
+
+      emit({ states: { "sensor.x": [
+        { s: "10", lu: (now - 5 * HOUR) / 1000 },
+        { s: "11", lu: (now - 4 * HOUR) / 1000 },
+        { s: "12", lu: (now - 3 * HOUR) / 1000 },
+        { s: "13", lu: (now - 10 * 60_000) / 1000 },
+      ] } });
+
+      // Everything older than the window collapses into one reading at its left edge.
+      expect(seen[0]).toEqual([
+        { t: now - HOUR, v: 12 },
+        { t: now - 10 * 60_000, v: 13 },
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("rejects when the host has no socket, so the caller can poll instead", async () => {

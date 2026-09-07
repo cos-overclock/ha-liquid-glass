@@ -162,8 +162,12 @@ export async function fetchHistory(
     for (const row of rows?.[0] ?? []) {
       const value = Number(row.state ?? row.s);
       const stamp = row.last_changed ?? row.last_updated;
-      const time = stamp ? new Date(stamp).getTime() : (row.lu ?? 0) * 1000;
-      if (Number.isFinite(value) && time) points.push({ t: time, v: value });
+      // A row can carry an unparseable stamp or none at all; both have to fail the same
+      // finite check the value does, rather than ride on `0` being falsy.
+      const time = stamp
+        ? new Date(stamp).getTime()
+        : typeof row.lu === "number" ? row.lu * 1000 : NaN;
+      if (Number.isFinite(value) && Number.isFinite(time)) points.push({ t: time, v: value });
     }
     return points;
   } catch {
@@ -196,7 +200,10 @@ export async function subscribeHistory(
     (message) => {
       const states = message?.states?.[entityId];
       if (!states) return;
-      points = mergeStreamStates(points, states);
+      // Trim on the way in, not only where the card draws: a subscription that outlives
+      // a wall dashboard's afternoon would otherwise hold every reading the sensor ever
+      // pushed, and make every later chunk copy the whole of it.
+      points = trimToWindow(mergeStreamStates(points, states), Date.now() - hours * HOUR_MS);
       onPoints(points);
     },
     {
