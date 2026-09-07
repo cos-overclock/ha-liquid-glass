@@ -83,6 +83,9 @@ function CardActionAccessibility({
   return null;
 }
 
+const isConfiguredAction = (action: BaseCardConfig["tap_action"]): boolean =>
+  action?.action !== undefined && action.action !== "none";
+
 /** Register one of this package's cards with its shared config defaults and editor. */
 export function defineLiquidGlassCard<C extends BaseCardConfig>(
   definition: LiquidGlassCardDefinition<C>,
@@ -98,9 +101,10 @@ export function defineLiquidGlassCard<C extends BaseCardConfig>(
       createElement(CardComponent, props),
       createElement(CardActionAccessibility, {
         host: props.host,
-        hasAction: [props.config.tap_action, props.config.hold_action, props.config.double_tap_action]
-          .some((action) => action?.action !== undefined && action.action !== "none"),
-        tapAccessible: props.config.tap_action?.action !== undefined && props.config.tap_action.action !== "none",
+        hasAction: isConfiguredAction(props.config.tap_action)
+          || isConfiguredAction(props.config.hold_action)
+          || isConfiguredAction(props.config.double_tap_action),
+        tapAccessible: isConfiguredAction(props.config.tap_action),
       }),
     ),
     normalizeConfig: (config) => ({

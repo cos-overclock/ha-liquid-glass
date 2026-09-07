@@ -138,4 +138,23 @@ describe("liquid-glass-separator-card", () => {
       config: { tap_action: action },
     });
   });
+
+  it.each(["hold_action", "double_tap_action"] as const)(
+    "shows an interaction cue for a configured %s without adding a tap keyboard target",
+    async (actionKey) => {
+      const element = document.createElement("liquid-glass-separator-card") as SeparatorElement;
+      element.setConfig({
+        type: "custom:liquid-glass-separator-card",
+        title: "照明",
+        [actionKey]: { action: "more-info" },
+      });
+
+      await act(async () => document.body.append(element));
+      const separator = element.shadowRoot?.querySelector<HTMLElement>(".separator");
+      expect(element.hasAttribute("card-action")).toBe(true);
+      expect(separator?.hasAttribute("data-lg-action-focus")).toBe(false);
+      expect(separator?.hasAttribute("role")).toBe(false);
+      expect(separator?.hasAttribute("tabindex")).toBe(false);
+    },
+  );
 });
