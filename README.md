@@ -26,6 +26,8 @@ React版カードは屈折対象となる背景レイヤーもReactで所有し�
 
 すべてのカードはライト / ダークテーマ（`hass.themes.darkMode`）、日本語 / 英語（`hass.language`）に自動で追従します。
 
+エンティティの名前と状態は Home Assistant 本体に問い合わせます。Home Assistant 2026.4 以降では、名前は `hass.formatEntityName()` がレジストリ（フロア・エリア・デバイス・エンティティ）から組み立て、状態は `hass.formatEntityState()` が翻訳します。device_class ごとの言い回し（`Detected` / `Clear`）、`select` の選択肢、HVAC モード、天気の状態などが、more-info ダイアログや組み込みカードとまったく同じ言葉になり、Home Assistant が対応する全言語で表示されます。カードが自前で持つ文言（`src/translations/`）は、それ以外の見出しやラベル、および 2026.4 より前の Home Assistant での代替表示に使います。
+
 Home Assistant 2026.6 以降では、ダッシュボード編集時に先にエンティティを選ぶと、対応する Liquid Glass カードが「Community」の候補に表示されます。同じエンティティに複数のカードが適合する場合（たとえば明るさ対応ライトの Light / Switch / Slider）は、利用可能な候補をすべて表示します。
 
 ## 幅への追従
@@ -116,7 +118,7 @@ Home Assistant はリソースを強くキャッシュします。ファイル�
 
 ```yaml
 entity: light.living_room   # 必須
-name: リビング              # 表示名（省略時は friendly_name）
+name: リビング              # 表示名（省略時は Home Assistant が組み立てた名前）
 icon: mdi:lightbulb         # アイコン上書き
 refraction: auto            # auto | true | false（Android WebViewではautoが軽量表示）
 refraction_quality: auto    # auto | high | medium（Androidではautoが中品質）
@@ -124,6 +126,16 @@ theme: auto                 # auto | light | dark
 glass_variant: regular      # regular | clear（写真・映像上では clear が有効）
 language: ja                # 省略時は HA の言語設定
 ```
+
+`name` はビジュアルエディタの「表示名」で編集します。Home Assistant 2026.4 以降ではエンティティ名セレクター（`entity_name`）が出るので、自由入力のほかにレジストリの部品を組み合わせられます。YAML では次のように書きます。
+
+```yaml
+name: リビング                      # 自由入力
+name: [{ type: area }, { type: entity }]   # 「リビング 天井照明」
+name: [{ type: text, text: "書斎" }, { type: entity }]
+```
+
+`type` には `floor` `area` `device` `entity` `text` を指定できます。エリア名やデバイス名の変更、翻訳は Home Assistant 側に追従します。省略すると friendly_name になります。組み立ては `hass.formatEntityName()` が行うため、2026.4 より前の Home Assistant では自由入力と friendly_name だけが有効で、エディタの表示名も従来のテキスト入力になります。
 
 `regular` は文字の読みやすさを保つ標準素材です。`clear` は tint と blur を抑えて背後の写真や映像を優先します。通常のブラウザではカードの実寸と角丸からSDF変位マップを生成し、サイズ変更時だけ再生成します。Android CompanionアプリのWebViewでは、`refraction: auto` がCanvas/SVGフィルタを生成しない軽量なCSS表示へ自動的に切り替わります。屈折を強制する場合だけ `refraction: true` を指定してください。
 
@@ -510,7 +522,9 @@ src/
   react/card-parts.tsx        アイコンウェル / タイトル / バッジなどの共通部品
   react/card-styles.ts        カード共通レイアウトのスタイルシート
   react/reduced-motion.ts     prefers-reduced-motion を JS アニメーションへ適用
-  i18n.ts                     日本語 / 英語の文言
+  i18n.ts                     翻訳の読み込みと時刻表記
+  translations/ja.ts          日本語の文言
+  translations/en.ts          英語の文言（未訳キーの代替でもあります）
   styles/tokens.ts            デザイントークン（design.pen の variables）
   components/lg-icon.ts       ha-icon ラッパー
   editor/lg-card-editor.ts    全カード共通のビジュアルエディタ

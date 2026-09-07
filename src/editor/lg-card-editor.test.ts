@@ -1,14 +1,31 @@
 // @vitest-environment jsdom
 
 import { describe, expect, it, vi } from "vitest";
-import type { HomeAssistant } from "../types";
+import type { EntityNameItem, HomeAssistant } from "../types";
 import { LiquidGlassCardEditor } from "./lg-card-editor";
+
+interface TestSchema {
+  name: string;
+  selector?: Record<string, unknown>;
+  context?: Record<string, string>;
+  schema?: TestSchema[];
+}
 
 interface TestForm extends HTMLElement {
   hass?: HomeAssistant;
   data?: Record<string, unknown>;
-  schema?: unknown[];
+  schema?: TestSchema[];
   computeLabel?: (schema: { name: string }) => string;
+}
+
+function field(schema: TestSchema[] | undefined, name: string): TestSchema | undefined {
+  for (const item of schema ?? []) {
+    if (item.schema) {
+      const found = field(item.schema, name);
+      if (found) return found;
+    } else if (item.name === name) return item;
+  }
+  return undefined;
 }
 
 const hass: HomeAssistant = {
@@ -153,5 +170,43 @@ describe("liquid-glass-card-editor", () => {
       tap_action: tapAction,
       hold_action: { action: "more-info" },
     });
+  });
+
+  /*
+   * Which name field the form gets depends on the core, so the editor has to pass `hass`
+   * to the schema rather than build it blind. A composed name also has to survive the
+   * round trip: it is an array, and the editor drops arrays it thinks are empty.
+   */
+  it("offers Home Assistant's name picker and keeps a composed name", () => {
+    const editor = new LiquidGlassCardEditor();
+    const form = editor.shadowRoot?.querySelector("ha-form") as TestForm;
+    const name: EntityNameItem[] = [{ type: "area" }, { type: "entity" }];
+
+    editor.hass = { ...hass, formatEntityName: () => "Living room Ceiling" };
+    editor.setConfig({ type: "custom:liquid-glass-light-card", entity: "light.desk", name });
+
+    expect(field(form.schema, "name")?.selector).toHaveProperty("entity_name");
+    expect(field(form.schema, "name")?.context).toEqual({ entity: "entity" });
+    expect(form.data?.name).toEqual(name);
+
+    const changed = vi.fn();
+    editor.addEventListener("config-changed", changed);
+    form.dispatchEvent(new CustomEvent("value-changed", {
+      detail: { value: { ...form.data } },
+      bubbles: true,
+      composed: true,
+    }));
+
+    expect(changed.mock.calls[0][0].detail.config.name).toEqual(name);
+  });
+
+  it("falls back to a text box on a core without the name helper", () => {
+    const editor = new LiquidGlassCardEditor();
+    const form = editor.shadowRoot?.querySelector("ha-form") as TestForm;
+
+    editor.hass = hass;
+    editor.setConfig({ type: "custom:liquid-glass-light-card", entity: "light.desk" });
+
+    expect(field(form.schema, "name")?.selector).toHaveProperty("text");
   });
 });

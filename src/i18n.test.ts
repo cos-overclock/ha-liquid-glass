@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { clockTime, createTranslator, relativeTime } from "./i18n";
+import { en as enDict } from "./translations/en";
+import { ja as jaDict } from "./translations/ja";
 
 const en = createTranslator("en");
 const ja = createTranslator("ja");
@@ -53,6 +55,14 @@ describe("dictionary coverage", () => {
       if (en(key) === key) missing.push(`en:${key}`);
     }
     expect(missing).toEqual([]);
+  });
+
+  /*
+   * The two languages live in files of their own, so a key added to one and forgotten in
+   * the other no longer sits a few lines away where the omission is obvious.
+   */
+  it("keeps both translation files on the same set of keys", () => {
+    expect(Object.keys(jaDict).sort()).toEqual(Object.keys(enDict).sort());
   });
 
   it("keeps a Japanese string for every key, not an English copy", () => {

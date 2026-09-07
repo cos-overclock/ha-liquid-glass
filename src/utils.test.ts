@@ -5,9 +5,10 @@ import {
   callConfiguredService,
   clamp,
   darken,
+  entityName,
+  entityStateText,
   fireEvent,
   formatNumber,
-  friendlyName,
   hexToRgb,
   hsToRgb,
   isUnavailable,
@@ -83,10 +84,66 @@ describe("fireEvent", () => {
 });
 
 describe("entity helpers", () => {
-  it("prefers the friendly name and falls back to the given text", () => {
-    expect(friendlyName(entity("light.desk", "on", { friendly_name: "Desk" }), "light.desk")).toBe("Desk");
-    expect(friendlyName(entity("light.desk"), "light.desk")).toBe("light.desk");
-    expect(friendlyName(undefined, "fallback")).toBe("fallback");
+  /*
+   * Composing a name needs the registries, which only Home Assistant can read. The card
+   * hands it whatever the `entity_name` selector wrote and shows what comes back.
+   */
+  it("lets Home Assistant compose the name when the core can", () => {
+    const desk = entity("light.desk", "on", { friendly_name: "Desk" });
+    const hass = hassWith(desk);
+    hass.formatEntityName = (target, name) =>
+      `${target.entity_id}:${JSON.stringify(name ?? null)}`;
+
+    expect(entityName(hass, desk, [{ type: "area" }, { type: "entity" }], "light.desk"))
+      .toBe('light.desk:[{"type":"area"},{"type":"entity"}]');
+    expect(entityName(hass, desk, undefined, "light.desk")).toBe("light.desk:null");
+  });
+
+  it("falls back to the friendly name on a core with no name helper", () => {
+    const desk = entity("light.desk", "on", { friendly_name: "Desk" });
+    const hass = hassWith(desk);
+
+    expect(entityName(hass, desk, undefined, "light.desk")).toBe("Desk");
+    expect(entityName(hass, desk, "Reading lamp", "light.desk")).toBe("Reading lamp");
+    expect(entityName(hass, desk, [{ type: "device" }, { type: "entity" }], "light.desk")).toBe("Desk");
+    expect(entityName(undefined, undefined, undefined, "light.desk")).toBe("light.desk");
+  });
+
+  /* Literal text needs no registry, so it must survive an older core intact. */
+  it("keeps a text-only composition without the name helper", () => {
+    const desk = entity("light.desk", "on", { friendly_name: "Desk" });
+    expect(entityName(hassWith(desk), desk, [{ type: "text", text: "Hall" }, { type: "text", text: "lamp" }], ""))
+      .toBe("Hall lamp");
+  });
+
+  /* An empty answer would leave the card with a blank title, so it is not trusted. */
+  it("ignores a blank name from Home Assistant", () => {
+    const desk = entity("light.desk", "on", { friendly_name: "Desk" });
+    const hass = hassWith(desk);
+    hass.formatEntityName = () => "   ";
+    expect(entityName(hass, desk, undefined, "light.desk")).toBe("Desk");
+  });
+
+  it("prefers Home Assistant's wording for a state and falls back to the card's own", () => {
+    const sensor = entity("binary_sensor.hall", "on", { device_class: "motion" });
+    const hass = hassWith(sensor);
+    expect(entityStateText(hass, sensor, "Detected")).toBe("Detected");
+
+    hass.formatEntityState = (target, state) => `${state ?? target.state}!`;
+    expect(entityStateText(hass, sensor, "Detected")).toBe("on!");
+    expect(entityStateText(hass, sensor, "Clear", "off")).toBe("off!");
+    expect(entityStateText(hass, undefined, "Detected")).toBe("Detected");
+  });
+
+  /* The helpers belong to Home Assistant; a card must not go blank when one throws. */
+  it("keeps rendering when a Home Assistant helper throws", () => {
+    const desk = entity("light.desk", "on", { friendly_name: "Desk" });
+    const hass = hassWith(desk);
+    hass.formatEntityName = () => { throw new Error("no registry"); };
+    hass.formatEntityState = () => { throw new Error("no translations"); };
+
+    expect(entityName(hass, desk, undefined, "light.desk")).toBe("Desk");
+    expect(entityStateText(hass, desk, "On")).toBe("On");
   });
 
   it("treats a missing, unavailable or unknown entity as unavailable", () => {

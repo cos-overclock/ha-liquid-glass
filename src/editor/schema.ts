@@ -1,4 +1,5 @@
 import type { Translator } from "../i18n";
+import type { HomeAssistant } from "../types";
 import { BUTTON_DOMAINS, SELECT_DOMAINS, SLIDER_DOMAINS } from "../card-constants";
 
 /**
@@ -36,9 +37,18 @@ const select = (name: string, options: Array<{ value: string; label: string }>, 
   selector: { select: { options, multiple, mode: "dropdown" } },
 });
 
-/** Entity picker plus the name / icon pair that every card shares. */
-function head(domain: string | readonly string[]): FormSchema[] {
-  return [entity("entity", domain, true), grid([text("name"), icon("icon")])];
+/**
+ * The name field: Home Assistant's own `entity_name` picker where the core has one.
+ *
+ * That picker writes either free text or the registry parts — floor, area, device,
+ * entity — that `formatEntityName` composes, which is how the built-in cards are named.
+ * It arrived in 2026.4 alongside the helper, so the helper's presence is what decides:
+ * an older core would render an unknown selector as an empty gap where the field belongs,
+ * and gets the plain text box it has always had instead.
+ */
+function nameField(hass: HomeAssistant | undefined): FormSchema {
+  if (typeof hass?.formatEntityName !== "function") return text("name");
+  return { name: "name", selector: { entity_name: {} }, context: { entity: "entity" } };
 }
 
 /** Collapsed section with the options that rarely need changing. */
@@ -117,8 +127,16 @@ export function cardKind(type: string | undefined): string {
  * values of other fields, and a checkbox for something the card cannot do reads as a lie,
  * so those entries are left out rather than shown inert.
  */
-export function schemaFor(type: string | undefined, t: Translator, data?: Record<string, unknown>): FormSchema[] {
+export function schemaFor(
+  type: string | undefined,
+  t: Translator,
+  data?: Record<string, unknown>,
+  hass?: HomeAssistant,
+): FormSchema[] {
   const kind = cardKind(type);
+  /** Entity picker plus the name / icon pair that every card shares. */
+  const head = (domain: string | readonly string[]): FormSchema[] =>
+    [entity("entity", domain, true), grid([nameField(hass), icon("icon")])];
   switch (kind) {
     case "light":
       return [
@@ -315,7 +333,7 @@ export function schemaFor(type: string | undefined, t: Translator, data?: Record
       ];
 
     default:
-      return [entity("entity", [], true), grid([text("name"), icon("icon")]), ...common(t)];
+      return [entity("entity", [], true), grid([nameField(hass), icon("icon")]), ...common(t)];
   }
 }
 

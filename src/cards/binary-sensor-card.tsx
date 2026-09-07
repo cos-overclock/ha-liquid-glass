@@ -7,7 +7,7 @@ import { glassSurfaceStyles, LiquidGlassSurface } from "../react/glass-primitive
 import { useCardHost } from "../react/use-card-host";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HomeAssistant } from "../types";
-import { friendlyName, isUnavailable, lighten, moreInfo, pickEntity, withAlpha } from "../utils";
+import { entityName, entityStateText, isUnavailable, lighten, moreInfo, pickEntity, withAlpha } from "../utils";
 
 export interface BinarySensorCardConfig extends BaseCardConfig {
   icon_on?: string;
@@ -89,7 +89,7 @@ function BinarySensorCard({ config, hass, host }: ReactCardProps<BinarySensorCar
   const { refraction } = useCardHost(host, config, hass);
   const t = createTranslator(config.language ?? hass?.locale?.language ?? hass?.language);
   const entity = config.entity ? hass?.states[config.entity] : undefined;
-  const name = config.name ?? friendlyName(entity, config.entity ?? "");
+  const name = entityName(hass, entity, config.name, config.entity ?? "");
   const open = () => moreInfo(host, config.entity);
 
   if (!entity || isUnavailable(entity)) {
@@ -117,6 +117,14 @@ function BinarySensorCard({ config, hass, host }: ReactCardProps<BinarySensorCar
   const badge: BadgeStyle | undefined = on
     ? { color: accent === "#7C3AED" ? "#A66BFF" : accent, bg: withAlpha(accent, 0.18), stroke: withAlpha(accent, 0.3) }
     : undefined;
+  /*
+   * Home Assistant words a binary sensor per device class — Detected / Clear, Open /
+   * Closed, Wet / Dry — in every language it ships, so the badge, which is the slot that
+   * carries the plain state, borrows its wording. The state line keeps the card's own
+   * longer phrasing, which would otherwise read as a duplicate of the badge.
+   */
+  const badgeLabel = (on ? config.label_on : config.label_off)
+    ?? entityStateText(hass, entity, on ? meta.badgeOn : meta.badgeOff);
   const since = relativeTime(entity.last_changed, t);
   const state = on
     ? `${meta.stateOn} · ${t("since", { t: since })}`
@@ -132,7 +140,7 @@ function BinarySensorCard({ config, hass, host }: ReactCardProps<BinarySensorCar
     >
       <IconWell icon={icon} style={well} onClick={open} />
       <CardTitle name={name} state={state} onClick={open} />
-      <Badge label={(on ? config.label_on : config.label_off) ?? (on ? meta.badgeOn : meta.badgeOff)} style={badge} />
+      <Badge label={badgeLabel} style={badge} />
     </LiquidGlassSurface>
   </>;
 }

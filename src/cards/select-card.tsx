@@ -10,7 +10,7 @@ import { glassSurfaceStyles, LiquidGlassSurface } from "../react/glass-primitive
 import { useCardHost } from "../react/use-card-host";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HomeAssistant } from "../types";
-import { darken, friendlyName, isUnavailable, lighten, moreInfo, pickEntity, withAlpha } from "../utils";
+import { darken, entityName, entityStateText, isUnavailable, lighten, moreInfo, pickEntity, withAlpha } from "../utils";
 
 export interface SelectCardConfig extends BaseCardConfig {
   /** A single moving lens, or individually wrapped glass chips. */
@@ -117,7 +117,7 @@ function SelectCard({ config, hass, host }: ReactCardProps<SelectCardConfig>) {
     pendingTimer.current = window.setTimeout(() => setPending(undefined), 0);
   }, [settled]);
 
-  const name = config.name ?? friendlyName(entity, config.entity ?? "");
+  const name = entityName(hass, entity, config.name, config.entity ?? "");
   if (!entity || isUnavailable(entity) || options.length === 0) {
     return <>
       <UnavailableCard
@@ -132,6 +132,12 @@ function SelectCard({ config, hass, host }: ReactCardProps<SelectCardConfig>) {
   }
 
   const value = pending && options.includes(pending) ? pending : entity.state;
+  /*
+   * The raw options are integration ids such as `eco_mode`. Home Assistant translates them
+   * through the entity's own strings, so what a user reads here matches the more-info
+   * dialog and every built-in card. Without that helper the id is all a card can show.
+   */
+  const optionLabel = (option: string) => entityStateText(hass, entity, option, option);
   const accent = config.accent;
   const accentColor = accent ?? "var(--lg-slider-accent)";
   const wellStyle = {
@@ -174,7 +180,7 @@ function SelectCard({ config, hass, host }: ReactCardProps<SelectCardConfig>) {
         />
         <CardTitle
           name={name}
-          state={value}
+          state={optionLabel(value)}
           onClick={() => moreInfo(host, config.entity)}
         />
       </div>
@@ -195,11 +201,11 @@ function SelectCard({ config, hass, host }: ReactCardProps<SelectCardConfig>) {
               >
                 <button
                   type="button"
-                  title={option}
+                  title={optionLabel(option)}
                   aria-pressed={selected}
                   onClick={() => choose(option)}
                 >
-                  {option}
+                  {optionLabel(option)}
                 </button>
               </LiquidGlassSurface>
             );
@@ -208,7 +214,7 @@ function SelectCard({ config, hass, host }: ReactCardProps<SelectCardConfig>) {
       ) : (
         <div className="select-control">
           <GlassSegmentedControl
-            items={options.map((option) => ({ value: option, label: option }))}
+            items={options.map((option) => ({ value: option, label: optionLabel(option) }))}
             value={value}
             onValueChange={choose}
             refraction={refraction}

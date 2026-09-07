@@ -16,7 +16,7 @@ import { useVisibleTick } from "../react/use-visible-tick";
 import { useOptimisticValue } from "../react/use-optimistic-value";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HassEntity, HomeAssistant } from "../types";
-import { clamp, friendlyName, isUnavailable, moreInfo, pickEntity, supportsFeature } from "../utils";
+import { clamp, entityName, entityStateText, isUnavailable, moreInfo, pickEntity, supportsFeature } from "../utils";
 
 export interface MediaCardConfig extends BaseCardConfig {
   /** Color for the source / app line (default Apple Music pink). */
@@ -271,7 +271,7 @@ function MediaCard({ config, hass, host }: ReactCardProps<MediaCardConfig>) {
   const { isDark, refraction } = useCardHost(host, config, hass);
   const t = createTranslator(config.language ?? hass?.locale?.language ?? hass?.language);
   const entity = config.entity ? hass?.states[config.entity] : undefined;
-  const name = config.name ?? friendlyName(entity, config.entity ?? "");
+  const name = entityName(hass, entity, config.name, config.entity ?? "");
   const open = () => moreInfo(host, config.entity);
   const playing = entity?.state === "playing" || entity?.state === "buffering";
   // Redraws the progress bar each second, but only while the card is on screen.
@@ -306,9 +306,13 @@ function MediaCard({ config, hass, host }: ReactCardProps<MediaCardConfig>) {
   const art = idle ? undefined : (attributes.entity_picture);
   const title = idle
     ? t("not_playing")
-    : (attributes.media_title as string | undefined) ?? (attributes.friendly_name) ?? "";
+    : (attributes.media_title as string | undefined) ?? name;
   const artistParts = [attributes.media_artist, attributes.media_album_name].filter(Boolean) as string[];
-  const artist = idle ? t("standby") : artistParts.join(" — ") || ((attributes.source as string | undefined) ?? "");
+  // Nothing is playing, so the line below the title carries the player's state instead —
+  // Home Assistant tells Idle, Standby and Off apart, where the card only had one word.
+  const artist = idle
+    ? entityStateText(hass, entity, t("standby"))
+    : artistParts.join(" — ") || ((attributes.source as string | undefined) ?? "");
   const source = (attributes.app_name as string | undefined) ?? (attributes.source as string | undefined);
   const progress = reportedProgress;
   const seekRatio = seekValue.value ?? 0;
@@ -345,7 +349,7 @@ function MediaCard({ config, hass, host }: ReactCardProps<MediaCardConfig>) {
           <div className="name">{title}</div>
           <div className="state">{artist}</div>
           {paused
-            ? <div className="source muted-text"><Icon icon="mdi:pause" /><span>{t("paused")}</span></div>
+            ? <div className="source muted-text"><Icon icon="mdi:pause" /><span>{entityStateText(hass, entity, t("paused"))}</span></div>
             : !idle && source
               ? <div className="source"><Icon icon="mdi:waveform" /><span>{source}</span></div>
               : null}

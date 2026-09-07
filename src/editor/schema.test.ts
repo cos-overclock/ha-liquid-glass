@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createTranslator } from "../i18n";
+import type { HomeAssistant } from "../types";
 import { cardKind, DEFAULT_ON, fieldNames, HELPERS, schemaFor, type FormSchema } from "./schema";
 
 const t = createTranslator("en");
@@ -77,6 +78,51 @@ describe("schemaFor", () => {
       const names = fieldNames(schemaFor(type, t));
       const container = ["group", "separator", "scene"].includes(cardKind(type));
       expect(names.has("entity"), type).toBe(!container);
+    }
+  });
+
+  /** A core new enough to compose names is the one that also has the picker for them. */
+  function hassWithNameHelper(): HomeAssistant {
+    return {
+      states: {},
+      language: "en",
+      callService: vi.fn(async () => undefined),
+      callApi: async <T,>() => undefined as T,
+      formatEntityName: () => "Living room Ceiling",
+    };
+  }
+
+  /** Finds a named field wherever it sits inside the grids and expandables. */
+  function field(schema: FormSchema[], name: string): FormSchema | undefined {
+    for (const item of schema) {
+      if (item.schema) {
+        const found = field(item.schema, name);
+        if (found) return found;
+      } else if (item.name === name) return item;
+    }
+    return undefined;
+  }
+
+  it("hands the name over to Home Assistant's own picker, with the entity for context", () => {
+    const hass = hassWithNameHelper();
+    for (const type of CARD_TYPES) {
+      if (["group", "separator", "scene"].includes(cardKind(type))) continue;
+      const name = field(schemaFor(type, t, undefined, hass), "name");
+      expect(name?.selector, type).toHaveProperty("entity_name");
+      expect(name?.context, type).toEqual({ entity: "entity" });
+    }
+  });
+
+  /*
+   * An older core renders an unknown selector as an empty gap, which would lose the field
+   * altogether. The name helper arrived with the picker, so its absence is the signal.
+   */
+  it("keeps the plain text box on a core without the name helper", () => {
+    for (const type of CARD_TYPES) {
+      if (["group", "separator", "scene"].includes(cardKind(type))) continue;
+      const name = field(schemaFor(type, t), "name");
+      expect(name?.selector, type).toHaveProperty("text");
+      expect(name?.context, type).toBeUndefined();
     }
   });
 

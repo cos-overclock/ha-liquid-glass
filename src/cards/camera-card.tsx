@@ -26,7 +26,7 @@ import { useCardHost } from "../react/use-card-host";
 import { useVisibleTick } from "../react/use-visible-tick";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HomeAssistant } from "../types";
-import { callConfiguredService, friendlyName, isUnavailable, moreInfo, pickEntity } from "../utils";
+import { callConfiguredService, entityName, isUnavailable, moreInfo, pickEntity } from "../utils";
 
 export interface CameraCardConfig extends BaseCardConfig {
   /** Binary sensor whose state drives the motion chip. Omit to hide it. */
@@ -432,7 +432,7 @@ function CameraCard({ config, hass, host }: ReactCardProps<CameraCardConfig>) {
   );
   const t = createTranslator(config.language ?? hass?.locale?.language ?? hass?.language);
   const entity = config.entity ? hass?.states[config.entity] : undefined;
-  const name = config.name ?? friendlyName(entity, config.entity ?? "");
+  const name = entityName(hass, entity, config.name, config.entity ?? "");
   const open = () => moreInfo(host, config.entity);
   const offline = isUnavailable(entity);
   const streaming = entity?.state === "streaming";

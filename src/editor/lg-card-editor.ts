@@ -62,7 +62,7 @@ export class LiquidGlassCardEditor extends HTMLElement {
     if (cardKind(config.type) === "separator") data.style = rest.style ?? "pill";
     if (cardKind(config.type) === "select") data.style = rest.style ?? "segments";
 
-    for (const name of fieldNames(schemaFor(config.type, this.t, data))) {
+    for (const name of fieldNames(schemaFor(config.type, this.t, data, this.hassValue))) {
       if (!DEFAULT_ON.has(name)) continue;
       const compactFan = cardKind(config.type) === "climate" && data.design === "compact" && name === "show_fan_mode";
       data[name] = compactFan ? rest[name] === true : rest[name] !== false;
@@ -138,7 +138,7 @@ export class LiquidGlassCardEditor extends HTMLElement {
 
     this.form.hass = hass;
     this.form.data = this.toForm(config);
-    this.form.schema = schemaFor(config.type, this.t, config as unknown as FormData);
+    this.form.schema = schemaFor(config.type, this.t, config as unknown as FormData, hass);
     this.form.computeLabel = this.computeLabel;
     this.form.computeHelper = this.computeHelper;
   }

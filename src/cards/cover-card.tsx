@@ -10,7 +10,7 @@ import { useCardHost } from "../react/use-card-host";
 import { useOptimisticValue } from "../react/use-optimistic-value";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HomeAssistant } from "../types";
-import { clamp, friendlyName, isUnavailable, moreInfo, pickEntity, supportsFeature } from "../utils";
+import { clamp, entityName, entityStateText, isUnavailable, moreInfo, pickEntity, supportsFeature } from "../utils";
 
 export interface CoverCardConfig extends BaseCardConfig {
   /** Visual style; defaults from device_class (curtain → curtain, else blind). */
@@ -202,7 +202,7 @@ function CoverCard({ config, hass, host }: ReactCardProps<CoverCardConfig>) {
   const entity = config.entity ? hass?.states[config.entity] : undefined;
   const positionValue = useOptimisticValue(entity?.attributes.current_position as number | undefined, 1);
   const tiltValue = useOptimisticValue(entity?.attributes.current_tilt_position as number | undefined, 1);
-  const name = config.name ?? friendlyName(entity, config.entity ?? "");
+  const name = entityName(hass, entity, config.name, config.entity ?? "");
   const open = () => moreInfo(host, config.entity);
 
   if (!entity || isUnavailable(entity)) {
@@ -319,6 +319,17 @@ function CoverCard({ config, hass, host }: ReactCardProps<CoverCardConfig>) {
       ? `${t("is_closed")} · ${t("last_change", { t: clockTime(entity.last_changed) })}`
       : `${t("position")} ${position}% · ${t("stopped")}`;
   const caption = moving ? `${t(moving)}…` : closed ? t("is_closed") : t("is_open");
+  /*
+   * The card reads the position to decide what the cover is doing, and Home Assistant
+   * words that state per device class, so the badge on a gate reads the way Home Assistant
+   * words a gate. The caption and the state line keep the card's own longer phrasing.
+   */
+  const badgeLabel = entityStateText(
+    hass,
+    entity,
+    moving ? t("moving") : closed ? t("closed") : t("open"),
+    moving ?? (closed ? "closed" : "open"),
+  );
   // Fully closed means the cover itself sits behind the readout, whatever the style,
   // so the text has to flip to the dark ink that reads against the fabric.
   const overlayOnFabric = closed || (!isCurtain && moving === "opening" && position < 60);
@@ -337,7 +348,7 @@ function CoverCard({ config, hass, host }: ReactCardProps<CoverCardConfig>) {
       <div className="header">
         <IconWell icon={icon} style={well} onClick={open} />
         <CardTitle name={name} state={state} onClick={open} />
-        <Badge label={moving ? t("moving") : closed ? t("closed") : t("open")} style={badge} />
+        <Badge label={badgeLabel} style={badge} />
       </div>
 
       <div className="position-row">
