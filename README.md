@@ -93,7 +93,7 @@ HACSはGitHub Releaseを安定版として追跡します。新しいReleaseが�
 3. `www/` を新規に作った場合は Home Assistant を再起動
 4. 設定 → ダッシュボード → リソース で `/local/liquid-glass-cards.js?v=0.8.0`（JavaScript モジュール）を追加
 
-コピー先を `HA_WWW` に設定しておくと、ビルド後に自動でコピーされます。`npm run watch` でも各ビルド後にコピーされます。
+（開発・自前ビルド時）コピー先を `HA_WWW` に設定しておくと、ビルド後に自動でコピーされます。`npm run watch` でも各ビルド後にコピーされます。
 
 ```bash
 HA_WWW=//homeassistant/config/www npm run build
