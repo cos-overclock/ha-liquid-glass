@@ -163,6 +163,21 @@ export function schemaFor(
         ...common(t),
       ];
 
+    case "humidifier":
+      return [...head("humidifier"), grid([bool("show_current_humidity"), bool("show_modes")]), ...common(t)];
+
+    case "person":
+      return [...head(["person", "device_tracker"]), grid([bool("show_entity_picture"), bool("show_last_changed")]), ...common(t)];
+
+    case "todo":
+      return [...head("todo"), grid([bool("show_completed"), bool("show_add")]), ...common(t)];
+
+    case "update":
+      return [...head("update"), grid([bool("show_release_notes"), bool("show_skip")]), ...common(t)];
+
+    case "timer":
+      return [...head("timer"), bool("show_finish"), ...common(t)];
+
     case "alarm-control-panel":
       return [...head("alarm_control_panel"), bool("show_trigger"), ...common(t)];
 
@@ -370,6 +385,14 @@ export function schemaFor(
  * is hidden while the card is happily rendering it.
  */
 export const DEFAULT_ON = new Set([
+  "show_current_humidity",
+  "show_modes",
+  "show_entity_picture",
+  "show_last_changed",
+  "show_completed",
+  "show_add",
+  "show_release_notes",
+  "show_skip",
   "show_brightness",
   "show_color_temp",
   "show_color",

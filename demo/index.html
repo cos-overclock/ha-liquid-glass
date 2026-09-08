@@ -123,6 +123,13 @@
       // ---- mock hass ----
       const ago = (min) => new Date(Date.now() - min * 60000).toISOString();
       const states = {
+        "humidifier.living": { entity_id: "humidifier.living", state: "on", last_changed: ago(10), last_updated: ago(1), attributes: { friendly_name: "リビング 加湿器", humidity: 55, current_humidity: 43, min_humidity: 30, max_humidity: 80, target_humidity_step: 5, available_modes: ["Auto", "Sleep", "Boost"], mode: "Auto", supported_features: 1, action: "humidifying" } },
+        "humidifier.drying": { entity_id: "humidifier.drying", state: "off", last_changed: ago(10), last_updated: ago(1), attributes: { friendly_name: "洗面所 除湿機", device_class: "dehumidifier", humidity: 50, current_humidity: 68, min_humidity: 30, max_humidity: 80 } },
+        "person.alice": { entity_id: "person.alice", state: "home", last_changed: ago(25), last_updated: ago(1), attributes: { friendly_name: "あおい" } },
+        "device_tracker.phone": { entity_id: "device_tracker.phone", state: "Office", last_changed: ago(90), last_updated: ago(1), attributes: { friendly_name: "スマートフォン" } },
+        "todo.shopping_list": { entity_id: "todo.shopping_list", state: "2", last_changed: ago(15), last_updated: ago(1), attributes: { friendly_name: "買い物リスト", supported_features: 7 } },
+        "update.demo": { entity_id: "update.demo", state: "on", last_changed: ago(60), last_updated: ago(1), attributes: { friendly_name: "デモ アップデート", supported_features: 17, installed_version: "1.0.0", latest_version: "1.1.0", release_summary: "新しい機能と安定性の改善が含まれます。", in_progress: false } },
+        "timer.kitchen": { entity_id: "timer.kitchen", state: "active", last_changed: ago(1), last_updated: ago(1), attributes: { friendly_name: "キッチン タイマー", duration: "0:05:00", remaining: "0:04:00", finishes_at: new Date(Date.now() + 240000).toISOString() } },
         "light.living_room": { entity_id: "light.living_room", state: "on", last_changed: ago(40), last_updated: ago(2), attributes: { friendly_name: "リビング", brightness: 184, color_temp_kelvin: 3200, min_color_temp_kelvin: 2000, max_color_temp_kelvin: 6500, supported_color_modes: ["color_temp"], color_mode: "color_temp" } },
         "light.living_off": { entity_id: "light.living_off", state: "off", last_changed: ago(40), last_updated: ago(2), attributes: { friendly_name: "リビング", supported_color_modes: ["color_temp"], min_color_temp_kelvin: 2000, max_color_temp_kelvin: 6500 } },
         "light.bedroom": { entity_id: "light.bedroom", state: "on", last_changed: ago(40), last_updated: ago(2), attributes: { friendly_name: "ベッドルーム", brightness: 153, hs_color: [280, 85], rgb_color: [177, 92, 255], supported_color_modes: ["color_temp", "hs"], color_mode: "hs", min_color_temp_kelvin: 2000, max_color_temp_kelvin: 6500 } },
@@ -202,6 +209,15 @@
         ].map((d, i) => ({ ...d, datetime: new Date(now + i * 86400e3).toISOString(), precipitation_probability: 20 }));
       };
 
+      let shoppingItems = [
+        { uid: "milk", summary: "牛乳", status: "needs_action" },
+        { uid: "bread", summary: "食パン", status: "needs_action" },
+        { uid: "eggs", summary: "卵", status: "completed" },
+      ];
+      const remainingSeconds = (e) => e.state === "active"
+        ? Math.max(0, Math.ceil((Date.parse(e.attributes.finishes_at) - Date.now()) / 1000))
+        : e.attributes.remaining.split(":").reduce((total, value) => total * 60 + Number(value), 0);
+      const timerDuration = (seconds) => `${Math.floor(seconds / 3600)}:${String(Math.floor(seconds / 60) % 60).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
       const hass = {
         states,
         language: params.get("lang") ?? "ja",
@@ -213,12 +229,35 @@
             const id = target?.entity_id;
             return { response: { [id]: { forecast: forecast(data.type) } } };
           }
+          if (domain === "todo" && service === "get_items") return { response: { [target.entity_id]: { items: shoppingItems.map((item) => ({ ...item })) } } };
           console.log("callService", domain, service, data);
           // Minimal optimistic state updates for the demo
           const id = data?.entity_id;
           const e = states[id];
           if (!e) return;
           const next = { ...e, attributes: { ...e.attributes } };
+          if (domain === "todo") {
+            if (service === "add_item") shoppingItems.push({ uid: crypto.randomUUID(), summary: data.item, status: "needs_action" });
+            if (service === "update_item") shoppingItems = shoppingItems.map((item) => item.uid === data.item ? { ...item, status: data.status } : item);
+            if (service === "remove_item") shoppingItems = shoppingItems.filter((item) => item.uid !== data.item);
+            next.state = String(shoppingItems.filter((item) => item.status === "needs_action").length);
+          }
+          if (domain === "humidifier") {
+            if (service === "set_humidity") next.attributes.humidity = data.humidity;
+            if (service === "set_mode") next.attributes.mode = data.mode;
+            if (service === "turn_off") next.attributes.action = "off";
+            if (service === "turn_on") next.attributes.action = "humidifying";
+          }
+          if (domain === "update") {
+            if (service === "install") { next.attributes.installed_version = next.attributes.latest_version; next.state = "off"; }
+            if (service === "skip") { next.attributes.skipped_version = next.attributes.latest_version; next.state = "off"; }
+            if (service === "clear_skipped") { delete next.attributes.skipped_version; next.state = "on"; }
+          }
+          if (domain === "timer") {
+            if (service === "start") { next.state = "active"; const seconds = e.state === "paused" ? remainingSeconds(e) : 300; next.attributes.finishes_at = new Date(Date.now() + seconds * 1000).toISOString(); }
+            if (service === "pause") { next.attributes.remaining = timerDuration(remainingSeconds(e)); next.state = "paused"; delete next.attributes.finishes_at; }
+            if (service === "cancel" || service === "finish") { next.state = "idle"; delete next.attributes.finishes_at; }
+          }
           if (service === "toggle") next.state = e.state === "on" ? "off" : "on";
           if (service === "turn_on") { next.state = "on"; if (data.brightness_pct != null) next.attributes.brightness = Math.round(data.brightness_pct * 2.55); if (data.color_temp_kelvin) { next.attributes.color_temp_kelvin = data.color_temp_kelvin; next.attributes.color_mode = "color_temp"; } if (data.hs_color) { next.attributes.hs_color = data.hs_color; next.attributes.color_mode = "hs"; delete next.attributes.rgb_color; } if (data.rgb_color) { next.attributes.rgb_color = data.rgb_color; next.attributes.color_mode = "hs"; delete next.attributes.hs_color; } }
           if (service === "set_temperature") Object.assign(next.attributes, data.temperature != null ? { temperature: data.temperature } : { target_temp_low: data.target_temp_low, target_temp_high: data.target_temp_high });
@@ -241,6 +280,7 @@
           if (service === "set_value") next.state = String(data.value);
           if (service === "select_option") next.state = data.option;
           next.last_changed = new Date().toISOString();
+          next.last_updated = next.last_changed;
           states[id] = next;
           push();
         },
@@ -252,6 +292,13 @@
       };
 
       const cards = [
+        ["liquid-glass-humidifier-card", { entity: "humidifier.living" }],
+        ["liquid-glass-humidifier-card", { entity: "humidifier.drying" }],
+        ["liquid-glass-person-card", { entity: "person.alice" }],
+        ["liquid-glass-person-card", { entity: "device_tracker.phone" }],
+        ["liquid-glass-todo-card", { entity: "todo.shopping_list" }],
+        ["liquid-glass-update-card", { entity: "update.demo" }],
+        ["liquid-glass-timer-card", { entity: "timer.kitchen", show_finish: true }],
         ["liquid-glass-light-card", { entity: "light.living_room", presets: [{ name: "読書", icon: "mdi:book-open-variant", brightness: 100, color_temp_kelvin: 4500 }, { name: "リラックス", icon: "mdi:coffee", brightness: 45, color_temp_kelvin: 2700 }, { name: "おやすみ", icon: "mdi:weather-night", brightness: 10, color_temp_kelvin: 2200 }] }],
         ["liquid-glass-light-card", { entity: "light.bedroom" }],
         ["liquid-glass-light-card", { entity: "light.living_off", presets: [{ name: "読書", icon: "mdi:book-open-variant", brightness: 100 }, { name: "おやすみ", icon: "mdi:weather-night", brightness: 10 }] }],

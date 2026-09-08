@@ -92,6 +92,16 @@ describe("card registration", () => {
 });
 
 describe("entity suggestions", () => {
+  it.each([
+    ["humidifier.room", "humidifier"], ["person.alice", "person"],
+    ["device_tracker.phone", "person"], ["todo.shopping_list", "todo"],
+    ["update.core", "update"], ["timer.kitchen", "timer"],
+  ])("offers a dedicated card for %s", (id, kind) => {
+    expect(suggestion(`liquid-glass-${kind}-card`, entity(id))?.config).toEqual({
+      type: `custom:liquid-glass-${kind}-card`, entity: id,
+    });
+    expect(customElements.get(`liquid-glass-${kind}-card`)).toBeDefined();
+  });
   it("offers the light card for a light", () => {
     expect(suggestedFor(entity("light.desk"))).toContain("liquid-glass-light-card");
   });
@@ -122,7 +132,7 @@ describe("entity suggestions", () => {
    * a neutral suggestion so it stays reachable from the entity-first Community list.
    */
   it("offers no entity card for a domain none of them handle", () => {
-    expect(suggestedFor(entity("person.alice")))
+    expect(suggestedFor(entity("zone.work")))
       .toEqual(["liquid-glass-separator-card"]);
   });
 

@@ -1,7 +1,7 @@
 # Liquid Glass Cards for Home Assistant
 
 `pen/design.pen` の Liquid Glass デザインを、Home Assistant のダッシュボードに追加できるカスタムカード群として実装したものです。
-Vite + React + TypeScript で実装し、Home Assistant 向けには単一ファイル `dist/liquid-glass-cards.js` にバンドルされます。バンドルは React ではなく Preact（`preact/compat`）の上で動きます。ソースもテストも React のまま書きますが、ビルド時に差し替わるため配布ファイルが約 401 KB（gzip 約 105 KB）に収まります。詳しくは「バンドルサイズ」を参照してください。全カードが React と `@samasante/liquid-glass` で書かれており、Home Assistant へは Custom Element のアダプター（`react/define-react-card.tsx`）を通して公開されます。
+Vite + React + TypeScript で実装し、Home Assistant 向けには単一ファイル `dist/liquid-glass-cards.js` にバンドルされます。バンドルは React ではなく Preact（`preact/compat`）の上で動きます。ソースもテストも React のまま書きますが、ビルド時に差し替わるため配布ファイルが約 427 KB（gzip 約 111 KB）に収まります。詳しくは「バンドルサイズ」を参照してください。全カードが React と `@samasante/liquid-glass` で書かれており、Home Assistant へは Custom Element のアダプター（`react/define-react-card.tsx`）を通して公開されます。
 
 React版カードは屈折対象となる背景レイヤーもReactで所有し、`Glass`の`refract`へ複製して渡します。これにより`backdrop-filter: url()`へ依存せず、Chromium / Safari / Firefoxで共通のSVG `filter: url()`経路を使用します。任意のHA壁紙そのものではなく、カード内の光学背景を屈折する方式です。
 
@@ -10,6 +10,11 @@ React版カードは屈折対象となる背景レイヤーもReactで所有し�
 | Light | `custom:liquid-glass-light-card` | `light`（明るさ / 色温度 / 色相・彩度 / お気に入り / プリセット） |
 | Vacuum | `custom:liquid-glass-vacuum-card` | `vacuum`（清掃操作 / 帰還 / 吸引力 / 状態） |
 | Fan | `custom:liquid-glass-fan-card` | `fan`（風量 / プリセット / 首振り / 風向） |
+| Humidifier | `custom:liquid-glass-humidifier-card` | `humidifier`（加湿器 / 除湿機、目標湿度 / 現在湿度 / モード） |
+| Person | `custom:liquid-glass-person-card` | `person` `device_tracker`（在宅 / 外出 / ゾーン / 画像） |
+| To-do | `custom:liquid-glass-todo-card` | `todo`（買い物リスト、追加 / 完了 / 再開 / 削除） |
+| Update | `custom:liquid-glass-update-card` | `update`（バージョン / インストール / スキップ / 進捗） |
+| Timer | `custom:liquid-glass-timer-card` | `timer`（残り時間 / 開始 / 一時停止 / 再開 / キャンセル） |
 | Alarm | `custom:liquid-glass-alarm-control-panel-card` | `alarm_control_panel`（警戒モード / 解除 / 暗証番号） |
 | Climate | `custom:liquid-glass-climate-card` | `climate`（270° ダイヤル、モード、風量 / プリセット） |
 | Switch | `custom:liquid-glass-switch-card` | `switch` `input_boolean` `fan` など |
@@ -112,14 +117,14 @@ HACS経由ではReleaseバージョンの選択・更新・ロールバックを
 読み込まれているビルドはブラウザのコンソールで確認できます。起動時に次のような行が出ます。
 
 ```text
- LIQUID-GLASS-CARDS  v0.8.0 · 19 cards · 1 badge · built 2025-01-01 12:34
+ LIQUID-GLASS-CARDS  v0.8.0 · 24 cards · 1 badge · built 2025-01-01 12:34
 ```
 
 カード枚数とビルド時刻が、コピーしたファイルのものと一致していれば正しく読み込まれています。一致しない場合はまだ古いファイルです。
 
 ## 設定例
 
-19種類のカードとエンティティバッジはすべてビジュアルエディタに対応しています。ダッシュボードで追加すると、エンティティや表示項目をフォームから設定できます。YAML を直接書く必要はありません。以下は同じ設定を YAML で表したものです。
+24種類のカードとエンティティバッジはすべてビジュアルエディタに対応しています。ダッシュボードで追加すると、エンティティや表示項目をフォームから設定できます。YAML を直接書く必要はありません。以下は同じ設定を YAML で表したものです。
 
 すべてのカードに共通するオプション:
 
@@ -177,6 +182,60 @@ double_tap_action:
 ```
 
 `more-info` `toggle` `perform-action` `navigate` `url` `assist` `none`を利用でき、各アクションにはHome Assistant標準の`confirmation`も指定できます。スライダー、スイッチ、再生ボタン、シーンタイルなどカード内の独立した操作部を触った場合は、カード全体のアクションを実行しません。
+
+### Humidifier
+
+```yaml
+type: custom:liquid-glass-humidifier-card
+entity: humidifier.living_room
+show_current_humidity: true
+show_modes: true
+```
+
+加湿器と除湿機に対応し、電源、現在の湿度、目標湿度、対応機器の運転モードを表示します。スライダーの上下限と刻み幅は機器の属性に従います。湿度が未取得の場合は数値やスライダーを省略します。
+
+### Person / Device Tracker
+
+```yaml
+type: custom:liquid-glass-person-card
+entity: person.alice # device_tracker.phone も使用可能
+show_entity_picture: true
+show_last_changed: true
+```
+
+在宅・外出・ゾーン名と、その場所に変わってからの時間を表示します。画像がない場合や読み込めない場合はアイコンに戻ります。名前をタップするとHome Assistantの詳細を開きます。
+
+### To-do（買い物リスト）
+
+```yaml
+type: custom:liquid-glass-todo-card
+entity: todo.shopping_list
+show_completed: true
+show_add: true
+```
+
+`todo`エンティティの項目を取得し、追加・完了・未完了への復帰・削除を操作できます。統合が対応する操作だけを有効にします。同名の商品は項目IDで区別します。状態更新と操作後に再取得し、表示中は30秒ごとにも同期します。取得失敗時は再試行ボタンを表示します。Sectionsビューでは内容に応じた高さで表示し、長いリストは内部でスクロールできます。
+
+### Update
+
+```yaml
+type: custom:liquid-glass-update-card
+entity: update.home_assistant_core_update
+show_release_notes: true
+show_skip: true
+```
+
+インストール済み・最新バージョンと進捗を表示します。対応統合では「インストール」で最新バージョンをインストールし、「スキップ」「スキップを解除」も利用できます。インストール中は操作を無効にします。リリース概要はテキストとして表示し、リリースノートボタンはHome Assistantの詳細を開きます。
+
+### Timer
+
+```yaml
+type: custom:liquid-glass-timer-card
+entity: timer.kitchen
+show_finish: false
+```
+
+開始・一時停止・再開・キャンセルに対応します。開始時はタイマーに設定された時間を使い、一時停止中は残り時間から再開します。実行中の残り時間は`finishes_at`から毎秒計算し、非表示中は定期更新を停止します。`show_finish: true`で実行中のタイマーを終了するボタンも表示できます。この操作は`timer.finish`を呼び出します。
 
 ### Entity Badge
 
@@ -558,7 +617,7 @@ Home Assistant はダッシュボードを開くたびにこのファイルを�
 | | 生 | gzip |
 | --- | --- | --- |
 | React | 606 KB | 154 KB |
-| Preact | 401 KB | 105 KB |
+| Preact | 427 KB | 111 KB |
 
 差し替えは `vite.config.ts` の `resolve.alias` 1か所だけで行います。ソースは `react` を import したまま、型も `@types/react` のままで、テストも同じ alias の上で走ります。配布物だけが別のランタイムで動く、という状態にはなりません。
 

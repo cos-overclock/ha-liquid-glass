@@ -3,6 +3,11 @@ import "./badges/entity-badge";
 import "./cards/light-card";
 import "./cards/vacuum-card";
 import "./cards/fan-card";
+import "./cards/humidifier-card";
+import "./cards/person-card";
+import "./cards/todo-card";
+import "./cards/update-card";
+import "./cards/timer-card";
 import "./cards/alarm-control-panel-card";
 import "./cards/climate-card";
 import "./cards/switch-card";
@@ -33,6 +38,11 @@ export type {
 export { LiquidGlassLightCard } from "./cards/light-card";
 export { LiquidGlassVacuumCard } from "./cards/vacuum-card";
 export { LiquidGlassFanCard } from "./cards/fan-card";
+export { LiquidGlassHumidifierCard } from "./cards/humidifier-card";
+export { LiquidGlassPersonCard } from "./cards/person-card";
+export { LiquidGlassTodoCard } from "./cards/todo-card";
+export { LiquidGlassUpdateCard } from "./cards/update-card";
+export { LiquidGlassTimerCard } from "./cards/timer-card";
 export { LiquidGlassAlarmControlPanelCard } from "./cards/alarm-control-panel-card";
 export { LiquidGlassClimateCard } from "./cards/climate-card";
 export { LiquidGlassSwitchCard } from "./cards/switch-card";
@@ -136,6 +146,11 @@ const cards: CustomCardRegistration[] = [
   entityCard("liquid-glass-light-card", "Liquid Glass Light", "Brightness, color temperature, color and presets", ["light"]),
   entityCard("liquid-glass-vacuum-card", "Liquid Glass Vacuum", "Cleaning controls, fan speed and status", ["vacuum"]),
   entityCard("liquid-glass-fan-card", "Liquid Glass Fan", "Speed, presets, oscillation and direction", ["fan"]),
+  entityCard("liquid-glass-humidifier-card", "Liquid Glass Humidifier", "Target humidity, current humidity and modes", ["humidifier"]),
+  entityCard("liquid-glass-person-card", "Liquid Glass Person", "Presence, zones and person or device portraits", ["person", "device_tracker"]),
+  entityCard("liquid-glass-todo-card", "Liquid Glass To-do", "Shopping list with add, complete and delete controls", ["todo"]),
+  entityCard("liquid-glass-update-card", "Liquid Glass Update", "Versions, installation progress and update controls", ["update"]),
+  entityCard("liquid-glass-timer-card", "Liquid Glass Timer", "Live countdown with start, pause and cancel controls", ["timer"]),
   entityCard("liquid-glass-alarm-control-panel-card", "Liquid Glass Alarm", "Arm, disarm and monitor an alarm panel", ["alarm_control_panel"]),
   entityCard(
     "liquid-glass-climate-card",
