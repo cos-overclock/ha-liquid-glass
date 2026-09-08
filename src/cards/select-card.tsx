@@ -1,20 +1,20 @@
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { SELECT_DOMAINS } from "../card-constants";
 import { createTranslator } from "../i18n";
 import { CardTitle, IconWell, UnavailableCard } from "../react/card-parts";
 import { reactCardStyles } from "../react/card-styles";
 import { defineLiquidGlassCard, type ReactCardProps } from "../react/define-liquid-glass-card";
-import { contentGridOptions } from "../react/grid-options";
+import { autoHeightGridOptions, contentGridOptions, rowGridOptions } from "../react/grid-options";
 import { GlassSegmentedControl, glassSegmentedControlStyles } from "../react/glass-segmented-control";
-import { glassSurfaceStyles, LiquidGlassSurface } from "../react/glass-primitives";
+import { glassSurfaceStyles, Icon, LiquidGlassSurface } from "../react/glass-primitives";
 import { useCardHost } from "../react/use-card-host";
 import { tokens } from "../styles/tokens";
 import type { BaseCardConfig, HomeAssistant } from "../types";
 import { darken, entityName, entityStateText, isUnavailable, lighten, moreInfo, pickEntity, withAlpha } from "../utils";
 
 export interface SelectCardConfig extends BaseCardConfig {
-  /** A single moving lens, or individually wrapped glass chips. */
-  style?: "segments" | "chips";
+  /** One-row dropdown (default), a moving lens, or individually wrapped chips. */
+  style?: "dropdown" | "segments" | "chips";
   /** Accent hex colour for the icon well and selected choice. */
   accent?: string;
 }
@@ -22,8 +22,32 @@ export interface SelectCardConfig extends BaseCardConfig {
 const PENDING_MS = 4000;
 
 const ownStyles = `
-  .card {
-    gap: 14px;
+  .card:not(.row) {
+    gap: 12px;
+  }
+  .dropdown-content {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: var(--lg-gap-row);
+    flex: 1;
+    min-width: 0;
+    height: 40px;
+  }
+  .dropdown-content > lg-icon { flex: none; --mdc-icon-size: 20px; }
+  .dropdown-content select {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+    font: inherit;
+  }
+  .dropdown-content:focus-within {
+    outline: 2px solid var(--lg-cool-deep);
+    outline-offset: 2px;
+    border-radius: 6px;
   }
   .select-control {
     width: 100%;
@@ -103,24 +127,37 @@ function SelectCard({ config, hass, host }: ReactCardProps<SelectCardConfig>) {
   const { isDark, refraction } = useCardHost(host, config, hass);
   const t = createTranslator(config.language ?? hass?.locale?.language ?? hass?.language);
   const entity = config.entity ? hass?.states[config.entity] : undefined;
-  const [pending, setPending] = useState<string>();
+  const [selection, setSelection] = useState<{ pending?: string }>({});
+  const pending = selection.pending;
+  const dropdownRef = useRef<HTMLSelectElement>(null);
+  const requestId = useRef(0);
   const pendingTimer = useRef<number | undefined>(undefined);
   const domain = config.entity?.split(".")[0] ?? "select";
   const options = optionsFor(entity?.attributes.options);
   const settled = pending !== undefined && entity?.state === pending;
+  const dropdown = config.style === undefined || config.style === "dropdown";
+
+  // A fast rejection can batch the optimistic change and rollback into one render.
+  // Sync the native value even when the virtual DOM still holds the original value.
+  useLayoutEffect(() => {
+    if (dropdownRef.current) {
+      dropdownRef.current.value = pending !== undefined && options.includes(pending) ? pending : entity?.state ?? "";
+    }
+  });
 
   useEffect(() => () => window.clearTimeout(pendingTimer.current), []);
 
   useEffect(() => {
     if (!settled) return;
     window.clearTimeout(pendingTimer.current);
-    pendingTimer.current = window.setTimeout(() => setPending(undefined), 0);
+    pendingTimer.current = window.setTimeout(() => setSelection({}), 0);
   }, [settled]);
 
   const name = entityName(hass, entity, config.name, config.entity ?? "");
   if (!entity || isUnavailable(entity) || options.length === 0) {
     return <>
       <UnavailableCard
+        row={dropdown}
         refraction={refraction}
         variant={config.glass_variant}
         icon={config.icon ?? defaultIcon(domain)}
@@ -131,7 +168,7 @@ function SelectCard({ config, hass, host }: ReactCardProps<SelectCardConfig>) {
     </>;
   }
 
-  const value = pending && options.includes(pending) ? pending : entity.state;
+  const value = pending !== undefined && options.includes(pending) ? pending : entity.state;
   /*
    * The raw options are integration ids such as `eco_mode`. Home Assistant translates them
    * through the entity's own strings, so what a user reads here matches the more-info
@@ -146,15 +183,19 @@ function SelectCard({ config, hass, host }: ReactCardProps<SelectCardConfig>) {
     glow: accent ? withAlpha(accent, 0.3) : "rgba(94, 92, 230, 0.3)",
   };
 
-  const choose = (option: string) => {
-    if (!hass || !config.entity || option === value) return;
-    setPending(option);
+  const choose = async (option: string) => {
+    if (!hass || !config.entity || option === value || !options.includes(option)) return;
+    const id = ++requestId.current;
+    setSelection({ pending: option });
     window.clearTimeout(pendingTimer.current);
-    pendingTimer.current = window.setTimeout(() => setPending(undefined), PENDING_MS);
-    void hass.callService(domain, "select_option", {
-      entity_id: config.entity,
-      option,
-    });
+    pendingTimer.current = window.setTimeout(() => setSelection({}), PENDING_MS);
+    try {
+      await hass.callService(domain, "select_option", { entity_id: config.entity, option });
+    } catch {
+      if (requestId.current !== id) return;
+      window.clearTimeout(pendingTimer.current);
+      setSelection({});
+    }
   };
 
   const cardStyle = {
@@ -163,6 +204,22 @@ function SelectCard({ config, hass, host }: ReactCardProps<SelectCardConfig>) {
     "--lg-select-accent": accentColor,
     "--lg-select-glow": accent ? withAlpha(accent, 0.25) : "rgba(94, 92, 230, 0.2)",
   } as CSSProperties;
+
+  if (dropdown) return (
+    <LiquidGlassSurface className="card row" refraction={refraction}
+      variant={config.glass_variant} sourceAccent={accentColor} style={cardStyle}>
+      <IconWell icon={config.icon ?? entity.attributes.icon ?? defaultIcon(domain)} style={wellStyle} />
+      <div className="dropdown-content">
+        <CardTitle name={name} state={optionLabel(value)} />
+        <Icon icon="mdi:chevron-down" />
+        <select ref={dropdownRef} aria-label={name} value={value} title={optionLabel(value)}
+          onChange={(event) => { void choose(event.currentTarget.value); }}>
+          {!options.includes(value) && <option value={value} disabled>{optionLabel(value)}</option>}
+          {options.map((option) => <option key={option} value={option}>{optionLabel(option)}</option>)}
+        </select>
+      </div>
+    </LiquidGlassSurface>
+  );
 
   return <>
     <LiquidGlassSurface
@@ -203,7 +260,7 @@ function SelectCard({ config, hass, host }: ReactCardProps<SelectCardConfig>) {
                   type="button"
                   title={optionLabel(option)}
                   aria-pressed={selected}
-                  onClick={() => choose(option)}
+                  onClick={() => { void choose(option); }}
                 >
                   {optionLabel(option)}
                 </button>
@@ -216,7 +273,7 @@ function SelectCard({ config, hass, host }: ReactCardProps<SelectCardConfig>) {
           <GlassSegmentedControl
             items={options.map((option) => ({ value: option, label: optionLabel(option) }))}
             value={value}
-            onValueChange={choose}
+            onValueChange={(option) => { void choose(option); }}
             refraction={refraction}
             scheme={isDark ? "dark" : "light"}
             selectedColor={accentColor}
@@ -230,10 +287,11 @@ function SelectCard({ config, hass, host }: ReactCardProps<SelectCardConfig>) {
 
 export const LiquidGlassSelectCard = defineLiquidGlassCard<SelectCardConfig>({
   tagName: "liquid-glass-select-card",
-  component: SelectCard,
+  component: (props) => <SelectCard key={props.config.entity} {...props} />,
   styles: [tokens, reactCardStyles, glassSurfaceStyles, glassSegmentedControlStyles, ownStyles],
-  getCardSize: () => 2,
-  getGridOptions: () => contentGridOptions(3),
+  getCardSize: (config) => config.style === "segments" || config.style === "chips" ? 2 : 1,
+  getGridOptions: (config) => config.style === "chips" ? autoHeightGridOptions(6)
+    : config.style === "segments" ? contentGridOptions(3) : rowGridOptions(),
   getStubConfig: (hass?: HomeAssistant, entities?: string[], entitiesFallback?: string[]) => ({
     entity: pickEntity(SELECT_DOMAINS, hass, entities, entitiesFallback),
   }),

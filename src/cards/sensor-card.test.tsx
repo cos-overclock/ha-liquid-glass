@@ -42,6 +42,23 @@ afterEach(() => {
 });
 
 describe("liquid-glass-sensor-card", () => {
+  it("defaults to a caption row without history when trend is disabled", async () => {
+    const target = entity("sensor.people", "3", { friendly_name: "在室", unit_of_measurement: "人" });
+    const element = document.createElement("liquid-glass-sensor-card") as CardElement;
+    const hass = createHass([target], async () => undefined);
+    hass.callApi = vi.fn(async () => undefined) as HomeAssistant["callApi"];
+    element.setConfig({ type: "custom:liquid-glass-sensor-card", entity: target.entity_id, trend: false });
+    element.hass = hass;
+    await act(async () => document.body.append(element));
+    expect(element.shadowRoot!.querySelector(".card.row")).not.toBeNull();
+    expect(element.shadowRoot!.querySelector(".state")?.textContent).toContain("3 人");
+    expect(element.shadowRoot!.querySelector(".spark")).toBeNull();
+    expect(element.getCardSize()).toBe(1);
+    expect(hass.callApi).not.toHaveBeenCalled();
+    await act(async () => { element.hass = createHass([{ ...target, state: "unavailable" }], async () => undefined); });
+    expect(element.shadowRoot!.querySelector(".card.row")).not.toBeNull();
+  });
+
   it("registers the custom element", () => {
     expect(customElements.get("liquid-glass-sensor-card")).toBe(LiquidGlassSensorCard);
   });
@@ -56,7 +73,7 @@ describe("liquid-glass-sensor-card", () => {
     ]]) as HomeAssistant["callApi"];
 
     const element = document.createElement("liquid-glass-sensor-card") as CardElement;
-    element.setConfig({ type: "custom:liquid-glass-sensor-card", entity: target.entity_id });
+    element.setConfig({ type: "custom:liquid-glass-sensor-card", entity: target.entity_id, graph: true });
     element.hass = hass;
 
     await act(async () => document.body.append(element));
@@ -132,7 +149,7 @@ describe("liquid-glass-sensor-card", () => {
     };
 
     const element = document.createElement("liquid-glass-sensor-card") as CardElement;
-    element.setConfig({ type: "custom:liquid-glass-sensor-card", entity: target.entity_id });
+    element.setConfig({ type: "custom:liquid-glass-sensor-card", entity: target.entity_id, graph: true });
     element.hass = hass;
 
     await act(async () => document.body.append(element));
@@ -174,7 +191,7 @@ describe("liquid-glass-sensor-card", () => {
     };
 
     const element = document.createElement("liquid-glass-sensor-card") as CardElement;
-    element.setConfig({ type: "custom:liquid-glass-sensor-card", entity: target.entity_id });
+    element.setConfig({ type: "custom:liquid-glass-sensor-card", entity: target.entity_id, graph: true });
     element.hass = hass;
 
     await act(async () => document.body.append(element));

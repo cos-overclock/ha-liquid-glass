@@ -60,9 +60,104 @@ afterEach(() => {
 });
 
 describe("liquid-glass-select-card", () => {
+  it("defaults to a row dropdown and isolates selection from the card action", async () => {
+    const target = entity("select", "Auto", ["Auto", "Silent", "Turbo"]);
+    const { element, callService } = mount(target, { tap_action: { action: "more-info" } });
+    const action = vi.fn();
+    element.addEventListener("hass-action", action);
+    await act(async () => document.body.append(element));
+    const select = element.shadowRoot!.querySelector("select")!;
+    expect(element.shadowRoot!.querySelector(".card.row")).not.toBeNull();
+    expect(select.value).toBe("Auto");
+    expect(select.getAttribute("aria-label")).toBe("Operation mode");
+    expect(element.getCardSize()).toBe(1);
+    await act(async () => {
+      select.click();
+      select.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, composed: true }));
+      select.value = "Turbo";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(action).not.toHaveBeenCalled();
+    expect(callService).toHaveBeenCalledWith("select", "select_option", { entity_id: target.entity_id, option: "Turbo" });
+    expect(element.shadowRoot!.querySelector(".state")?.textContent).toBe("Turbo");
+  });
+
+  it("restores the real dropdown value when a service call fails", async () => {
+    const target = entity("input_select", "Auto", ["Auto", "Silent"]);
+    const callService = vi.fn<HomeAssistant["callService"]>(async () => { throw new Error("offline"); });
+    const { element } = mount(target, {}, callService);
+    await act(async () => document.body.append(element));
+    const select = element.shadowRoot!.querySelector("select")!;
+    await act(async () => {
+      select.value = "Silent";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(callService).toHaveBeenCalledWith("input_select", "select_option", { entity_id: target.entity_id, option: "Silent" });
+    expect(select.value).toBe("Auto");
+    expect(element.shadowRoot!.querySelector(".state")?.textContent).toBe("Auto");
+  });
+
+  it("supports translated dropdown options and a state outside the current options", async () => {
+    const target = entity("select", "legacy", ["eco", "turbo"]);
+    const { element } = mount(target);
+    element.hass!.formatEntityState = (state, value) => ({ eco: "エコ", turbo: "ターボ", legacy: "旧設定" })[value ?? state.state] ?? "";
+    await act(async () => document.body.append(element));
+    const select = element.shadowRoot!.querySelector("select")!;
+    expect(select.value).toBe("legacy");
+    expect([...select.options].map((option) => option.textContent)).toEqual(["旧設定", "エコ", "ターボ"]);
+    expect(select.options[0].disabled).toBe(true);
+  });
+
+  it("expires an unconfirmed dropdown choice and follows later state updates", async () => {
+    vi.useFakeTimers();
+    const target = entity("select", "Auto", ["Auto", "Silent"]);
+    const { element, callService } = mount(target);
+    await act(async () => document.body.append(element));
+    const select = element.shadowRoot!.querySelector("select")!;
+    await act(async () => {
+      select.value = "Silent";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(select.value).toBe("Silent");
+    await act(async () => vi.advanceTimersByTime(4000));
+    expect(select.value).toBe("Auto");
+    await act(async () => { element.hass = createHass({ ...target, state: "Silent" }, callService); });
+    expect(select.value).toBe("Silent");
+    expect(element.shadowRoot!.querySelector(".state")?.textContent).toBe("Silent");
+  });
+
+  it("does not roll back a newer choice when an older request fails", async () => {
+    const target = entity("select", "Auto", ["Auto", "Silent", "Turbo"]);
+    let rejectFirst: ((reason: Error) => void) | undefined;
+    const service = vi.fn<HomeAssistant["callService"]>()
+      .mockImplementationOnce(() => new Promise((_, reject) => { rejectFirst = reject; }))
+      .mockResolvedValue(undefined);
+    const { element } = mount(target, {}, service);
+    await act(async () => document.body.append(element));
+    const select = element.shadowRoot!.querySelector("select")!;
+    for (const option of ["Silent", "Turbo"]) {
+      await act(async () => {
+        select.value = option;
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+    }
+    await act(async () => rejectFirst?.(new Error("offline")));
+    expect(select.value).toBe("Turbo");
+    expect(element.shadowRoot!.querySelector(".state")?.textContent).toBe("Turbo");
+  });
+
+  it("keeps the dropdown row shape when options are missing or unavailable", async () => {
+    for (const target of [entity("select", "Auto", []), entity("select", "unavailable", ["Auto"])]) {
+      const { element } = mount(target);
+      await act(async () => document.body.append(element));
+      expect(element.shadowRoot!.querySelector(".card.row")).not.toBeNull();
+      expect(element.shadowRoot!.querySelector("select")).toBeNull();
+    }
+  });
+
   it("renders text-only segments and calls select.select_option", async () => {
     const target = entity("select", "Auto", ["Auto", "Silent", "Turbo"]);
-    const { element, callService } = mount(target);
+    const { element, callService } = mount(target, { style: "segments" });
 
     await act(async () => document.body.append(element));
 
@@ -107,7 +202,7 @@ describe("liquid-glass-select-card", () => {
   it("keeps the pending selection until Home Assistant confirms it", async () => {
     vi.useFakeTimers();
     const target = entity("select", "Day", ["Day", "Night"]);
-    const { element, callService } = mount(target);
+    const { element, callService } = mount(target, { style: "segments" });
     await act(async () => document.body.append(element));
 
     const night = element.shadowRoot?.querySelectorAll<HTMLButtonElement>(".lg-glass-segmented > button")[1];
@@ -137,7 +232,7 @@ describe("liquid-glass-select-card", () => {
    */
   it("labels the options and the current value with Home Assistant's translations", async () => {
     const target = entity("select", "eco_mode", ["eco_mode", "turbo_mode"]);
-    const { element } = mount(target);
+    const { element } = mount(target, { style: "segments" });
     const words: Record<string, string> = { eco_mode: "エコ", turbo_mode: "ターボ" };
     const hass = element.hass as HomeAssistant;
     hass.formatEntityState = (stateObj, state) => words[state ?? stateObj.state] ?? "";
@@ -163,7 +258,7 @@ describe("liquid-glass-select-card", () => {
 
   it("shows a clear empty state when the entity exposes no options", async () => {
     const target = entity("select", "unknown value", []);
-    const { element } = mount(target);
+    const { element } = mount(target, { style: "segments" });
 
     await act(async () => document.body.append(element));
 

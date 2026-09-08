@@ -48,7 +48,7 @@ function fmtTime(seconds: number): string {
 
 const ownStyles = `
   .card {
-    gap: 16px;
+    gap: 12px;
   }
   .device {
     display: flex;
@@ -466,7 +466,7 @@ export const LiquidGlassMediaCard = defineLiquidGlassCard<MediaCardConfig>({
   component: MediaCard,
   styles: [tokens, reactCardStyles, glassSurfaceStyles, glassSliderStyles, ownStyles],
   getCardSize: () => 4,
-  getGridOptions: () => contentGridOptions(6),
+  getGridOptions: () => contentGridOptions(5),
   getStubConfig: (hass?: HomeAssistant, entities?: string[], entitiesFallback?: string[]) => ({
     entity: pickEntity(["media_player"], hass, entities, entitiesFallback),
   }),

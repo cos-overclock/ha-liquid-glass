@@ -290,6 +290,7 @@ export const en: Dict = {
   ed_show_range: "Show min and max",
   ed_scenes: "Scenes",
   ed_style_tiles: "Tiles",
+  ed_style_dropdown: "Dropdown",
   ed_style_segments: "Segments",
   ed_style_chips: "Chips",
   ed_style_plain: "Plain",

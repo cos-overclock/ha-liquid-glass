@@ -2,6 +2,7 @@ import { type CSSProperties } from "react";
 import type { HistoryPoint } from "../history";
 import { createTranslator, relativeTime, type Translator } from "../i18n";
 import { CardTitle, IconWell, UnavailableCard } from "../react/card-parts";
+import { sensorValueInCaption } from "../react/sensor-layout";
 import { reactCardStyles } from "../react/card-styles";
 import { defineLiquidGlassCard, type ReactCardProps } from "../react/define-liquid-glass-card";
 import { contentGridOptions, rowGridOptions } from "../react/grid-options";
@@ -14,7 +15,7 @@ import { entityName, entityStateText, formatNumber, isUnavailable, lighten, more
 
 export interface SensorCardConfig extends BaseCardConfig {
   /**
-   * Move the reading into the caption line instead of showing it as a large number.
+   * Show the reading in the caption. Defaults to true unless graph is explicitly set.
    * What is left is a single row, so the card stands exactly as tall as a switch card
    * beside it. The graph has no room in that shape and is not drawn.
    */
@@ -37,7 +38,7 @@ const H = 84;
 
 const ownStyles = `
   .card {
-    gap: 16px;
+    gap: 12px;
   }
   .value-row {
     display: flex;
@@ -215,7 +216,7 @@ function SensorCard({ config, hass, host }: ReactCardProps<SensorCardConfig>) {
   const entity = config.entity ? hass?.states[config.entity] : undefined;
   const name = entityName(hass, entity, config.name, config.entity ?? "");
   const hours = config.hours_to_show ?? 24;
-  const valueInCaption = config.value_in_caption === true;
+  const valueInCaption = sensorValueInCaption(config);
   /** A caption reading leaves a single row, which has nowhere to put a graph. */
   const showGraph = config.graph !== false && !valueInCaption;
   const showTrend = config.trend !== false;
@@ -231,7 +232,7 @@ function SensorCard({ config, hass, host }: ReactCardProps<SensorCardConfig>) {
 
   if (!entity || isUnavailable(entity)) {
     return <>
-      <UnavailableCard
+      <UnavailableCard row={valueInCaption}
         refraction={refraction}
         variant={config.glass_variant}
         icon={config.icon}
@@ -334,11 +335,12 @@ export const LiquidGlassSensorCard = defineLiquidGlassCard<SensorCardConfig>({
   component: SensorCard,
   styles: [tokens, reactCardStyles, glassSurfaceStyles, ownStyles],
   getCardSize: (config) => {
-    if (config.graph === false || config.value_in_caption) return config.value_in_caption ? 1 : 2;
+    if (sensorValueInCaption(config)) return 1;
+    if (config.graph === false) return 2;
     return 4;
   },
   getGridOptions: (config) => {
-    if (config.value_in_caption) return rowGridOptions();
+    if (sensorValueInCaption(config)) return rowGridOptions();
     return contentGridOptions(config.graph === false ? 3 : 4);
   },
   getStubConfig: (hass?: HomeAssistant, entities?: string[], entitiesFallback?: string[]) => ({

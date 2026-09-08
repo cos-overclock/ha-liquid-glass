@@ -371,7 +371,7 @@ const ownStyles = `
     pointer-events: none;
   }
   .card.climate-compact {
-    --lg-gap: 16px;
+    --lg-gap: 12px;
   }
   /*
    * Same geometry as every other slider in the app: a thin capsule, a round knob. The
@@ -388,7 +388,7 @@ const ownStyles = `
     display: flex;
     align-items: flex-end;
     justify-content: space-between;
-    gap: 16px;
+    gap: 12px;
   }
   .tile-target {
     min-width: 0;

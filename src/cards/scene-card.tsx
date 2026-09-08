@@ -39,7 +39,7 @@ const PRESS_MS = 900;
 
 const ownStyles = `
   .card {
-    gap: 14px;
+    gap: 12px;
   }
   .head {
     display: flex;

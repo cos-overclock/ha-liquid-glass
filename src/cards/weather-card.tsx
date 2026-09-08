@@ -76,7 +76,7 @@ const REFRESH_MS = 15 * 60 * 1000;
 
 const ownStyles = `
   .card {
-    gap: 16px;
+    gap: 12px;
   }
 
   /* Current conditions */
@@ -475,7 +475,7 @@ function WeatherCard({ config, hass, host }: ReactCardProps<WeatherCardConfig>) 
 
   if (!entity || isUnavailable(entity)) {
     return <>
-      <UnavailableCard
+      <UnavailableCard row={config.layout === "row"}
         refraction={refraction}
         variant={config.glass_variant}
         icon={config.icon}

@@ -1,3 +1,4 @@
+import { sensorValueInCaption } from "../react/sensor-layout";
 import type { Translator } from "../i18n";
 import type { HomeAssistant } from "../types";
 import { BUTTON_DOMAINS, SELECT_DOMAINS, SLIDER_DOMAINS } from "../card-constants";
@@ -209,7 +210,7 @@ export function schemaFor(
 
     case "sensor": {
       // A caption reading leaves no graph, so its options go away with it.
-      const compact = data?.value_in_caption === true;
+      const compact = sensorValueInCaption(data ?? {});
       return [
         ...head("sensor"),
         grid(compact ? [bool("value_in_caption"), bool("trend")] : [bool("value_in_caption"), bool("graph"), bool("trend")]),
@@ -282,6 +283,7 @@ export function schemaFor(
       return [
         ...head(SELECT_DOMAINS),
         select("style", [
+          { value: "dropdown", label: t("ed_style_dropdown") },
           { value: "segments", label: t("ed_style_segments") },
           { value: "chips", label: t("ed_style_chips") },
         ]),

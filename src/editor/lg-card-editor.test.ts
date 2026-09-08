@@ -36,6 +36,40 @@ const hass: HomeAssistant = {
 };
 
 describe("liquid-glass-card-editor", () => {
+  it.each([
+    [{}, true, undefined],
+    [{ graph: true }, false, true],
+    [{ graph: false }, false, false],
+    [{ value_in_caption: false }, false, undefined],
+    [{ value_in_caption: true, graph: true }, true, true],
+  ])("preserves sensor layout when saving %j", (settings, caption, graph) => {
+    const editor = new LiquidGlassCardEditor();
+    editor.hass = hass;
+    editor.setConfig({ type: "custom:liquid-glass-sensor-card", entity: "sensor.test", ...settings });
+    const form = editor.shadowRoot!.querySelector("ha-form") as TestForm;
+    expect(form.data?.value_in_caption).toBe(caption);
+    expect(!!field(form.schema, "graph")).toBe(!caption);
+    const changed = vi.fn();
+    editor.addEventListener("config-changed", changed);
+    form.dispatchEvent(new CustomEvent("value-changed", { detail: { value: form.data } }));
+    const saved = changed.mock.calls[0][0].detail.config;
+    expect(saved.value_in_caption).toBe(caption);
+    if (graph !== undefined) expect(saved.graph).toBe(graph);
+    editor.setConfig(saved);
+    expect(form.data?.value_in_caption).toBe(caption);
+  });
+
+  it("retains an explicit segments selection when saving", () => {
+    const editor = new LiquidGlassCardEditor();
+    editor.hass = hass;
+    editor.setConfig({ type: "custom:liquid-glass-select-card", ...{ style: "segments" } });
+    const form = editor.shadowRoot!.querySelector("ha-form") as TestForm;
+    const changed = vi.fn();
+    editor.addEventListener("config-changed", changed);
+    form.dispatchEvent(new CustomEvent("value-changed", { detail: { value: form.data } }));
+    expect(changed.mock.calls[0][0].detail.config.style).toBe("segments");
+  });
+
   it("feeds defaults to ha-form and emits a compact config", () => {
     const editor = new LiquidGlassCardEditor();
     const form = editor.shadowRoot?.querySelector("ha-form") as TestForm;
@@ -112,7 +146,7 @@ describe("liquid-glass-card-editor", () => {
     });
   });
 
-  it("shows segments as the select default and omits that default from config", () => {
+  it("shows dropdown as the select default and omits that default from config", () => {
     const editor = new LiquidGlassCardEditor();
     const form = editor.shadowRoot?.querySelector("ha-form") as TestForm;
     editor.hass = hass;
@@ -121,7 +155,7 @@ describe("liquid-glass-card-editor", () => {
       entity: "select.fan_mode",
     });
 
-    expect(form.data?.style).toBe("segments");
+    expect(form.data?.style).toBe("dropdown");
 
     const changed = vi.fn();
     editor.addEventListener("config-changed", changed);

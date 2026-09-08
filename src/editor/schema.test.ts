@@ -199,6 +199,7 @@ describe("editor metadata", () => {
   it("declares every default-on field in some card's schema", () => {
     const declared = new Set<string>();
     for (const type of CARD_TYPES) for (const name of fieldNames(schemaFor(type, t))) declared.add(name);
+    for (const name of fieldNames(schemaFor("custom:liquid-glass-sensor-card", t, { value_in_caption: false }))) declared.add(name);
     const orphans = [...DEFAULT_ON].filter((name) => !declared.has(name));
     expect(orphans).toEqual([]);
   });

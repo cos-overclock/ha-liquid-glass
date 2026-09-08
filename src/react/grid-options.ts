@@ -6,12 +6,12 @@ function clampMinColumns(minColumns: number, columns: 6 | 12): number {
   return Math.min(columns, Math.max(1, rounded));
 }
 
-/** A compact row card: half-width by default and exactly two 56px grid rows tall. */
+/** A compact row card: half-width by default and one 56px grid row tall. */
 export function rowGridOptions(minColumns = 6): LovelaceGridOptions {
   return {
-    rows: 2,
-    min_rows: 2,
-    max_rows: 2,
+    rows: 1,
+    min_rows: 1,
+    max_rows: 1,
     columns: 6,
     min_columns: clampMinColumns(minColumns, 6),
     max_columns: 12,

@@ -160,7 +160,7 @@ export function resolveSliderSpec(entity: HassEntity, config: SliderCardConfig):
 
 const ownStyles = `
   .card {
-    gap: 16px;
+    gap: 12px;
     width: 100%;
   }
   .value {

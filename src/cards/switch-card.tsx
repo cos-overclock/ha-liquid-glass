@@ -124,7 +124,7 @@ function SwitchCard({ config, hass, host }: ReactCardProps<SwitchCardConfig>) {
 
   if (!entity || isUnavailable(entity)) {
     return <>
-      <UnavailableCard
+      <UnavailableCard row
         refraction={refraction}
         variant={config.glass_variant}
         icon={config.icon}

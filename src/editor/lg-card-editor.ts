@@ -1,3 +1,4 @@
+import { sensorValueInCaption } from "../react/sensor-layout";
 import { DEFAULT_LIGHT_FAVORITES } from "../card-constants";
 import { createTranslator } from "../i18n";
 import type { BaseCardConfig, HomeAssistant } from "../types";
@@ -60,7 +61,8 @@ export class LiquidGlassCardEditor extends HTMLElement {
       data.design = design === "a" ? "compact" : design ?? "classic";
     }
     if (cardKind(config.type) === "separator") data.style = rest.style ?? "pill";
-    if (cardKind(config.type) === "select") data.style = rest.style ?? "segments";
+    if (cardKind(config.type) === "select") data.style = rest.style ?? "dropdown";
+    if (cardKind(config.type) === "sensor") data.value_in_caption = sensorValueInCaption(rest);
 
     for (const name of fieldNames(schemaFor(config.type, this.t, data, this.hassValue))) {
       if (!DEFAULT_ON.has(name)) continue;
@@ -87,6 +89,8 @@ export class LiquidGlassCardEditor extends HTMLElement {
 
     for (const [key, value] of Object.entries(out)) {
       if (typeof value !== "boolean") continue;
+      // These explicit choices determine the sensor layout, including false.
+      if (cardKind(out.type as string | undefined) === "sensor" && (key === "value_in_caption" || key === "graph")) continue;
       if (compactClimate && key === "show_fan_mode") {
         if (value === false) delete out[key];
         continue;
@@ -103,7 +107,7 @@ export class LiquidGlassCardEditor extends HTMLElement {
     if (out.layout === "full") delete out.layout;
     if (out.design === "classic") delete out.design;
     if (out.style === "pill" && cardKind(out.type as string | undefined) === "separator") delete out.style;
-    if (out.style === "segments" && cardKind(out.type as string | undefined) === "select") delete out.style;
+    if (out.style === "dropdown" && cardKind(out.type as string | undefined) === "select") delete out.style;
     const favorites = out.favorites;
     if (Array.isArray(favorites) && favorites.join() === DEFAULT_LIGHT_FAVORITES.join()) delete out.favorites;
 

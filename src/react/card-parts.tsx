@@ -121,6 +121,7 @@ export function Badge({
  * usual, with an idle well and the state line explaining why there is nothing else.
  */
 export function UnavailableCard({
+  row = false,
   refraction,
   variant,
   icon = "mdi:help-circle-outline",
@@ -128,6 +129,7 @@ export function UnavailableCard({
   label,
   onOpen,
 }: {
+  row?: boolean;
   refraction: boolean;
   variant?: "regular" | "clear";
   icon?: string;
@@ -137,7 +139,7 @@ export function UnavailableCard({
 }) {
   return (
     <LiquidGlassSurface
-      className="card"
+      className={`card${row ? " row" : ""}`}
       refraction={refraction}
       variant={variant}
       style={{ display: "flex", position: "relative" }}
