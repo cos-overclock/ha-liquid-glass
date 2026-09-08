@@ -36,7 +36,8 @@ export const GLASS_SLIDER_COLLAPSE_ANIM = { ease: cubicBezier(0.36, 0, 0.18, 1),
 const SLIDER_BASE: Partial<GlassOptics> = {
   mapSize: 128,
   depth: 0.2,
-  dispersion: 0.5,
+  // Preserve the translucent source alpha, including while the thumb is dragged.
+  dispersion: 0,
   scaleX: 0.06,
   scaleY: 0.06,
   clipToShape: true,
@@ -718,7 +719,7 @@ export function GlassSlider({
           restShadowOpacity: motion.restShadowOpacity,
         }}
         filterResolution={filterResolutionForQuality(quality)}
-        behind={scheme === "dark" ? "#1f1f24" : "#ffffff"}
+        behind="rgba(0, 0, 0, 0)"
         style={{
           left: -geometry.pad,
           top: -geometry.pad,

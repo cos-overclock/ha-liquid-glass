@@ -40,7 +40,8 @@ const COLLAPSE_ANIM = {
 const SEGMENT_OPTICS: Partial<GlassOptics> = {
   mapSize: 256,
   depth: 0.2,
-  dispersion: 0.28,
+  // RGB recombination adds alpha in the copied-source filter, darkening clear backgrounds.
+  dispersion: 0,
   scaleX: 0.065,
   scaleY: 0.09,
   clipToShape: true,
@@ -576,8 +577,8 @@ export function GlassSegmentedControl({
           "--n": String(count),
           "--seg-w": `calc((100% - ${CONTROL_PADDING * 2}px - ${(count - 1) * CONTROL_GAP}px) / ${count})`,
           "--selected-color": selectedColor,
-          "--glass-segment-track": scheme === "dark" ? "#2a2828" : "#e1dfdf",
-          "--glass-segment-pill": scheme === "dark" ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.62)",
+          "--glass-segment-track": "var(--lg-track-bg)",
+          "--glass-segment-pill": "var(--lg-segment-selected)",
           "--lg-segment-press-scale": pressed ? "1.18" : "1",
         } as React.CSSProperties
       }
@@ -601,7 +602,9 @@ export function GlassSegmentedControl({
             restShadowOpacity: motion.restShadowOpacity,
           }}
           filterResolution={filterResolutionForQuality(quality)}
-          behind={scheme === "dark" ? "#1f1f24" : "#ffffff"}
+          // Explicit alpha preserves the dashboard backdrop; "transparent" would
+          // make Glass sample an opaque ancestor background instead.
+          behind="rgba(0, 0, 0, 0)"
           style={{
             left: -lensPad,
             top: -lensPad,

@@ -4772,7 +4772,7 @@ var Xi = .05, Zi = 30, Qi = {
 }, ea = {
 	mapSize: 128,
 	depth: .2,
-	dispersion: .5,
+	dispersion: 0,
 	scaleX: .06,
 	scaleY: .06,
 	clipToShape: !0,
@@ -5087,7 +5087,7 @@ function ua({ value: e, highValue: t, min: n, max: r, step: i, keyboardStep: a, 
 				restShadowOpacity: H.restShadowOpacity
 			},
 			filterResolution: kr(C),
-			behind: l === "dark" ? "#1f1f24" : "#ffffff",
+			behind: "rgba(0, 0, 0, 0)",
 			style: {
 				left: -L.pad,
 				top: -L.pad,
@@ -5140,7 +5140,7 @@ var da = Gn(.34, 1.36, .42, 1), fa = Gn(.36, 0, .18, 1), pa = {
 }, ga = {
 	mapSize: 256,
 	depth: .2,
-	dispersion: .65,
+	dispersion: 0,
 	strength: .19,
 	clipToShape: !0,
 	softEdge: !0,
@@ -5302,7 +5302,7 @@ function xa({ checked: e, onCheckedChange: t, disabled: n = !1, ariaLabel: r, wi
 		},
 		onDragStart: (e) => e.preventDefault(),
 		children: !o && /* @__PURE__ */ Y("div", { className: `lg-glass-switch-static-puck${I ? " expanded" : ""}` })
-	}), fe = c ?? (f ? "#2a2828" : "#e1dfdf"), pe = l ?? "#0a84ff", me = u ?? (f ? "#1f1f24" : "#ffffff"), he = /* @__PURE__ */ Y("div", {
+	}), fe = c ?? "var(--lg-track-bg)", pe = l ?? "#0a84ff", me = u ?? "rgba(0, 0, 0, 0)", he = /* @__PURE__ */ Y("div", {
 		"aria-hidden": "true",
 		style: {
 			width: i,
@@ -7008,7 +7008,7 @@ var vo = Ai({
 }, So = {
 	mapSize: 256,
 	depth: .2,
-	dispersion: .28,
+	dispersion: 0,
 	scaleX: .065,
 	scaleY: .09,
 	clipToShape: !0,
@@ -7315,8 +7315,8 @@ function ko({ items: e, value: t, onValueChange: n, refraction: r, scheme: i, se
 			"--n": String(j),
 			"--seg-w": `calc((100% - 6px - ${(j - 1) * Eo}px) / ${j})`,
 			"--selected-color": a,
-			"--glass-segment-track": i === "dark" ? "#2a2828" : "#e1dfdf",
-			"--glass-segment-pill": i === "dark" ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.62)",
+			"--glass-segment-track": "var(--lg-track-bg)",
+			"--glass-segment-pill": "var(--lg-segment-selected)",
 			"--lg-segment-press-scale": y ? "1.18" : "1"
 		},
 		onPointerDown: ce,
@@ -7340,7 +7340,7 @@ function ko({ items: e, value: t, onValueChange: n, refraction: r, scheme: i, se
 				restShadowOpacity: B.restShadowOpacity
 			},
 			filterResolution: kr(l),
-			behind: i === "dark" ? "#1f1f24" : "#ffffff",
+			behind: "rgba(0, 0, 0, 0)",
 			style: {
 				left: -L,
 				top: -L,
@@ -7476,7 +7476,7 @@ function zo({ id: e, x: t, y: n, rotation: r, motionPosition: i, active: a, refr
 				tintOpacity: g.tintOpacity
 			},
 			filterResolution: 1,
-			behind: s === "dark" ? "#1f1f24" : "#ffffff",
+			behind: "rgba(0, 0, 0, 0)",
 			style: {
 				width: 78,
 				height: 90
@@ -11452,7 +11452,7 @@ var Vc = Ai({
 		icon: "mdi:lightbulb-outline",
 		style: "pill"
 	})
-}), Hc = "0.8.0", Uc = "2026-09-08 10:41", Wc = "https://github.com/cos-overclock/ha-liquid-glass", Gc = (e, t) => !!((e.attributes.supported_features ?? 0) & t);
+}), Hc = "0.8.0", Uc = "2026-09-08 10:57", Wc = "https://github.com/cos-overclock/ha-liquid-glass", Gc = (e, t) => !!((e.attributes.supported_features ?? 0) & t);
 function Kc(e, t, n, r, i, a = (e) => ({ entity: e })) {
 	return {
 		type: e,

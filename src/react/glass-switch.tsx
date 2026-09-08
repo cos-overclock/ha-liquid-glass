@@ -32,7 +32,8 @@ const COLLAPSE_ANIM = { ease: SETTLE, duration: 0.46 };
 const SWITCH_OPTICS: Partial<GlassOptics> = {
   mapSize: 256,
   depth: 0.2,
-  dispersion: 0.65,
+  // Preserve the translucent source alpha, as on the surrounding card surface.
+  dispersion: 0,
   strength: 0.19,
   clipToShape: true,
   softEdge: true,
@@ -496,9 +497,10 @@ export function GlassSwitch({
     </GlassDiv>
   );
 
-  const resolvedTrack = trackColor ?? (isDark ? "#2a2828" : "#e1dfdf");
+  const resolvedTrack = trackColor ?? "var(--lg-track-bg)";
   const resolvedActive = activeColor ?? "#0a84ff";
-  const resolvedSurface = surface ?? (isDark ? "#1f1f24" : "#ffffff");
+  // Explicit alpha avoids Glass's automatic opaque ancestor background sampling.
+  const resolvedSurface = surface ?? "rgba(0, 0, 0, 0)";
   const track = (
     <div
       aria-hidden="true"

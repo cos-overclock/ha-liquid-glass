@@ -199,7 +199,7 @@ function DialGlassThumb({
         // A supersampled refraction surface is twice this box's dimensions. Rotating
         // that internal copy gives it a different centre from the tint layer.
         filterResolution={1}
-        behind={scheme === "dark" ? "#1f1f24" : "#ffffff"}
+        behind="rgba(0, 0, 0, 0)"
         style={{ width: surfaceWidth, height: surfaceHeight }}
         refract={(
           <div
