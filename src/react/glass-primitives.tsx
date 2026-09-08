@@ -387,7 +387,11 @@ export function LiquidGlassSurface({
       className={surfaceClass}
       optics={opticsFor(variant, surface, quality)}
       refract={source}
-      behind="var(--primary-background-color, transparent)"
+      // Keep the copy transparent over the dashboard, as in the demo. The surface
+      // already supplies the theme tint; HA's primary background would cover it.
+      // Use rgba instead of "transparent", which makes Glass sample an ancestor's
+      // opaque background automatically.
+      behind="rgba(0, 0, 0, 0)"
       filterResolution={filterResolutionForQuality(quality)}
     >
       {children}

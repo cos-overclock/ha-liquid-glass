@@ -4207,7 +4207,7 @@ function Z({ refraction: e, variant: t = "regular", surface: n = "card", sourceA
 		className: u,
 		optics: Ur(t, n, c),
 		refract: l,
-		behind: "var(--primary-background-color, transparent)",
+		behind: "rgba(0, 0, 0, 0)",
 		filterResolution: kr(c),
 		children: o
 	}) : /* @__PURE__ */ Y("div", {
@@ -11452,7 +11452,7 @@ var Vc = Ai({
 		icon: "mdi:lightbulb-outline",
 		style: "pill"
 	})
-}), Hc = "0.8.0", Uc = "2026-09-08 09:46", Wc = "https://github.com/cos-overclock/ha-liquid-glass", Gc = (e, t) => !!((e.attributes.supported_features ?? 0) & t);
+}), Hc = "0.8.0", Uc = "2026-09-08 10:41", Wc = "https://github.com/cos-overclock/ha-liquid-glass", Gc = (e, t) => !!((e.attributes.supported_features ?? 0) & t);
 function Kc(e, t, n, r, i, a = (e) => ({ entity: e })) {
 	return {
 		type: e,
