@@ -290,6 +290,7 @@ export const ja: Dict = {
   ed_show_range: "最小値と最大値を表示",
   ed_scenes: "シーン一覧",
   ed_style_tiles: "タイル",
+  ed_style_dropdown: "ドロップダウン",
   ed_style_segments: "セグメント",
   ed_style_chips: "チップ",
   ed_style_plain: "プレーン",

@@ -35,7 +35,7 @@ interface LockVisual {
 
 const ownStyles = `
   .card {
-    gap: 16px;
+    gap: 12px;
     width: 100%;
   }
   .lock-control {

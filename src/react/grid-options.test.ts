@@ -27,9 +27,9 @@ beforeAll(async () => {
 describe("Sections grid option presets", () => {
   it("defines compact, content, auto-height and separator shapes", () => {
     expect(rowGridOptions()).toEqual({
-      rows: 2,
-      min_rows: 2,
-      max_rows: 2,
+      rows: 1,
+      min_rows: 1,
+      max_rows: 1,
       columns: 6,
       min_columns: 6,
       max_columns: 12,
@@ -88,8 +88,8 @@ describe("Liquid Glass Sections sizing", () => {
     }
   });
 
-  it("uses a two-row half-width footprint for compact row cards", () => {
-    for (const kind of ["switch", "binary-sensor", "button"]) {
+  it("uses a one-row half-width footprint for compact row cards", () => {
+    for (const kind of ["switch", "binary-sensor", "button", "person", "sensor", "select"]) {
       expect(options(kind)).toEqual(rowGridOptions());
     }
     expect(options("sensor", { value_in_caption: true })).toEqual(rowGridOptions());
@@ -101,7 +101,8 @@ describe("Liquid Glass Sections sizing", () => {
     expect(options("sensor", { graph: true }).rows).toBe(4);
     expect(options("slider", { show_range: false }).rows).toBe(2);
     expect(options("slider", { show_range: true }).rows).toBe(3);
-    expect(options("select").rows).toBe(3);
+    expect(options("select", { style: "segments" }).rows).toBe(3);
+    expect(options("select", { style: "chips" }).rows).toBeUndefined();
     expect(options("climate", { design: "compact" })).toMatchObject({ rows: 4, columns: 6 });
     expect(options("climate", { design: "classic" })).toMatchObject({ rows: 6, columns: 12 });
     expect(options("lock", { buttons: [{}, {}, {}] }).rows).toBe(5);

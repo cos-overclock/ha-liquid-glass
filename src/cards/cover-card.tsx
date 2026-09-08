@@ -25,7 +25,7 @@ const TRACK_H = 180;
 
 const ownStyles = `
   .card {
-    gap: 16px;
+    gap: 12px;
   }
   .position-row {
     display: flex;

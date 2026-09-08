@@ -47,6 +47,7 @@
         position: relative;
         z-index: 2;
         display: flex;
+        flex-wrap: wrap;
         gap: 12px;
         align-items: center;
         padding: 14px 24px;
@@ -68,12 +69,25 @@
         z-index: 1;
         display: grid;
         grid-template-columns: repeat(auto-fill, var(--w, 380px));
-        gap: 32px;
+        gap: var(--demo-gap, 32px);
         justify-content: center;
         padding: 12px 24px 80px;
         align-items: start;
       }
       .col { display: flex; flex-direction: column; gap: 24px; }
+      main.full-width { grid-template-columns: minmax(0, 1fr); }
+      main.sections {
+        box-sizing: border-box;
+        grid-template-columns: repeat(12, minmax(0, 1fr));
+        grid-auto-rows: 56px;
+        gap: 8px;
+        width: min(100%, calc(var(--w, 380px) * 2 + 56px));
+        margin-inline: auto;
+      }
+      main.sections.full-width { width: 100%; }
+      main.sections > * { grid-column: span 6; }
+      #measurements { position: relative; z-index: 1; margin: 8px 24px; font: 12px monospace; white-space: pre-wrap; }
+      body.dark #measurements { color: white; }
     </style>
   </head>
   <body>
@@ -85,9 +99,13 @@
       <button id="theme">Toggle dark</button>
       <button id="refr">Toggle refraction</button>
       <button id="lang">Toggle language</button>
+      <button id="sections">Sections grid</button>
+      <button id="full-width">Full width</button>
+      <button id="unavailable">Toggle unavailable</button>
       <label>Width <input id="w" type="range" min="170" max="440" step="10" value="380" /> <span id="wv">380</span>px</label>
       <span id="log" style="opacity:.7"></span>
     </div>
+    <pre id="measurements" hidden></pre>
     <main id="main"></main>
 
     <script type="module">
@@ -309,6 +327,7 @@
         ["liquid-glass-switch-card", { entity: "switch.desk", power_entity: "sensor.desk_power" }],
         ["liquid-glass-switch-card", { entity: "switch.desk_off" }],
         ["liquid-glass-sensor-card", { entity: "sensor.living_temp", secondary_entity: "sensor.living_humidity" }],
+        ["liquid-glass-sensor-card", { entity: "sensor.living_temp", graph: true }],
         ["liquid-glass-sensor-card", { entity: "sensor.living_temp", secondary_entity: "sensor.living_humidity", graph: false }],
         ["liquid-glass-sensor-card", { entity: "sensor.living_temp", value_in_caption: true }],
         ["liquid-glass-switch-card", { entity: "switch.desk_off" }],
@@ -332,6 +351,7 @@
         ["liquid-glass-slider-card", { entity: "input_number.hot_water", accent: "#FF9F0A", icon: "mdi:waves" }],
         ["liquid-glass-slider-card", { entity: "fan.bedroom_off" }],
         ["liquid-glass-select-card", { entity: "select.fan_mode" }],
+        ["liquid-glass-select-card", { entity: "select.fan_mode", style: "segments" }],
         ["liquid-glass-select-card", { entity: "input_select.cleaning_mode", style: "chips", accent: "#0A84FF" }],
         ["liquid-glass-weather-card", { entity: "weather.tokyo" }],
         ["liquid-glass-weather-card", { entity: "weather.tokyo", show_daily: false, show_metrics: false }],
@@ -379,14 +399,31 @@
       ];
       // ?focus=<name> narrows the page to liquid-glass-<name>-card.
       const focus = params.get("focus");
-      const visibleCards = focus === "climate-a"
+      const visibleCards = focus === "compact"
+        ? cards.filter(([type, cfg]) => ["liquid-glass-button-card", "liquid-glass-switch-card", "liquid-glass-binary-sensor-card", "liquid-glass-person-card"].includes(type)
+          || (type === "liquid-glass-sensor-card" && cfg.graph === undefined)
+          || (type === "liquid-glass-select-card" && cfg.style === undefined)
+          || (type === "liquid-glass-weather-card" && cfg.layout === "row"))
+        : focus === "climate-a"
         ? cards.filter(([type, cfg]) => type === "liquid-glass-climate-card" && cfg.design === "compact")
         : focus
           ? cards.filter(([type]) => type === `liquid-glass-${focus}-card`)
           : cards;
 
       const main = document.getElementById("main");
+      main.style.setProperty("--demo-gap", `${Number(params.get("gap") ?? 32)}px`);
+      const measurements = document.getElementById("measurements");
+      measurements.hidden = focus !== "compact";
       const els = [];
+      function measure() {
+        if (measurements.hidden) return;
+        measurements.textContent = els.map((el) => {
+          const surface = el.shadowRoot?.querySelector(".card");
+          const rect = surface?.getBoundingClientRect();
+          return `${el.localName.replace("liquid-glass-", "")}: ${rect?.width.toFixed(1)} × ${rect?.height.toFixed(1)}px / ${el.getGridOptions().rows ?? "auto"} row`;
+        }).join("\n");
+      }
+      const measurementsObserver = new ResizeObserver(measure);
       const initialRefraction = params.get("refraction");
       let refraction = initialRefraction === "off" ? false : initialRefraction === "on" ? true : "auto";
       const initialQuality = params.get("quality");
@@ -394,6 +431,7 @@
         ? initialQuality
         : "auto";
       function mount() {
+        measurementsObserver.disconnect();
         main.innerHTML = "";
         els.length = 0;
         for (const [type, cfg] of visibleCards) {
@@ -401,8 +439,10 @@
           if (type === "liquid-glass-climate-card" && cfg.design === "compact") el.id = "demo-climate-compact";
           el.setConfig({ ...cfg, refraction, refraction_quality: refractionQuality });
           el.hass = hass;
+          el.style.gridRow = `span ${el.getGridOptions().rows ?? 1}`;
           main.appendChild(el);
           els.push(el);
+          measurementsObserver.observe(el);
         }
       }
       function push() {
@@ -410,6 +450,21 @@
         for (const el of els) el.hass = snapshot;
       }
       mount();
+      document.getElementById("sections").onclick = () => {
+        main.classList.toggle("sections");
+        measure();
+      };
+      document.getElementById("full-width").onclick = () => {
+        main.classList.toggle("full-width");
+        measure();
+      };
+      let unavailable = false;
+      document.getElementById("unavailable").onclick = () => {
+        unavailable = !unavailable;
+        if (!unavailable) { push(); return; }
+        const snapshot = { ...hass, states: Object.fromEntries(Object.entries(states).map(([id, entity]) => [id, { ...entity, state: "unavailable" }])) };
+        for (const el of els) el.hass = snapshot;
+      };
 
       document.getElementById("theme").onclick = () => {
         hass.themes = { darkMode: !hass.themes.darkMode };

@@ -160,7 +160,7 @@ const cards: CustomCardRegistration[] = [
     (entity) => feature(entity, SET_VALUE | SET_VALUE_RANGE),
   ),
   entityCard("liquid-glass-switch-card", "Liquid Glass Switch", "Single row toggle", SWITCH_DOMAINS),
-  entityCard("liquid-glass-sensor-card", "Liquid Glass Sensor", "Value, trend and 24h sparkline", ["sensor"]),
+  entityCard("liquid-glass-sensor-card", "Liquid Glass Sensor", "Single row reading with optional trend and graph", ["sensor"]),
   entityCard("liquid-glass-binary-sensor-card", "Liquid Glass Binary Sensor", "Door / motion / window status row", ["binary_sensor"]),
   entityCard("liquid-glass-lock-card", "Liquid Glass Lock", "Slide to lock / unlock", ["lock"]),
   entityCard(
@@ -172,7 +172,7 @@ const cards: CustomCardRegistration[] = [
   ),
   entityCard("liquid-glass-media-card", "Liquid Glass Media", "Now playing with transport and volume", ["media_player"]),
   entityCard("liquid-glass-slider-card", "Liquid Glass Slider", "Any numeric value as a draggable track", SLIDER_DOMAINS, supportsSlider),
-  entityCard("liquid-glass-select-card", "Liquid Glass Select", "Choose an option with glass segments or chips", SELECT_DOMAINS),
+  entityCard("liquid-glass-select-card", "Liquid Glass Select", "Single row dropdown with optional segments or chips", SELECT_DOMAINS),
   entityCard("liquid-glass-weather-card", "Liquid Glass Weather", "Current conditions with hourly and daily forecast", ["weather"]),
   entityCard("liquid-glass-button-card", "Liquid Glass Button", "Run a scene, script, automation or button", BUTTON_DOMAINS),
   entityCard(

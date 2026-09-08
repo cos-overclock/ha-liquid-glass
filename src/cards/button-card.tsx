@@ -130,7 +130,7 @@ function ButtonCard({ config, hass, host }: ReactCardProps<ButtonCardConfig>) {
 
   if (!entity || isUnavailable(entity)) {
     return <>
-      <UnavailableCard
+      <UnavailableCard row
         refraction={refraction}
         variant={config.glass_variant}
         icon={config.icon}

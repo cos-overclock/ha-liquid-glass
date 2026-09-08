@@ -28,11 +28,11 @@ function PersonCard({ config, hass, host }: ReactCardProps<PersonCardConfig>) {
   const name = entityName(hass, entity, config.name, config.entity ?? "");
   const open = () => moreInfo(host, config.entity);
   const icon = config.icon ?? entity?.attributes.icon ?? (config.entity?.startsWith("device_tracker.") ? "mdi:cellphone-marker" : "mdi:account");
-  if (!entity || isUnavailable(entity)) return <UnavailableCard refraction={refraction} variant={config.glass_variant} icon={icon} name={name} label={t("unavailable")} onOpen={open} />;
+  if (!entity || isUnavailable(entity)) return <UnavailableCard row refraction={refraction} variant={config.glass_variant} icon={icon} name={name} label={t("unavailable")} onOpen={open} />;
   const home = entity.state === "home";
   const state = entityStateText(hass, entity, home ? t("person_home") : entity.state === "not_home" ? t("person_away") : entity.state);
   const picture = config.show_entity_picture !== false ? entity.attributes.entity_picture : undefined;
-  return <LiquidGlassSurface className="card" refraction={refraction} variant={config.glass_variant} sourceAccent={home ? "#34C759" : "#8E8E93"} style={{ display: "flex", position: "relative" }}>
+  return <LiquidGlassSurface className="card row" refraction={refraction} variant={config.glass_variant} sourceAccent={home ? "#34C759" : "#8E8E93"} style={{ display: "flex", position: "relative" }}>
     <div className="header">
       <div className="person-avatar" onClick={open}>
         <IconWell icon={icon} style={home ? { from: "#82DF9C", to: "#248A3D", glow: "rgba(52,199,89,.25)" } : undefined} />

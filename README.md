@@ -18,13 +18,13 @@ React版カードは屈折対象となる背景レイヤーもReactで所有し�
 | Alarm | `custom:liquid-glass-alarm-control-panel-card` | `alarm_control_panel`（警戒モード / 解除 / 暗証番号） |
 | Climate | `custom:liquid-glass-climate-card` | `climate`（270° ダイヤル、モード、風量 / プリセット） |
 | Switch | `custom:liquid-glass-switch-card` | `switch` `input_boolean` `fan` など |
-| Sensor | `custom:liquid-glass-sensor-card` | `sensor`（数値 + 24h スパークライン + トレンド） |
+| Sensor | `custom:liquid-glass-sensor-card` | `sensor`（1行の値表示、任意でグラフ / トレンド） |
 | Binary Sensor | `custom:liquid-glass-binary-sensor-card` | `binary_sensor`（device_class に応じた表示） |
 | Lock | `custom:liquid-glass-lock-card` | `lock`（スライドして施錠 / 解錠） |
 | Cover | `custom:liquid-glass-cover-card` | `cover`（ブラインド / カーテン、位置ドラッグ、チルト） |
 | Media | `custom:liquid-glass-media-card` | `media_player`（再生操作、シーク、音量） |
 | Slider | `custom:liquid-glass-slider-card` | 任意の数値（`input_number` `number` `fan` `light` など） |
-| Select | `custom:liquid-glass-select-card` | `select` `input_select`（セグメント / チップ） |
+| Select | `custom:liquid-glass-select-card` | `select` `input_select`（ドロップダウン / セグメント / チップ） |
 | Weather | `custom:liquid-glass-weather-card` | `weather`（現在の天気、時間ごと・日ごとの予報） |
 | Button | `custom:liquid-glass-button-card` | `scene` `script` `automation` `button` `input_button` |
 | Scenes | `custom:liquid-glass-scene-card` | 複数のシーンをタイルまたはチップで並べる |
@@ -42,7 +42,7 @@ Home Assistant 2026.6 以降では、ダッシュボード編集時に先にエ�
 
 ## 幅への追従
 
-カード幅に応じて余白、アイコン、文字サイズが縮みます。基準は 380px で、狭い列では約 170px まで崩れずに収まります。ビューポートではなくカード自身の幅を見ているため、セクションビューの狭い列でも、パネル全幅でも同じように表示されます。
+Button・Switch・Binary Sensor・Person・1行のSensor / Weather・ドロップダウンのSelectは高さ56pxです。アイコン背景40px、上下余白8px、左右余白12pxを基準とし、広い列でも縦方向には拡大しません。複数段のカードも外側余白と段間隔を最大12pxに抑え、数値・グラフ・操作部はカード幅に追従します。約170pxの狭い列にも対応します。ビューポートではなくカード自身の幅を見ているため、セクションビューの狭い列でも、パネル全幅でも同じように表示されます。
 
 250px を下回るとステータスバッジ、260px を下回るとセンサーの範囲表示が省略されます。どちらも状態テキストやグラフが同じ情報を示すためです。320px を下回るとエアコンの風量とプリセットが縦に並びます。
 
@@ -50,14 +50,16 @@ Home Assistant 2026.6 以降では、ダッシュボード編集時に先にエ�
 
 Home AssistantのSectionsビューでは、各カードが`getGridOptions()`で推奨サイズと最小サイズを公開します。カード追加時から用途に合った幅になり、ダッシュボードの編集画面で半幅と全幅を切り替えられます。
 
-- Switch、Binary Sensor、Buttonと1行表示のSensor / Weather: 半幅、2行
+- Switch、Binary Sensor、Button、Person、1行表示のSensor / Weather、ドロップダウンのSelect: 半幅、1行（56px）
 - Light、Slider、Select、Lock、Cover、Media: 半幅を基準に、全幅まで変更可能
 - 通常表示のClimate、Weather、Scenes: 全幅を基準に、半幅まで変更可能
 - Separator: 全幅を基準に、4分の1幅まで変更可能
 - Camera: 映像のアスペクト比から高さを決定
 - Group: 展開状態と子カードから高さを決定
 
-表示項目によって必要な高さが変わるカードでは、設定内容に合わせて推奨行数も変わります。たとえばSensorのグラフ、Sliderの範囲表示、Weatherの日数、Sceneの件数、Lockの追加ボタンが反映されます。CameraとGroupは内容から高さが決まるため、Sectionsの固定行には合わせず自然な高さを維持します。
+表示項目によって必要な高さが変わるカードでは、設定内容に合わせて推奨行数も変わります。たとえばSensorのグラフ、Sliderの範囲表示、Weatherの日数、Sceneの件数、Lockの追加ボタンが反映されます。Selectのチップ表示は選択肢の折り返しに応じた高さです。CameraとGroupは内容から高さが決まるため、Sectionsの固定行には合わせず自然な高さを維持します。
+
+既存のダッシュボードで`grid_options.rows: 2`などの明示指定が残っていると、小型化後も配置に空きが残ります。対象カードのレイアウト設定で高さを1行にするか、YAMLの`grid_options.rows`を削除して既定値に戻してください。保存済みの幅や高さは自動変更しません。
 
 ## Liquid Glass 効果について
 
@@ -336,13 +338,15 @@ power_entity: sensor.desk_outlet_power   # オン時に消費電力を表示
 
 ### Sensor
 
+未指定時は値をキャプションに表示する56pxの1行カードです。`value_in_caption`の明示指定が最優先で、未指定でも`graph: true / false`を指定したカードは従来の大きな数値表示を維持します。以下はグラフ付き表示の例です。
+
 ```yaml
 type: custom:liquid-glass-sensor-card
 entity: sensor.living_room_temperature
 secondary_entity: sensor.living_room_humidity
 secondary_label: 湿度
 hours_to_show: 24
-graph: true              # false で大きな数値のみのコンパクト表示
+graph: true              # false で大きな数値のみ（1行表示ではありません）
 value_in_caption: false  # true で値を説明文に移し、1行のカードにする
 trend: true              # 1 時間前との差分バッジ
 accent: "#FF9F0A"
@@ -457,16 +461,16 @@ service_key: level        # 値を渡すキー。省略時は value
 
 ### Select
 
-`select` と `input_select` が公開する選択肢を、動くガラスレンズのセグメントとして操作します。ファンモード、照明プロファイル、掃除モードなど、離散的な設定値に向いています。
+`select` と `input_select` が公開する選択肢を、標準では56pxの1行ドロップダウンで操作します。現在値をタップするとOS / ブラウザー標準の候補一覧が開きます。ファンモード、照明プロファイル、掃除モードなど、離散的な設定値に向いています。
 
 ```yaml
 type: custom:liquid-glass-select-card
 entity: select.bedroom_fan_mode
-style: segments       # segments | chips（省略時は segments）
+style: dropdown       # dropdown | segments | chips（省略時は dropdown）
 accent: "#5E5CE6"    # アイコンと選択中の項目の色
 ```
 
-選択肢が多い場合や長い名前を含む場合は、`style: chips` にすると幅に応じて複数行へ折り返します。操作直後の選択は Home Assistant が新しい状態を返すまで保持されるため、通信中に古い値へ戻って見えることはありません。
+選択肢が多い場合や長い名前を含む場合もドロップダウンなら1行のままです。候補を常時表示するには`style: segments`または`style: chips`を指定します。チップは幅に応じて複数行へ折り返します。操作直後の選択は Home Assistant が新しい状態を返すまで保持されるため、通信中に古い値へ戻って見えることはありません。サービスが失敗した場合、または4秒以内に状態が確定しなかった場合は実際の状態に戻します。
 
 ```yaml
 type: custom:liquid-glass-select-card
@@ -670,3 +674,5 @@ src/
 カード共通のスタイル（`styles/tokens.ts` と `react/card-styles.ts`）は、カードごとに `<style>` を複製するのではなく、構築済みの `CSSStyleSheet` を全インスタンスの Shadow Root で共有します（`react/card-sheets.ts`）。ダッシュボードに何枚並べても、共通部分のパースは1回で済みます。
 
 主なトークンに加えて、スライダーカードは `--lg-slider-accent` `--lg-slider-accent-deep` `--lg-slider-accent-light` `--lg-slider-fill-light` を使います。バーとつまみは `--lg-slider-bar-bg`（未充填部分）`--lg-slider-mark`（目盛り）`--lg-knob-solid` `--lg-knob-solid-rim`（待機中のつまみ）`--lg-knob-shadow` `--lg-knob-shadow-active`（つまみの影）で調整できます。
+
+サイズ比較には`demo/?focus=compact&gap=8&width=380`を使用できます。幅170 / 250 / 380pxと全幅、通常配置とSections相当の配置、テーマ、屈折の切り替えに対応し、各カードの実測高さを表示します。Sections相当の表示はデモ用のグリッドで、Home Assistant本体での確認も必要です。

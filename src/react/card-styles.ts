@@ -18,14 +18,14 @@ export const reactCardStyles = `
   }
 
   .card {
-    --lg-pad: 20px;
-    --lg-pad-row: 16px;
-    --lg-gap: 18px;
-    --lg-gap-row: 14px;
-    --lg-well: 48px;
-    --lg-well-icon: 24px;
-    --lg-name: 17px;
-    --lg-state: 13px;
+    --lg-pad: 12px;
+    --lg-pad-row: 8px;
+    --lg-gap: 12px;
+    --lg-gap-row: 10px;
+    --lg-well: 40px;
+    --lg-well-icon: 22px;
+    --lg-name: 14px;
+    --lg-state: 12px;
     --lg-label: 13px;
     --lg-tick: 11px;
     --lg-corner: var(--lg-radius);
@@ -41,22 +41,17 @@ export const reactCardStyles = `
   }
 
   .card.row {
+    height: 56px;
+    min-height: 56px;
     flex-direction: row;
     align-items: center;
     gap: var(--lg-gap-row);
     padding: var(--lg-pad-row) var(--lg-pad);
   }
+  .card.row .header { flex: 1; min-width: 0; }
 
   @supports (container-type: inline-size) {
     .card {
-      --lg-pad: clamp(12px, 5.3cqi, 20px);
-      --lg-pad-row: clamp(10px, 4.2cqi, 16px);
-      --lg-gap: clamp(10px, 4.7cqi, 18px);
-      --lg-gap-row: clamp(9px, 3.7cqi, 14px);
-      --lg-well: clamp(34px, 12.6cqi, 48px);
-      --lg-well-icon: clamp(17px, 6.3cqi, 24px);
-      --lg-name: clamp(13.5px, 4.5cqi, 17px);
-      --lg-state: clamp(11px, 3.4cqi, 13px);
       --lg-label: clamp(11px, 3.4cqi, 13px);
       --lg-tick: clamp(9.5px, 2.9cqi, 11px);
       --lg-corner: min(var(--lg-radius), 11cqi);
