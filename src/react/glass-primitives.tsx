@@ -387,7 +387,10 @@ export function LiquidGlassSurface({
       className={surfaceClass}
       optics={opticsFor(variant, surface, quality)}
       refract={source}
-      behind="var(--primary-background-color, transparent)"
+      // The optical copy must use the card's resolved tint, including theme and
+      // active-state overrides. HA's page background can remain dark even when
+      // this card uses a light theme, and would paint a dark slab under the copy.
+      behind="rgba(var(--lg-surface-tint), var(--lg-surface-tint-alpha))"
       filterResolution={filterResolutionForQuality(quality)}
     >
       {children}
