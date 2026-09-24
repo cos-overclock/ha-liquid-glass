@@ -98,7 +98,7 @@ HACSはGitHub Releaseを安定版として追跡します。新しいReleaseが�
 1. [最新のGitHub Release](https://github.com/cos-overclock/ha-liquid-glass/releases/latest)から`liquid-glass-cards.js`をダウンロード
 2. `config/www/liquid-glass-cards.js`へコピー
 3. `www/` を新規に作った場合は Home Assistant を再起動
-4. 設定 → ダッシュボード → リソース で `/local/liquid-glass-cards.js?v=0.8.0`（JavaScript モジュール）を追加
+4. 設定 → ダッシュボード → リソース で `/local/liquid-glass-cards.js?v=<Releaseのバージョン>`（JavaScript モジュール）を追加。たとえば `v1.0.0` のReleaseなら `?v=1.0.0`
 
 （開発・自前ビルド時）コピー先を `HA_WWW` に設定しておくと、ビルド後に自動でコピーされます。`npm run watch` でも各ビルド後にコピーされます。
 
@@ -111,7 +111,7 @@ HA_WWW=//homeassistant/config/www npm run build
 Home Assistant はリソースを強くキャッシュします。ファイルを置き換えただけでは古いままになることがあります。
 
 1. GitHub Releaseから対象バージョンの `liquid-glass-cards.js` を取得してコピーする
-2. リソースURLの `?v=` をReleaseバージョンへ変更する（`?v=0.8.0` → `?v=0.8.1`）
+2. リソースURLの `?v=` をReleaseバージョンへ変更する（例: `?v=1.0.0` → `?v=1.0.1`）
 3. ブラウザを再読み込みする
 
 HACS経由ではReleaseバージョンの選択・更新・ロールバックをHACSが管理します。手動インストール時は`?v=`をReleaseタグと揃えることで、導入中の版とキャッシュキーを一致させられます。
@@ -119,7 +119,7 @@ HACS経由ではReleaseバージョンの選択・更新・ロールバックを
 読み込まれているビルドはブラウザのコンソールで確認できます。起動時に次のような行が出ます。
 
 ```text
- LIQUID-GLASS-CARDS  v0.8.0 · 24 cards · 1 badge · built 2025-01-01 12:34
+ LIQUID-GLASS-CARDS  v1.0.0 · 24 cards · 1 badge · built 2026-09-24 12:34
 ```
 
 カード枚数とビルド時刻が、コピーしたファイルのものと一致していれば正しく読み込まれています。一致しない場合はまだ古いファイルです。
@@ -636,15 +636,18 @@ npm run watch     # 変更を監視してビルド
 npm test          # 単体テスト
 npm run lint      # ESLint（React Hooks ルールと型情報を使った検査）
 npm run check     # typecheck + lint + test をまとめて実行
+npm run verify-version # package / lockfile / 配布バンドルのバージョンを照合
 npm run demo      # http://localhost:5173/ でモック hass を使ったデモを表示
 ```
 
 デモは `?theme=dark` `?lang=en` `?refraction=on` `?quality=medium` `?width=210` のクエリで表示を切り替えられます。画面上部のスライダーでカード幅を変えられるので、狭い列での見え方を確認できます。
 React版カードを個別に確認する場合は`?focus=separator`、`?focus=lock`、`?focus=slider`、`?focus=select`を使用できます。
 
-GitHub Actions（`.github/workflows/ci.yml`）が push と pull request ごとに `typecheck` / `lint` / `test` / `build` を実行します。コミット済みの`dist/`が`src`から遅れていないかも検査します（ビルド時刻のスタンプだけは差分として無視します）。
+GitHub Actions（`.github/workflows/ci.yml`）が push と pull request ごとに `typecheck` / `lint` / `test` / `build` とバージョン照合を実行します。コミット済みの`dist/`が`src`から遅れていないかも検査します（ビルド時刻のスタンプだけは差分として無視します）。
 
-リリース時は`package.json`と`package-lock.json`のバージョンを同時に更新して`main`へマージします。`.github/workflows/release.yml`がソースを再検証・ビルドし、`v<version>`タグとGitHub Releaseを作成して`liquid-glass-cards.js`を添付します。同じバージョンのReleaseが存在する場合は再発行しません。手動でタグを作る必要はありません。
+バージョンの基準は`package.json`です。リリース時は`npm version 1.0.0 --no-git-tag-version`のようにして`package.json`と`package-lock.json`を更新し、`npm run build`で`dist/`を再生成します。`npm run verify-version`で3つのバージョンを照合してから変更を`main`へマージしてください。
+
+`main`の対象コミットに`v1.0.0`のようなタグを付け、`git push origin v1.0.0`でリモートへ送ります。`.github/workflows/release.yml`はタグpushで起動し、タグ名とパッケージのバージョンを照合し、ソースを再検証・ビルドしてGitHub Releaseに`liquid-glass-cards.js`を添付します。同じタグのReleaseが存在する場合は再発行しません。既存の`v0.8.5`以前のタグは、タグ作成時のソース内バージョンが一致しないため、この新しい手順では再発行できません。
 
 `http://localhost:5173/demo/editor.html` はビジュアルエディタの確認用ページです。`?kind=cover` のようにカード種別を指定できます。Home Assistant の `ha-form` を最小限に再現したシムの上で動くため見た目は簡素ですが、スキーマ・ラベル・書き出される設定・カードへの反映を確認できます。ページ上部の Self test が全カードのエディタを自動で操作して結果を検証します。
 

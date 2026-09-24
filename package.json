@@ -1,6 +1,6 @@
 {
   "name": "ha-liquid-glass",
-  "version": "0.8.0",
+  "version": "0.8.5",
   "description": "Liquid Glass style Lovelace cards for Home Assistant",
   "license": "MIT",
   "type": "module",
@@ -12,6 +12,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "check": "npm run typecheck && npm run lint && npm test",
+    "verify-version": "node scripts/verify-version.mjs",
     "demo": "vite --host 0.0.0.0"
   },
   "dependencies": {

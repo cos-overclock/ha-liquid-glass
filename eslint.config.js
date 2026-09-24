@@ -23,7 +23,13 @@ export default tseslint.config(
     },
   },
   // This file is not part of the app's tsconfig, so it cannot be type-checked.
-  { files: ["**/*.js"], ...tseslint.configs.disableTypeChecked },
+  { files: ["**/*.{js,mjs}"], ...tseslint.configs.disableTypeChecked },
+  {
+    files: ["scripts/**/*.mjs"],
+    languageOptions: {
+      globals: { URL: "readonly", process: "readonly", console: "readonly" },
+    },
+  },
   {
     files: ["**/*.{ts,tsx}"],
     plugins: { "react-hooks": reactHooks },

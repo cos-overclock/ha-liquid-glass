@@ -25,6 +25,9 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Verify package, lockfile, and bundle versions
+        run: npm run verify-version
+
       # dist/ is committed because HACS serves it straight from the repo, so a bundle
       # that lags behind src means users install stale cards. The build stamps the
       # current time into itself, which is the one difference that does not count.

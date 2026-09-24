@@ -1,4 +1,4 @@
-/*! ha-liquid-glass v0.8.0 */
+/*! ha-liquid-glass v0.8.5 */
 //#region src/react/sensor-layout.ts
 function e(e) {
 	return typeof e.value_in_caption == "boolean" ? e.value_in_caption : e.graph === void 0;
@@ -11454,7 +11454,7 @@ var Vc = Ai({
 		icon: "mdi:lightbulb-outline",
 		style: "pill"
 	})
-}), Hc = "0.8.0", Uc = "2026-09-24 15:14", Wc = "https://github.com/cos-overclock/ha-liquid-glass", Gc = (e, t) => !!((e.attributes.supported_features ?? 0) & t);
+}), Hc = "0.8.5", Uc = "2026-09-24 15:23", Wc = "https://github.com/cos-overclock/ha-liquid-glass", Gc = (e, t) => !!((e.attributes.supported_features ?? 0) & t);
 function Kc(e, t, n, r, i, a = (e) => ({ entity: e })) {
 	return {
 		type: e,
