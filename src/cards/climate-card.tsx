@@ -374,14 +374,15 @@ const ownStyles = `
     --lg-gap: 12px;
   }
   /*
-   * Same geometry as every other slider in the app: a thin capsule, a round knob. The
+   * Same geometry as every other slider in the app: a thin capsule, a wide pill thumb. The
    * fill colour comes from the mode (set as --lg-slider-fill on the card), the same
    * identity the dial's ring carries — not a fixed rainbow across the whole range.
    */
   .card.climate-compact .lg-react-slider {
-    --lg-slider-height: var(--lg-tile-row-h, 44px);
+    --lg-slider-height: var(--lg-tile-row-h, 34px);
     --lg-slider-bar-height: var(--lg-tile-bar-h, 6px);
-    --lg-slider-knob-size: var(--lg-tile-knob, 22px);
+    --lg-slider-thumb-width: var(--lg-tile-knob-w, 44px);
+    --lg-slider-thumb-height: var(--lg-tile-knob-h, 22px);
   }
   .tile-readout {
     min-width: 0;
@@ -448,9 +449,10 @@ const ownStyles = `
       --lg-temp-fraction: clamp(15px, 5.8cqi, 22px);
     }
     .card.climate-compact {
-      --lg-tile-row-h: clamp(34px, 11.6cqi, 44px);
+      --lg-tile-row-h: clamp(28px, 9cqi, 34px);
       --lg-tile-bar-h: clamp(5px, 1.6cqi, 6px);
-      --lg-tile-knob: clamp(18px, 5.8cqi, 22px);
+      --lg-tile-knob-w: clamp(36px, 11.6cqi, 44px);
+      --lg-tile-knob-h: clamp(18px, 5.8cqi, 22px);
       --lg-tile-temp: clamp(38px, 14.7cqi, 56px);
       --lg-tile-range: clamp(28px, 10.5cqi, 40px);
       --lg-tile-fraction: clamp(17px, 6.3cqi, 24px);

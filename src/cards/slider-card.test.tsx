@@ -128,9 +128,9 @@ describe("liquid-glass-slider-card", () => {
       track.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, button: 0, clientX: 223 }));
     });
     expect(slider?.classList.contains("active")).toBe(true);
-    expect((element.shadowRoot?.querySelector(".slider-glass") as HTMLElement).style.width).toBe("352px");
+    expect((element.shadowRoot?.querySelector(".slider-glass") as HTMLElement).style.width).toBe("356px");
     expect((element.shadowRoot?.querySelector(".slider-knob.moving") as HTMLElement).style.transform)
-      .toBe("translateX(212px)");
+      .toBe("translateX(201px)");
 
     await act(async () => {
       track.dispatchEvent(new MouseEvent("pointermove", { bubbles: true, button: 0, clientX: 500 }));
@@ -138,8 +138,8 @@ describe("liquid-glass-slider-card", () => {
     const overdrag = Number.parseFloat(
       (element.shadowRoot?.querySelector(".slider-knob.moving") as HTMLElement).style.transform.match(/[-\d.]+/)?.[0] ?? "0",
     );
-    expect(overdrag).toBeGreaterThan(278);
-    expect(overdrag).toBeLessThan(293);
+    expect(overdrag).toBeGreaterThan(266);
+    expect(overdrag).toBeLessThan(273);
 
     await act(async () => {
       track.dispatchEvent(new MouseEvent("pointermove", { bubbles: true, button: 0, clientX: 223 }));

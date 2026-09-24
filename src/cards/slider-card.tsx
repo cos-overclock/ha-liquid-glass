@@ -187,18 +187,20 @@ const ownStyles = `
   .value.zero .num { color: var(--lg-text-secondary); }
   .track-wrap {
     position: relative;
-    --lg-slider-height: var(--lg-track-h, 44px);
+    --lg-slider-height: var(--lg-track-h, 34px);
     --lg-slider-bar-height: var(--lg-bar-h, 6px);
-    --lg-slider-knob-size: var(--lg-knob-size, 22px);
+    --lg-slider-thumb-width: var(--lg-knob-w, 44px);
+    --lg-slider-thumb-height: var(--lg-knob-h, 22px);
     --lg-slider-fill: linear-gradient(90deg, var(--fill-from), var(--fill-to));
   }
   @supports (container-type: inline-size) {
     .card {
       --lg-sv: clamp(20px, 7.4cqi, 28px);
       --lg-sv-unit: clamp(11px, 3.9cqi, 15px);
-      --lg-track-h: clamp(34px, 11.6cqi, 44px);
+      --lg-track-h: clamp(28px, 9cqi, 34px);
       --lg-bar-h: clamp(5px, 1.6cqi, 6px);
-      --lg-knob-size: clamp(18px, 5.8cqi, 22px);
+      --lg-knob-w: clamp(36px, 11.6cqi, 44px);
+      --lg-knob-h: clamp(18px, 5.8cqi, 22px);
     }
   }
 `;

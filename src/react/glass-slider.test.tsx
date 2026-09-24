@@ -14,7 +14,7 @@ class ResizeObserverStub implements ResizeObserver {
 globalThis.ResizeObserver = ResizeObserverStub;
 
 const TRACK_WIDTH = 300;
-const THUMB_WIDTH = 22;
+const THUMB_WIDTH = 44;
 /** What a pointer at `clientX` maps to, given the thumb is centred under the finger. */
 const travel = TRACK_WIDTH - THUMB_WIDTH;
 
@@ -64,7 +64,7 @@ function render(props: Partial<GlassSliderProps> = {}): Harness {
   const probe = container?.querySelector<HTMLElement>(".knob-probe");
   if (probe) {
     Object.defineProperty(probe, "getBoundingClientRect", {
-      value: () => ({ ...rect(THUMB_WIDTH), height: 34, bottom: 34 }) as DOMRect,
+      value: () => ({ ...rect(THUMB_WIDTH), height: 22, bottom: 22 }) as DOMRect,
       configurable: true,
     });
   }

@@ -152,14 +152,14 @@ export interface GlassSliderProps {
 
 export const glassSliderStyles = `
   .lg-react-slider {
-    --lg-effective-slider-height: var(--lg-slider-height, 44px);
+    --lg-effective-slider-height: var(--lg-slider-height, 34px);
     --lg-effective-bar-height: var(--lg-slider-bar-height, 6px);
-    --lg-effective-thumb-width: var(--lg-slider-thumb-width, var(--lg-slider-knob-size, 22px));
-    --lg-effective-thumb-height: var(--lg-slider-thumb-height, 34px);
+    --lg-effective-thumb-width: var(--lg-slider-thumb-width, 44px);
+    --lg-effective-thumb-height: var(--lg-slider-thumb-height, 22px);
     position: relative;
     display: block;
     width: 100%;
-    height: var(--lg-slider-height, 44px);
+    height: var(--lg-slider-height, 34px);
     overflow: visible;
     touch-action: none;
     user-select: none;
@@ -315,7 +315,7 @@ const geometryFor = (trackW: number, controlH: number, thumbW: number, thumbH: n
   };
 };
 
-const DEFAULT_GEOMETRY = geometryFor(240, 44, 22, 34);
+const DEFAULT_GEOMETRY = geometryFor(240, 34, 44, 22);
 const sameGeometry = (a: Geometry, b: Geometry): boolean =>
   a.trackW === b.trackW
   && a.controlH === b.controlH

@@ -151,8 +151,8 @@ const ownStyles = `
   .progress .lg-react-slider {
     --lg-slider-height: 14px;
     --lg-slider-bar-height: 6px;
-    --lg-slider-knob-size: 18px;
-    --lg-slider-thumb-height: 26px;
+    --lg-slider-thumb-width: 36px;
+    --lg-slider-thumb-height: 18px;
   }
   .times {
     display: flex;
@@ -227,10 +227,10 @@ const ownStyles = `
   }
   .volume .lg-react-slider {
     flex: 1;
-    --lg-slider-height: 26px;
+    --lg-slider-height: 24px;
     --lg-slider-bar-height: 6px;
-    --lg-slider-knob-size: 20px;
-    --lg-slider-thumb-height: 30px;
+    --lg-slider-thumb-width: 40px;
+    --lg-slider-thumb-height: 20px;
   }
   .dim,
   .fade {
