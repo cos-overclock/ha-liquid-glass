@@ -148,6 +148,9 @@
         "todo.shopping_list": { entity_id: "todo.shopping_list", state: "2", last_changed: ago(15), last_updated: ago(1), attributes: { friendly_name: "買い物リスト", supported_features: 7 } },
         "update.demo": { entity_id: "update.demo", state: "on", last_changed: ago(60), last_updated: ago(1), attributes: { friendly_name: "デモ アップデート", supported_features: 17, installed_version: "1.0.0", latest_version: "1.1.0", release_summary: "新しい機能と安定性の改善が含まれます。", in_progress: false } },
         "timer.kitchen": { entity_id: "timer.kitchen", state: "active", last_changed: ago(1), last_updated: ago(1), attributes: { friendly_name: "キッチン タイマー", duration: "0:05:00", remaining: "0:04:00", finishes_at: new Date(Date.now() + 240000).toISOString() } },
+        "vacuum.living": { entity_id: "vacuum.living", state: "cleaning", last_changed: ago(12), last_updated: ago(1), attributes: { friendly_name: "リビング ロボット掃除機", battery_level: 78, cleaned_area: 24, fan_speed: "標準", fan_speed_list: ["静音", "標準", "強力"], supported_features: 8756 } },
+        "fan.living": { entity_id: "fan.living", state: "on", last_changed: ago(25), last_updated: ago(1), attributes: { friendly_name: "リビング 扇風機", percentage: 60, percentage_step: 10, preset_mode: "自然風", preset_modes: ["自然風", "おやすみ"], oscillating: true, direction: "forward", supported_features: 63 } },
+        "alarm_control_panel.home": { entity_id: "alarm_control_panel.home", state: "armed_home", last_changed: ago(30), last_updated: ago(1), attributes: { friendly_name: "ホーム セキュリティ", supported_features: 7 } },
         "light.living_room": { entity_id: "light.living_room", state: "on", last_changed: ago(40), last_updated: ago(2), attributes: { friendly_name: "リビング", brightness: 184, color_temp_kelvin: 3200, min_color_temp_kelvin: 2000, max_color_temp_kelvin: 6500, supported_color_modes: ["color_temp"], color_mode: "color_temp" } },
         "light.living_off": { entity_id: "light.living_off", state: "off", last_changed: ago(40), last_updated: ago(2), attributes: { friendly_name: "リビング", supported_color_modes: ["color_temp"], min_color_temp_kelvin: 2000, max_color_temp_kelvin: 6500 } },
         "light.bedroom": { entity_id: "light.bedroom", state: "on", last_changed: ago(40), last_updated: ago(2), attributes: { friendly_name: "ベッドルーム", brightness: 153, hs_color: [280, 85], rgb_color: [177, 92, 255], supported_color_modes: ["color_temp", "hs"], color_mode: "hs", min_color_temp_kelvin: 2000, max_color_temp_kelvin: 6500 } },
@@ -317,6 +320,9 @@
         ["liquid-glass-todo-card", { entity: "todo.shopping_list" }],
         ["liquid-glass-update-card", { entity: "update.demo" }],
         ["liquid-glass-timer-card", { entity: "timer.kitchen", show_finish: true }],
+        ["liquid-glass-vacuum-card", { entity: "vacuum.living" }],
+        ["liquid-glass-fan-card", { entity: "fan.living" }],
+        ["liquid-glass-alarm-control-panel-card", { entity: "alarm_control_panel.home" }],
         ["liquid-glass-light-card", { entity: "light.living_room", presets: [{ name: "読書", icon: "mdi:book-open-variant", brightness: 100, color_temp_kelvin: 4500 }, { name: "リラックス", icon: "mdi:coffee", brightness: 45, color_temp_kelvin: 2700 }, { name: "おやすみ", icon: "mdi:weather-night", brightness: 10, color_temp_kelvin: 2200 }] }],
         ["liquid-glass-light-card", { entity: "light.bedroom" }],
         ["liquid-glass-light-card", { entity: "light.living_off", presets: [{ name: "読書", icon: "mdi:book-open-variant", brightness: 100 }, { name: "おやすみ", icon: "mdi:weather-night", brightness: 10 }] }],
@@ -399,7 +405,12 @@
       ];
       // ?focus=<name> narrows the page to liquid-glass-<name>-card.
       const focus = params.get("focus");
-      const visibleCards = focus === "compact"
+      const overviewTypes = ["light", "climate", "weather", "sensor", "switch", "fan", "vacuum", "media", "cover", "lock", "scene", "camera"];
+      const visibleCards = focus === "badge"
+        ? [["liquid-glass-entity-badge", { entity: "light.living_room", show_name: true }]]
+        : focus === "overview"
+        ? overviewTypes.map((name) => cards.find(([type]) => type === `liquid-glass-${name}-card`))
+        : focus === "compact"
         ? cards.filter(([type, cfg]) => ["liquid-glass-button-card", "liquid-glass-switch-card", "liquid-glass-binary-sensor-card", "liquid-glass-person-card"].includes(type)
           || (type === "liquid-glass-sensor-card" && cfg.graph === undefined)
           || (type === "liquid-glass-select-card" && cfg.style === undefined)
@@ -439,7 +450,7 @@
           if (type === "liquid-glass-climate-card" && cfg.design === "compact") el.id = "demo-climate-compact";
           el.setConfig({ ...cfg, refraction, refraction_quality: refractionQuality });
           el.hass = hass;
-          el.style.gridRow = `span ${el.getGridOptions().rows ?? 1}`;
+          el.style.gridRow = `span ${el.getGridOptions?.()?.rows ?? 1}`;
           main.appendChild(el);
           els.push(el);
           measurementsObserver.observe(el);

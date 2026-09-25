@@ -1,38 +1,47 @@
 # Liquid Glass Cards for Home Assistant
 
-`pen/design.pen` の Liquid Glass デザインを、Home Assistant のダッシュボードに追加できるカスタムカード群として実装したものです。
-Vite + React + TypeScript で実装し、Home Assistant 向けには単一ファイル `dist/liquid-glass-cards.js` にバンドルされます。バンドルは React ではなく Preact（`preact/compat`）の上で動きます。ソースもテストも React のまま書きますが、ビルド時に差し替わるため配布ファイルが約 427 KB（gzip 約 111 KB）に収まります。詳しくは「バンドルサイズ」を参照してください。全カードが React と `@samasante/liquid-glass` で書かれており、Home Assistant へは Custom Element のアダプター（`react/define-react-card.tsx`）を通して公開されます。
+Home Assistant のダッシュボードに、Liquid Glassスタイルの24種類のカードとエンティティバッジを追加します。ビジュアルエディタから設定でき、日本語・英語とライト・ダークテーマに対応します。
 
-React版カードは屈折対象となる背景レイヤーもReactで所有し、`Glass`の`refract`へ複製して渡します。これにより`backdrop-filter: url()`へ依存せず、Chromium / Safari / Firefoxで共通のSVG `filter: url()`経路を使用します。任意のHA壁紙そのものではなく、カード内の光学背景を屈折する方式です。
+[インストール](#インストール) · [設定例](#設定例) · [開発者向けガイド](docs/DEVELOPMENT.md) · [変更履歴](CHANGELOG.md)
+
+## スクリーンショット
+
+![Liquid Glass Cardsのデモダッシュボード](docs/images/dashboard.png)
+
+画像は[ローカルデモ](docs/DEVELOPMENT.md#開発)のモックデータで撮影しました。Home Assistant本体の画面ではありません。カード名のリンクから各画像を大きく確認できます。
+
+## カード一覧
 
 | カード | type | 対応ドメイン |
 | --- | --- | --- |
-| Light | `custom:liquid-glass-light-card` | `light`（明るさ / 色温度 / 色相・彩度 / お気に入り / プリセット） |
-| Vacuum | `custom:liquid-glass-vacuum-card` | `vacuum`（清掃操作 / 帰還 / 吸引力 / 状態） |
-| Fan | `custom:liquid-glass-fan-card` | `fan`（風量 / プリセット / 首振り / 風向） |
-| Humidifier | `custom:liquid-glass-humidifier-card` | `humidifier`（加湿器 / 除湿機、目標湿度 / 現在湿度 / モード） |
-| Person | `custom:liquid-glass-person-card` | `person` `device_tracker`（在宅 / 外出 / ゾーン / 画像） |
-| To-do | `custom:liquid-glass-todo-card` | `todo`（買い物リスト、追加 / 完了 / 再開 / 削除） |
-| Update | `custom:liquid-glass-update-card` | `update`（バージョン / インストール / スキップ / 進捗） |
-| Timer | `custom:liquid-glass-timer-card` | `timer`（残り時間 / 開始 / 一時停止 / 再開 / キャンセル） |
-| Alarm | `custom:liquid-glass-alarm-control-panel-card` | `alarm_control_panel`（警戒モード / 解除 / 暗証番号） |
-| Climate | `custom:liquid-glass-climate-card` | `climate`（270° ダイヤル、モード、風量 / プリセット） |
-| Switch | `custom:liquid-glass-switch-card` | `switch` `input_boolean` `fan` など |
-| Sensor | `custom:liquid-glass-sensor-card` | `sensor`（1行の値表示、任意でグラフ / トレンド） |
-| Binary Sensor | `custom:liquid-glass-binary-sensor-card` | `binary_sensor`（device_class に応じた表示） |
-| Lock | `custom:liquid-glass-lock-card` | `lock`（スライドして施錠 / 解錠） |
-| Cover | `custom:liquid-glass-cover-card` | `cover`（ブラインド / カーテン、位置ドラッグ、チルト） |
-| Media | `custom:liquid-glass-media-card` | `media_player`（再生操作、シーク、音量） |
-| Slider | `custom:liquid-glass-slider-card` | 任意の数値（`input_number` `number` `fan` `light` など） |
-| Select | `custom:liquid-glass-select-card` | `select` `input_select`（ドロップダウン / セグメント / チップ） |
-| Weather | `custom:liquid-glass-weather-card` | `weather`（現在の天気、時間ごと・日ごとの予報） |
-| Button | `custom:liquid-glass-button-card` | `scene` `script` `automation` `button` `input_button` |
-| Scenes | `custom:liquid-glass-scene-card` | 複数のシーンをタイルまたはチップで並べる |
-| Camera | `custom:liquid-glass-camera-card` | `camera`（静止画、動体検知、履歴） |
-| Group | `custom:liquid-glass-group-card` | 他のカードをまとめる折りたたみ可能なパネル |
-| Separator | `custom:liquid-glass-separator-card` | セクション見出し（プレーン / ピル / ヘッダー） |
+| [Light](docs/images/cards/light.png)<br><img src="docs/images/cards/light.png" alt="Lightカード" width="160"> | `custom:liquid-glass-light-card` | `light`（明るさ / 色温度 / 色相・彩度 / お気に入り / プリセット） |
+| [Vacuum](docs/images/cards/vacuum.png)<br><img src="docs/images/cards/vacuum.png" alt="Vacuumカード" width="160"> | `custom:liquid-glass-vacuum-card` | `vacuum`（清掃操作 / 帰還 / 吸引力 / 状態） |
+| [Fan](docs/images/cards/fan.png)<br><img src="docs/images/cards/fan.png" alt="Fanカード" width="160"> | `custom:liquid-glass-fan-card` | `fan`（風量 / プリセット / 首振り / 風向） |
+| [Humidifier](docs/images/cards/humidifier.png)<br><img src="docs/images/cards/humidifier.png" alt="Humidifierカード" width="160"> | `custom:liquid-glass-humidifier-card` | `humidifier`（加湿器 / 除湿機、目標湿度 / 現在湿度 / モード） |
+| [Person](docs/images/cards/person.png)<br><img src="docs/images/cards/person.png" alt="Personカード" width="160"> | `custom:liquid-glass-person-card` | `person` `device_tracker`（在宅 / 外出 / ゾーン / 画像） |
+| [To-do](docs/images/cards/todo.png)<br><img src="docs/images/cards/todo.png" alt="To-doカード" width="160"> | `custom:liquid-glass-todo-card` | `todo`（買い物リスト、追加 / 完了 / 再開 / 削除） |
+| [Update](docs/images/cards/update.png)<br><img src="docs/images/cards/update.png" alt="Updateカード" width="160"> | `custom:liquid-glass-update-card` | `update`（バージョン / インストール / スキップ / 進捗） |
+| [Timer](docs/images/cards/timer.png)<br><img src="docs/images/cards/timer.png" alt="Timerカード" width="160"> | `custom:liquid-glass-timer-card` | `timer`（残り時間 / 開始 / 一時停止 / 再開 / キャンセル） |
+| [Alarm](docs/images/cards/alarm-control-panel.png)<br><img src="docs/images/cards/alarm-control-panel.png" alt="Alarmカード" width="160"> | `custom:liquid-glass-alarm-control-panel-card` | `alarm_control_panel`（警戒モード / 解除 / 暗証番号） |
+| [Climate](docs/images/cards/climate.png)<br><img src="docs/images/cards/climate.png" alt="Climateカード" width="160"> | `custom:liquid-glass-climate-card` | `climate`（270° ダイヤル、モード、風量 / プリセット） |
+| [Switch](docs/images/cards/switch.png)<br><img src="docs/images/cards/switch.png" alt="Switchカード" width="160"> | `custom:liquid-glass-switch-card` | `switch` `input_boolean` `fan` など |
+| [Sensor](docs/images/cards/sensor.png)<br><img src="docs/images/cards/sensor.png" alt="Sensorカード" width="160"> | `custom:liquid-glass-sensor-card` | `sensor`（1行の値表示、任意でグラフ / トレンド） |
+| [Binary Sensor](docs/images/cards/binary-sensor.png)<br><img src="docs/images/cards/binary-sensor.png" alt="Binary Sensorカード" width="160"> | `custom:liquid-glass-binary-sensor-card` | `binary_sensor`（device_class に応じた表示） |
+| [Lock](docs/images/cards/lock.png)<br><img src="docs/images/cards/lock.png" alt="Lockカード" width="160"> | `custom:liquid-glass-lock-card` | `lock`（スライドして施錠 / 解錠） |
+| [Cover](docs/images/cards/cover.png)<br><img src="docs/images/cards/cover.png" alt="Coverカード" width="160"> | `custom:liquid-glass-cover-card` | `cover`（ブラインド / カーテン、位置ドラッグ、チルト） |
+| [Media](docs/images/cards/media.png)<br><img src="docs/images/cards/media.png" alt="Mediaカード" width="160"> | `custom:liquid-glass-media-card` | `media_player`（再生操作、シーク、音量） |
+| [Slider](docs/images/cards/slider.png)<br><img src="docs/images/cards/slider.png" alt="Sliderカード" width="160"> | `custom:liquid-glass-slider-card` | 任意の数値（`input_number` `number` `fan` `light` など） |
+| [Select](docs/images/cards/select.png)<br><img src="docs/images/cards/select.png" alt="Selectカード" width="160"> | `custom:liquid-glass-select-card` | `select` `input_select`（ドロップダウン / セグメント / チップ） |
+| [Weather](docs/images/cards/weather.png)<br><img src="docs/images/cards/weather.png" alt="Weatherカード" width="160"> | `custom:liquid-glass-weather-card` | `weather`（現在の天気、時間ごと・日ごとの予報） |
+| [Button](docs/images/cards/button.png)<br><img src="docs/images/cards/button.png" alt="Buttonカード" width="160"> | `custom:liquid-glass-button-card` | `scene` `script` `automation` `button` `input_button` |
+| [Scenes](docs/images/cards/scene.png)<br><img src="docs/images/cards/scene.png" alt="Scenesカード" width="160"> | `custom:liquid-glass-scene-card` | 複数のシーンをタイルまたはチップで並べる |
+| [Camera](docs/images/cards/camera.png)<br><img src="docs/images/cards/camera.png" alt="Cameraカード" width="160"> | `custom:liquid-glass-camera-card` | `camera`（静止画、動体検知、履歴） |
+| [Group](docs/images/cards/group.png)<br><img src="docs/images/cards/group.png" alt="Groupカード" width="160"> | `custom:liquid-glass-group-card` | 他のカードをまとめる折りたたみ可能なパネル |
+| [Separator](docs/images/cards/separator.png)<br><img src="docs/images/cards/separator.png" alt="Separatorカード" width="160"> | `custom:liquid-glass-separator-card` | セクション見出し（プレーン / ピル / ヘッダー） |
 
-セクションビュー上部のバッジ行には、同じガラス素材を使う `custom:liquid-glass-entity-badge` を利用できます。エンティティのアイコン・名前・状態をコンパクトなピルで表示し、タップすると詳細を開きます。
+セクションビュー上部のバッジ行には、同じガラス素材を使う `custom:liquid-glass-entity-badge` を利用できます。エンティティのアイコン・名前・状態をコンパクトなピルで表示し、タップすると詳細を開きます。[バッジのスクリーンショット](docs/images/cards/badge.png)も参照してください。
+
+<img src="docs/images/cards/badge.png" alt="Entity Badge" width="320">
 
 すべてのカードはライト / ダークテーマ（`hass.themes.darkMode`）、日本語 / 英語（`hass.language`）に自動で追従します。
 
@@ -61,27 +70,11 @@ Home AssistantのSectionsビューでは、各カードが`getGridOptions()`で�
 
 既存のダッシュボードで`grid_options.rows: 2`などの明示指定が残っていると、小型化後も配置に空きが残ります。対象カードのレイアウト設定で高さを1行にするか、YAMLの`grid_options.rows`を削除して既定値に戻してください。保存済みの幅や高さは自動変更しません。
 
-## Liquid Glass 効果について
+## 表示効果と動き
 
-デザインファイルの `liquid-glass.glsl` シェーダ（エッジ屈折 + ブラー + 彩度 + リムハイライト）を、カード本体では CSS / SVG、スライダーやノブなどの操作部では WebGL で再現しています。カード本体は Home Assistant のダッシュボード背景を実際に透過・ぼかします。
+カードは背景を透かしたガラス調の表示と、状態変更に合わせたアニメーションを使います。背景色やブラウザによって見え方は変わります。ダッシュボードにグラデーションなどの背景を設定すると効果が分かりやすくなります。
 
-- ブラー・彩度・ティント・リムハイライト・内側グロー・影: すべてのモダンブラウザで動作
-- エッジ屈折（`feDisplacementMap` を使った `backdrop-filter: url(#lg-card)`）: Chromium 系ブラウザのみ。Safari / Firefox では自動的に通常のブラー表示にフォールバックします
-- スライダー・ノブ: WebGL シェーダ描画を維持します。ダイヤルノブは実バックドロップの上へ半透明シェーダーを重ねます
-- モード選択ピル: 背景透過と表示安定性を優先し、CSS の半透明サーフェスで描画します
-- 背景がカラフルなほど効果が映えます。ダッシュボードのテーマで `background` にグラデーション画像を設定することを推奨します
-
-## アニメーション
-
-状態が外から届いたとき、カードは値をいきなり差し替えずに補間します。エアコンのモードを切り替えると、リングの長さ・リングの色・ノブの位置・アイコンの色・バッジの色がそれぞれ 0.42〜0.45 秒かけて次の状態へ移ります。
-
-運転モードのボタンでは、選択中を示す白いピルが次のボタンへ滑って移動します。背景を一方から消して他方に出すと瞬きに見えるため、動く要素は1つだけにしています。
-
-補間しないのは、指の動きに追従する部分だけです。ドラッグ中のノブと弧はポインタに正確に追従します。遅れて追いつく動きは、そのまま操作の遅延として感じられるためです。
-
-指を離したあとは、確定した値をエンティティが返してくるまで保持します。保持しないと、離した瞬間にダイヤルが変更前の値へ戻り、そこから設定値へ animate してしまうためです。エンティティが応答しない場合は 4 秒で保持をやめ、エンティティの値に戻ります。
-
-OS で「視差効果を減らす」（`prefers-reduced-motion: reduce`）を有効にしている場合、すべてのトランジションとアニメーションは無効になり、最終状態が即座に表示されます。
+OSの「視差効果を減らす」を有効にしている場合、アニメーションを停止します。屈折と描画方式の詳細は[開発者向けガイド](docs/DEVELOPMENT.md#表示効果の実装)に記載しています。
 
 ## インストール
 
@@ -614,68 +607,6 @@ liquid_glass:
 
 主なトークン: `--lg-text-primary` `--lg-text-secondary` `--lg-glass-tint`（RGB 三成分）`--lg-glass-tint-alpha` `--lg-glass-stroke` `--lg-track-bg` `--lg-shadow-glass` `--lg-segment-selected` `--lg-accent` `--lg-heat` `--lg-cool` `--lg-radius` `--lg-blur` `--lg-saturation` `--lg-group-panel`。定義は `src/styles/tokens.ts` を参照してください。
 
-## バンドルサイズ
+## 開発者向け
 
-Home Assistant はダッシュボードを開くたびにこのファイルを読み込みます。カードが使っているのはフック・ref・シャドウルートへの描画までで、React 19 が加えた機能は使っていないため、ビルド時に `preact/compat` へ差し替えています。
-
-| | 生 | gzip |
-| --- | --- | --- |
-| React | 606 KB | 154 KB |
-| Preact | 427 KB | 111 KB |
-
-差し替えは `vite.config.ts` の `resolve.alias` 1か所だけで行います。ソースは `react` を import したまま、型も `@types/react` のままで、テストも同じ alias の上で走ります。配布物だけが別のランタイムで動く、という状態にはなりません。
-
-`@vitejs/plugin-react` は外しました。JSX は Vite 本体の変換が扱います。このため `npm run demo` の開発サーバーでは Fast Refresh が効かず、変更時はページ全体が再読み込みされます。
-
-## 開発
-
-```bash
-npm install
-npm run build     # 型チェック + dist/liquid-glass-cards.js を生成
-npm run watch     # 変更を監視してビルド
-npm test          # 単体テスト
-npm run lint      # ESLint（React Hooks ルールと型情報を使った検査）
-npm run check     # typecheck + lint + test をまとめて実行
-npm run verify-version # package / lockfile / 配布バンドルのバージョンを照合
-npm run demo      # http://localhost:5173/ でモック hass を使ったデモを表示
-```
-
-デモは `?theme=dark` `?lang=en` `?refraction=on` `?quality=medium` `?width=210` のクエリで表示を切り替えられます。画面上部のスライダーでカード幅を変えられるので、狭い列での見え方を確認できます。
-React版カードを個別に確認する場合は`?focus=separator`、`?focus=lock`、`?focus=slider`、`?focus=select`を使用できます。
-
-GitHub Actions（`.github/workflows/ci.yml`）が push と pull request ごとに `typecheck` / `lint` / `test` / `build` とバージョン照合を実行します。コミット済みの`dist/`が`src`から遅れていないかも検査します（ビルド時刻のスタンプだけは差分として無視します）。
-
-バージョンの基準は`package.json`です。リリース時は`npm version 1.0.0 --no-git-tag-version`のようにして`package.json`と`package-lock.json`を更新し、`npm run build`で`dist/`を再生成します。`npm run verify-version`で3つのバージョンを照合してから変更を`main`へマージしてください。
-
-`main`の対象コミットに`v1.0.0`のようなタグを付け、`git push origin v1.0.0`でリモートへ送ります。`.github/workflows/release.yml`はタグpushで起動し、タグ名とパッケージのバージョンを照合し、ソースを再検証・ビルドしてGitHub Releaseに`liquid-glass-cards.js`を添付します。同じタグのReleaseが存在する場合は再発行しません。既存の`v0.8.5`以前のタグは、タグ作成時のソース内バージョンが一致しないため、この新しい手順では再発行できません。
-
-`http://localhost:5173/demo/editor.html` はビジュアルエディタの確認用ページです。`?kind=cover` のようにカード種別を指定できます。Home Assistant の `ha-form` を最小限に再現したシムの上で動くため見た目は簡素ですが、スキーマ・ラベル・書き出される設定・カードへの反映を確認できます。ページ上部の Self test が全カードのエディタを自動で操作して結果を検証します。
-
-```text
-src/
-  index.ts                    カード登録 / customCards への追加
-  react/define-react-card.tsx React と HA Custom Element 契約のアダプター
-  react/use-card-host.ts      hass / config をホスト属性へ同期する React Hook
-  react/use-entity-history.ts 履歴の購読とポーリングの切り替え
-  history.ts                  履歴の取得・購読・間引き・トレンド
-  react/glass-primitives.tsx  ガラス面（Glass ラッパーと光学プリセット）
-  react/glass-slider.tsx      Apple 風スライダー（バー＋つまみ）
-  react/card-parts.tsx        アイコンウェル / タイトル / バッジなどの共通部品
-  react/card-styles.ts        カード共通レイアウトのスタイルシート
-  react/reduced-motion.ts     prefers-reduced-motion を JS アニメーションへ適用
-  i18n.ts                     翻訳の読み込みと時刻表記
-  translations/ja.ts          日本語の文言
-  translations/en.ts          英語の文言（未訳キーの代替でもあります）
-  styles/tokens.ts            デザイントークン（design.pen の variables）
-  components/lg-icon.ts       ha-icon ラッパー
-  editor/lg-card-editor.ts    全カード共通のビジュアルエディタ
-  editor/schema.ts            カード種別ごとの ha-form スキーマ
-  editor/load.ts              ha-form の遅延読み込み
-  cards/*.tsx                 各カード（すべて React）
-```
-
-カード共通のスタイル（`styles/tokens.ts` と `react/card-styles.ts`）は、カードごとに `<style>` を複製するのではなく、構築済みの `CSSStyleSheet` を全インスタンスの Shadow Root で共有します（`react/card-sheets.ts`）。ダッシュボードに何枚並べても、共通部分のパースは1回で済みます。
-
-主なトークンに加えて、スライダーカードは `--lg-slider-accent` `--lg-slider-accent-deep` `--lg-slider-accent-light` `--lg-slider-fill-light` を使います。バーとつまみは `--lg-slider-bar-bg`（未充填部分）`--lg-slider-mark`（目盛り）`--lg-knob-solid` `--lg-knob-solid-rim`（待機中のつまみ）`--lg-knob-shadow` `--lg-knob-shadow-active`（つまみの影）で調整できます。
-
-サイズ比較には`demo/?focus=compact&gap=8&width=380`を使用できます。幅170 / 250 / 380pxと全幅、通常配置とSections相当の配置、テーマ、屈折の切り替えに対応し、各カードの実測高さを表示します。Sections相当の表示はデモ用のグリッドで、Home Assistant本体での確認も必要です。
+ビルド、テスト、デモ、リリース手順、内部構成は [開発者向けガイド](docs/DEVELOPMENT.md) を参照してください。
